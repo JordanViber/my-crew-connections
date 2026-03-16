@@ -159,8 +159,8 @@ Yes
 Yes
 
 ### Recommendation
-- Supabase Auth
-- Supabase Postgres
+- local Supabase Auth
+- local Supabase Postgres
 
 ## 3. Local environment config
 ### Need
@@ -169,6 +169,9 @@ Yes
 ### Minimum env values
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+### Source
+These should come from the local Supabase stack, not a hosted project, for the first MVP.
 
 ## 4. Database schema
 ### Need
@@ -224,9 +227,10 @@ After that, add in this order:
 ## What You Need To Provide Before We Can Build This
 
 ### Required
-- a Supabase project
-- the Supabase URL
-- the Supabase anon key
+- Docker installed and running
+- Supabase CLI installed
+- the local Supabase URL
+- the local Supabase anon key
 
 ### Helpful but not blocking
 - decision to use magic-link only for MVP

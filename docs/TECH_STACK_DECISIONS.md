@@ -4,17 +4,17 @@ Date: March 16, 2026
 
 ## Recommended Direction
 
-Build the first version as a web-first PWA using a modern React stack with a managed backend.
+Build the first version as a web-first PWA using a modern React stack with a local-first backend workflow.
 
 Given the repo shape and `.gitignore`, the cleanest starting point is:
 - Next.js
 - TypeScript
 - Tailwind CSS
-- a managed relational backend with auth, storage, and scheduled jobs
+- local Supabase for localhost auth and Postgres
 - web push notifications where supported
 - ICS export for calendar interoperability
 
-This keeps the first release fast to ship while leaving room for mobile packaging or native clients later.
+This keeps the first release fast to ship, avoids free-tier hosted project limits, and leaves room for a hosted backend later.
 
 ## App Architecture Recommendation
 
@@ -41,7 +41,7 @@ The product should feel warm, light, and polished. Tailwind plus a minimal compo
 
 ## Backend
 ### Recommendation
-Use Supabase first unless a strong reason appears to avoid it.
+Use Supabase first, but prefer local Supabase for the first localhost MVP.
 
 ### Why
 Supabase gives the exact primitives this product needs early:
@@ -51,6 +51,14 @@ Supabase gives the exact primitives this product needs early:
 - file storage for photos
 - cron or scheduled job support through edge functions or server-side jobs
 - realtime capability if shared groups later benefit from it
+
+### Localhost recommendation
+For the current phase of this repo, the best setup is:
+- Supabase CLI
+- Docker
+- local Supabase services for auth and Postgres
+
+This avoids depending on a hosted Supabase project before the product loop is proven.
 
 ### Alternative
 Firebase is viable, but the relational nature of users, groups, memberships, hangouts, cadence rules, and participant records makes Postgres feel like the better fit.
@@ -259,7 +267,7 @@ Add analytics early and error tracking from day one.
 - Vercel is the easiest fit for a Next.js PWA
 
 ### Backend hosting
-- Supabase managed project
+- Supabase managed project later if and when we need a hosted environment
 
 ### Why
 This combination optimizes for speed, developer productivity, and reasonable cost at early scale.
@@ -309,7 +317,7 @@ This combination optimizes for speed, developer productivity, and reasonable cos
 
 If the goal is to ship a polished MVP quickly, the best path is:
 - single Next.js TypeScript PWA
-- Supabase backend
+- local Supabase backend for development
 - push plus email reminder strategy
 - ICS export first for calendars
 - internal photo storage with strict caps

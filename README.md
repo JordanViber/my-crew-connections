@@ -47,11 +47,11 @@ The current recommended starting stack is:
 - Next.js
 - TypeScript
 - Tailwind CSS
-- Supabase for auth, Postgres, storage, and backend services
+- local Supabase for localhost auth and Postgres during development
 - web push plus email fallback for reminders
 - ICS export for cross-calendar compatibility
 
-This repo has not been scaffolded yet, but the current direction is to start as a single Next.js PWA and keep the first release lean.
+This repo has not been scaffolded yet, but the current direction is to start as a single Next.js PWA, use local Supabase for the first working MVP, and keep the first release lean.
 
 ## Project Status
 
@@ -71,7 +71,7 @@ What does not exist yet:
 ## Expected Integration Points
 
 Before the app can be fully functional, it will need external services and accounts for areas such as:
-- Supabase project setup
+- local Supabase CLI and Docker setup for localhost development
 - deployment and hosting
 - push notification keys
 - email delivery

@@ -21,11 +21,11 @@ For a working localhost MVP, the true must-haves are relatively small:
 - authentication
 - a local environment file
 
-If we use the recommended stack, the one major required external dependency is a Supabase project.
+If we use the recommended stack, the localhost dependency is local Supabase tooling rather than a hosted Supabase project.
 
 ## Required For Localhost MVP
 
-## 1. Supabase Project
+## 1. Local Supabase Tooling
 ### Required
 Yes.
 
@@ -37,16 +37,30 @@ If we follow the current stack direction, Supabase provides:
 - storage later if we add photos early
 
 ### What you need to do
-- create a new Supabase project
-- choose project name and region
-- provide the project URL
-- provide the anon/public key
-- provide the service role key only when needed for secure server-side features
+- install Docker
+- install the Supabase CLI
+- allow the Supabase local stack to run on your machine
 
 ### Notes
-A localhost MVP can still call a hosted Supabase project. The app runs locally while the backend services are hosted remotely.
+A localhost MVP can run against local Supabase services on your machine. This is now the preferred first path.
 
-## 2. Environment Variables
+## 2. Hosted Supabase Project
+### Required
+No for localhost.
+
+### Required later
+Only if we want a hosted shared environment.
+
+### Why it may be needed later
+- cloud testing
+- shared staging or production data
+- hosted auth and storage
+
+### What you need to do later
+- create a new Supabase project when needed
+- provide hosted environment values for deployment
+
+## 3. Environment Variables
 ### Required
 Yes.
 
@@ -56,13 +70,13 @@ The app will need local environment values for services like Supabase.
 ### Expected variables
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` when server-side privileged operations exist
+- `SUPABASE_SERVICE_ROLE_KEY` only when local or hosted privileged server-side operations exist
 
 ### What you need to do
-- provide the values after creating the Supabase project
+- provide the values after the local Supabase stack is running
 - keep them in a local `.env.local` file and never commit them
 
-## 3. Auth Configuration
+## 4. Auth Configuration
 ### Required
 Yes.
 
@@ -73,12 +87,12 @@ Yes.
 This is the simplest working auth path and avoids needing extra OAuth setup immediately.
 
 ### What you need to do
-- enable email auth in Supabase
-- optionally configure allowed redirect URLs for local development
+- enable email auth in the local Supabase config if needed
+- configure allowed redirect URLs for local development
 
 ## Strongly Recommended For Production MVP
 
-## 4. Vercel Project
+## 5. Vercel Project
 ### Required for localhost
 No.
 
@@ -93,7 +107,7 @@ A deployed frontend needs hosting and environment configuration.
 - connect the repository
 - configure production and preview environment variables
 
-## 5. Email Delivery Provider
+## 6. Email Delivery Provider
 ### Required for localhost
 Not necessarily.
 
@@ -114,7 +128,7 @@ Helpful for:
 - create an API key
 - optionally verify a sending domain
 
-## 6. Web Push VAPID Keys
+## 7. Web Push VAPID Keys
 ### Required for localhost
 No for the first pass
 
@@ -133,7 +147,7 @@ Defer push until after core reminder logic works in-app.
 
 ## Optional But Common For Production
 
-## 7. Google OAuth
+## 8. Google OAuth
 ### Required for localhost
 No
 
@@ -150,7 +164,7 @@ No
 ### Recommendation
 Do not block MVP on this.
 
-## 8. Custom Domain
+## 9. Custom Domain
 ### Required for localhost
 No
 
@@ -161,7 +175,7 @@ Yes
 - purchase or choose a domain
 - configure DNS with hosting provider
 
-## 9. Analytics
+## 10. Analytics
 ### Required for localhost
 No
 
@@ -172,7 +186,7 @@ No
 ### Why
 Useful for understanding activation and reminder-to-action behavior.
 
-## 10. Error Tracking
+## 11. Error Tracking
 ### Required for localhost
 No
 
@@ -184,7 +198,7 @@ Useful once the app is deployed or shared with testers.
 
 ## Optional Later-Phase Integrations
 
-## 11. Calendar APIs
+## 12. Calendar APIs
 ### Required for local MVP
 No
 
@@ -201,7 +215,7 @@ Only if we want:
 - Google API project and credentials
 - consent screen and scopes
 
-## 12. Maps Or Places APIs
+## 13. Maps Or Places APIs
 ### Required for local MVP
 No
 
@@ -219,7 +233,7 @@ If we later want:
 - Google Places
 - Mapbox
 
-## 13. Contact Import Provider Or Device Access Strategy
+## 14. Contact Import Provider Or Device Access Strategy
 ### Required for local MVP
 No
 
@@ -232,7 +246,7 @@ Do not block MVP on contact sync. Start with:
 - invite links
 - optional CSV import later if needed
 
-## 14. Photo Storage Expansion Or External Albums
+## 15. Photo Storage Expansion Or External Albums
 ### Required for local MVP
 No
 
@@ -295,14 +309,14 @@ ICS only.
 ## Recommended Setup Order
 
 1. create Supabase project
-2. decide auth method
+2. install Docker and Supabase CLI
 3. scaffold Next.js app
-4. wire local environment variables
-5. implement auth and core data model
-6. implement in-app reminder flow
-7. add ICS export
-8. add optional email delivery
-9. add optional push notifications
+4. start local Supabase and wire local environment variables
+5. decide auth method
+6. implement auth and core data model
+7. implement in-app reminder flow
+8. add ICS export
+9. add optional email delivery and push later
 
 ## What I Can Do Without Waiting
 
@@ -316,7 +330,7 @@ I can proceed without extra external accounts for:
 
 ## What Will Block Full Functionality
 
-The main real blocker is the absence of a Supabase project and its environment values.
+The main real blocker is the absence of a working local Supabase setup and its environment values.
 
 Everything else is either:
 - optional for the first localhost MVP

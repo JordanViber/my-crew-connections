@@ -12,6 +12,7 @@ This folder contains the initial product and technical planning documents for th
 - [MVP_ROADMAP.md](./MVP_ROADMAP.md) — phased delivery plan and execution priorities
 - [INTEGRATIONS_AND_SECRETS.md](./INTEGRATIONS_AND_SECRETS.md) — external services, keys, product decisions, and setup blockers
 - [LOCALHOST_MVP_REQUIREMENTS.md](./LOCALHOST_MVP_REQUIREMENTS.md) — the strict minimum needed for a working local MVP
+- [LOCAL_SUPABASE_SETUP.md](./LOCAL_SUPABASE_SETUP.md) — how to use Supabase locally for the first MVP
 
 ## Suggested Reading Order
 
@@ -23,6 +24,7 @@ This folder contains the initial product and technical planning documents for th
 6. MVP roadmap
 7. Integrations and secrets
 8. Localhost MVP requirements
+9. Local Supabase setup
 
 ## Key Throughline
 
