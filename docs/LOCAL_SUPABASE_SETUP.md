@@ -27,6 +27,16 @@ You need the following installed on your machine:
 - Supabase CLI installed
 - Node.js for the eventual frontend app
 
+### Current machine note
+On this machine, Docker is available through Colima rather than the default Docker socket.
+To make `supabase start` work here, we used a temporary socket symlink:
+
+`ln -sf "$HOME/.colima/default/docker.sock" /tmp/colima-docker.sock`
+
+And then ran Supabase commands with:
+
+`DOCKER_HOST=unix:///tmp/colima-docker.sock`
+
 ## High-Level Workflow
 
 1. initialize Supabase in the repo
@@ -57,6 +67,20 @@ The app will eventually need values like:
 3. scaffold the Next.js app
 4. create initial schema for connections, groups, cadence rules, and touchpoints
 5. wire auth and basic CRUD
+
+## Useful Local Commands
+
+### Initialize once
+`supabase init`
+
+### Start local stack
+`DOCKER_HOST=unix:///tmp/colima-docker.sock supabase start -x vector,logflare`
+
+### Show local env values
+`DOCKER_HOST=unix:///tmp/colima-docker.sock supabase status -o env`
+
+### Stop local stack
+`DOCKER_HOST=unix:///tmp/colima-docker.sock supabase stop`
 
 ## Notes
 
