@@ -80,6 +80,17 @@ Before the app can be fully functional, it will need external services and accou
 
 I can help enumerate these in detail and wire them into the app once the scaffold is created.
 
+## Local Supabase
+
+This repo already includes a local Supabase CLI config in [supabase/config.toml](supabase/config.toml).
+
+For cross-machine local development:
+- use [scripts/supabase-start.ps1](scripts/supabase-start.ps1) on Windows
+- use [scripts/supabase-start.sh](scripts/supabase-start.sh) on macOS or Linux
+- generate the app env file from the running local stack with [scripts/supabase-sync-env.ps1](scripts/supabase-sync-env.ps1) or [scripts/supabase-sync-env.sh](scripts/supabase-sync-env.sh)
+
+That keeps `.env.local` machine-specific and reproducible without committing secrets or hard-coding one machine's values into the repo.
+
 ## Suggested Next Steps
 
 1. finalize MVP scope and primary target user

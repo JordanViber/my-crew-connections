@@ -28,21 +28,28 @@ You need the following installed on your machine:
 - Node.js for the eventual frontend app
 
 ### Current machine note
-On this machine, Docker is available through Colima rather than the default Docker socket.
-To make `supabase start` work here, we used a temporary socket symlink:
 
-`ln -sf "$HOME/.colima/default/docker.sock" /tmp/colima-docker.sock`
+The Supabase config in this repo is the same on every machine.
+What can vary is only how Docker is reached:
 
-And then ran Supabase commands with:
+- Windows with Docker Desktop usually needs no extra Docker environment variables
+- macOS with Docker Desktop usually needs no extra Docker environment variables
+- macOS with Colima may need `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock`
 
-`DOCKER_HOST=unix:///tmp/colima-docker.sock`
+To avoid baking one machine's Docker setup into the repo, use the helper scripts in `scripts/`:
+- `scripts/supabase-start.ps1`
+- `scripts/supabase-start.sh`
+- `scripts/supabase-sync-env.ps1`
+- `scripts/supabase-sync-env.sh`
+
+The shell scripts auto-detect the common Colima socket if `DOCKER_HOST` is not already set.
 
 ## High-Level Workflow
 
 1. initialize Supabase in the repo
 2. start the local Supabase stack
 3. capture the local URL and anon key
-4. place those values in `.env.local`
+4. generate `.env.local` from the running local stack
 5. build the app against the local services
 6. add schema and policies through migrations
 
@@ -73,14 +80,39 @@ The app will eventually need values like:
 ### Initialize once
 `supabase init`
 
-### Start local stack
-`DOCKER_HOST=unix:///tmp/colima-docker.sock supabase start -x vector,logflare`
+### Start local stack on Windows
+`powershell -ExecutionPolicy Bypass -File .\scripts\supabase-start.ps1`
 
-### Show local env values
-`DOCKER_HOST=unix:///tmp/colima-docker.sock supabase status -o env`
+### Start local stack on macOS or Linux
+`./scripts/supabase-start.sh`
+
+### Generate `.env.local` on Windows
+`powershell -ExecutionPolicy Bypass -File .\scripts\supabase-sync-env.ps1`
+
+### Generate `.env.local` on macOS or Linux
+`./scripts/supabase-sync-env.sh`
+
+### Show raw local env values
+`supabase status -o env`
 
 ### Stop local stack
-`DOCKER_HOST=unix:///tmp/colima-docker.sock supabase stop`
+`supabase stop`
+
+## Cross-machine env strategy
+
+Do not copy `.env.local` between machines.
+
+Instead:
+1. keep the shared local Supabase config in version control
+2. start the local stack on the current machine
+3. regenerate `.env.local` from `supabase status -o env`
+
+That makes local development portable across:
+- Windows with Docker Desktop
+- macOS with Docker Desktop
+- macOS with Colima
+
+If the local keys differ on one machine, the generated `.env.local` for that machine stays correct without changing committed repo files.
 
 ## Notes
 
