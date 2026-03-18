@@ -173,6 +173,9 @@ Yes
 ### Source
 These should come from the local Supabase stack, not a hosted project, for the first MVP.
 
+### Current repo note
+The frontend app lives in `client/`, so the generated runtime env file should live at `client/.env.local`.
+
 ## 4. Database schema
 ### Need
 Yes

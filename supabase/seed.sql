@@ -1,0 +1,2 @@
+-- Intentionally empty for the first localhost MVP.
+-- Seed data can be added later if demo fixtures become useful.

@@ -1,10 +1,19 @@
 param(
-    [string]$OutputPath = '.env.local'
+    [string]$OutputPath
 )
 
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
+
+if (-not $OutputPath) {
+    $OutputPath = if (Test-Path (Join-Path $repoRoot 'client')) {
+        'client/.env.local'
+    } else {
+        '.env.local'
+    }
+}
+
 $targetPath = if ([System.IO.Path]::IsPathRooted($OutputPath)) {
     $OutputPath
 } else {

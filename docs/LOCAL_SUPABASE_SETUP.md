@@ -49,7 +49,7 @@ The shell scripts auto-detect the common Colima socket if `DOCKER_HOST` is not a
 1. initialize Supabase in the repo
 2. start the local Supabase stack
 3. capture the local URL and anon key
-4. generate `.env.local` from the running local stack
+4. generate `client/.env.local` from the running local stack
 5. build the app against the local services
 6. add schema and policies through migrations
 
@@ -86,10 +86,10 @@ The app will eventually need values like:
 ### Start local stack on macOS or Linux
 `./scripts/supabase-start.sh`
 
-### Generate `.env.local` on Windows
+### Generate `client/.env.local` on Windows
 `powershell -ExecutionPolicy Bypass -File .\scripts\supabase-sync-env.ps1`
 
-### Generate `.env.local` on macOS or Linux
+### Generate `client/.env.local` on macOS or Linux
 `./scripts/supabase-sync-env.sh`
 
 ### Show raw local env values
@@ -100,12 +100,12 @@ The app will eventually need values like:
 
 ## Cross-machine env strategy
 
-Do not copy `.env.local` between machines.
+Do not copy `client/.env.local` between machines.
 
 Instead:
 1. keep the shared local Supabase config in version control
 2. start the local stack on the current machine
-3. regenerate `.env.local` from `supabase status -o env`
+3. regenerate `client/.env.local` from `supabase status -o env`
 
 That makes local development portable across:
 - Windows with Docker Desktop

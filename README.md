@@ -51,19 +51,19 @@ The current recommended starting stack is:
 - web push plus email fallback for reminders
 - ICS export for cross-calendar compatibility
 
-This repo has not been scaffolded yet, but the current direction is to start as a single Next.js PWA, use local Supabase for the first working MVP, and keep the first release lean.
+The current implementation now includes a Next.js app in `client/` wired to local Supabase for a disciplined first MVP slice.
 
 ## Project Status
 
-This repository is currently in planning and product-definition mode.
+This repository is now in early implementation mode.
 
 What exists now:
 - initial product and technical planning docs
+- local Supabase schema and RLS for the solo-first MVP
+- Next.js client scaffold with magic-link auth, dashboard, people, groups, and touchpoint logging
+- unit and browser smoke test coverage
 
 What does not exist yet:
-- app scaffold
-- database schema
-- auth implementation
 - notifications implementation
 - calendar integration layer
 - media upload flow
@@ -89,12 +89,12 @@ For cross-machine local development:
 - use [scripts/supabase-start.sh](scripts/supabase-start.sh) on macOS or Linux
 - generate the app env file from the running local stack with [scripts/supabase-sync-env.ps1](scripts/supabase-sync-env.ps1) or [scripts/supabase-sync-env.sh](scripts/supabase-sync-env.sh)
 
-That keeps `.env.local` machine-specific and reproducible without committing secrets or hard-coding one machine's values into the repo.
+That keeps [client/.env.local](client/.env.local) machine-specific and reproducible without committing secrets or hard-coding one machine's values into the repo.
 
 ## Suggested Next Steps
 
-1. finalize MVP scope and primary target user
-2. scaffold the Next.js PWA
-3. create the Supabase project and environment configuration
-4. implement auth, connections, groups, and cadence rules
-5. build the reminder loop before deeper media or AI features
+1. finalize the exact first-user persona for launch copy and onboarding
+2. add richer reminder handling and optional scheduling or ICS export
+3. deepen unit coverage around data queries and server actions
+4. add photo or media handling only after the reminder loop feels solid
+5. layer in notifications once the in-app cadence flow is validated

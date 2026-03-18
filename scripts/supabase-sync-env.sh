@@ -14,6 +14,14 @@ if [[ -z "${DOCKER_HOST:-}" ]] && [[ -S "${HOME}/.colima/default/docker.sock" ]]
 fi
 
 output_path="${1:-.env.local}"
+if [[ -z "${1:-}" ]]; then
+  if [[ -d "${repo_root}/client" ]]; then
+    output_path="client/.env.local"
+  else
+    output_path=".env.local"
+  fi
+fi
+
 env_output="$(supabase status -o env)"
 
 get_value() {
