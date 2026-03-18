@@ -31,7 +31,7 @@ export default async function Home({
       callbackParams.set("next", params.next);
     }
 
-    redirect(`/auth/callback?${callbackParams.toString()}`);
+    redirect(`/auth/confirm?${callbackParams.toString()}`);
   }
 
   const supabase = await createServerSupabaseClient();

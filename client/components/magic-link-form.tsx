@@ -9,7 +9,7 @@ export function MagicLinkForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SubmitEvent & { currentTarget: HTMLFormElement }) {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
@@ -24,7 +24,7 @@ export function MagicLinkForm() {
       setErrorMessage(null);
 
       const supabase = createBrowserSupabaseClient();
-      const redirectTo = `${window.location.origin}/auth/callback?next=/dashboard`;
+      const redirectTo = `${globalThis.location.origin}/auth/confirm?next=/dashboard`;
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
