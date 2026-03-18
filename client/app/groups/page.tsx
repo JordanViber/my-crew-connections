@@ -5,18 +5,20 @@ import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { createGroupAction } from "@/app/actions";
 import { getDashboardData } from "@/lib/mvp-data";
+import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export default async function GroupsPage() {
-  const supabase = await createServerSupabaseClient();
+  const authSupabase = await createServerSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authSupabase.auth.getUser();
 
   if (!user) {
     redirect("/auth");
   }
 
+  const supabase = createServerAdminSupabaseClient();
   const data = await getDashboardData(supabase, user.id);
 
   return (

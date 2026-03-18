@@ -5,6 +5,7 @@ import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { createConnectionAction } from "@/app/actions";
 import { getDashboardData } from "@/lib/mvp-data";
+import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const cadenceOptions = [
@@ -14,15 +15,16 @@ const cadenceOptions = [
 ] as const;
 
 export default async function ConnectionsPage() {
-  const supabase = await createServerSupabaseClient();
+  const authSupabase = await createServerSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authSupabase.auth.getUser();
 
   if (!user) {
     redirect("/auth");
   }
 
+  const supabase = createServerAdminSupabaseClient();
   const data = await getDashboardData(supabase, user.id);
 
   return (

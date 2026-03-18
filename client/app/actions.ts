@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   connectionSchema,
@@ -10,7 +10,6 @@ import {
   getStringList,
   groupMemberSchema,
   groupSchema,
-  magicLinkSchema,
   parseTargetReference,
   parseCommaSeparatedList,
   touchpointSchema,
@@ -19,15 +18,16 @@ import {
 } from "@/lib/validations";
 
 async function getAuthenticatedClient() {
-  const supabase = await createServerSupabaseClient();
+  const authSupabase = await createServerSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authSupabase.auth.getUser();
 
   if (!user) {
     redirect("/auth");
   }
 
+  const supabase = createServerAdminSupabaseClient();
   return { supabase, user };
 }
 
@@ -37,39 +37,10 @@ function assertMutation(error: { message: string } | null, label: string) {
   }
 }
 
-async function getBaseUrl() {
-  const headerStore = await headers();
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "127.0.0.1:3000";
-  const protocol =
-    headerStore.get("x-forwarded-proto") ??
-    (host.startsWith("127.0.0.1") || host.startsWith("localhost") ? "http" : "https");
-
-  return `${protocol}://${host}`;
-}
-
 function revalidateRelationshipPaths(targetType: "connection" | "group", targetId: string) {
   revalidatePath("/dashboard");
   revalidatePath(targetType === "connection" ? "/connections" : "/groups");
   revalidatePath(`/${targetType === "connection" ? "connections" : "groups"}/${targetId}`);
-}
-
-export async function signInAction(formData: FormData) {
-  const payload = magicLinkSchema.parse({
-    email: getString(formData, "email"),
-  });
-
-  const supabase = await createServerSupabaseClient();
-  const baseUrl = await getBaseUrl();
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email: payload.email,
-    options: {
-      emailRedirectTo: `${baseUrl}/auth/callback?next=/dashboard`,
-    },
-  });
-
-  assertMutation(error, "Failed to send magic link");
-  redirect("/auth?sent=1");
 }
 
 export async function signOutAction() {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const featureCards = [
@@ -16,7 +17,23 @@ const featureCards = [
   },
 ];
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: Readonly<{
+  searchParams: Promise<{ code?: string; next?: string }>;
+}>) {
+  const params = await searchParams;
+
+  if (params.code) {
+    const callbackParams = new URLSearchParams({ code: params.code });
+
+    if (params.next) {
+      callbackParams.set("next", params.next);
+    }
+
+    redirect(`/auth/callback?${callbackParams.toString()}`);
+  }
+
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -38,9 +55,17 @@ export default async function Home() {
                 A warm relationship dashboard for adults who care deeply and need a lighter planning system.
               </p>
             </div>
-            <Link className="button-secondary" href="/dashboard">
-              MVP preview
-            </Link>
+            <nav className="flex flex-wrap justify-end gap-3">
+              <Link className="button-secondary" href={primaryHref}>
+                {user ? "Dashboard" : "Sign in"}
+              </Link>
+              <Link className="button-secondary" href="/connections">
+                People
+              </Link>
+              <Link className="button-secondary" href="/groups">
+                Groups
+              </Link>
+            </nav>
           </div>
 
           <div className="grid gap-8 lg:max-w-3xl">

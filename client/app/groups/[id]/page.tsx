@@ -4,6 +4,7 @@ import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { addGroupMembersAction, createTouchpointAction, updateGroupAction } from "@/app/actions";
 import { getDashboardData } from "@/lib/mvp-data";
+import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 function toInputDateTime() {
@@ -16,15 +17,16 @@ export default async function GroupDetailPage({
   params,
 }: Readonly<{ params: Promise<{ id: string }> }>) {
   const { id } = await params;
-  const supabase = await createServerSupabaseClient();
+  const authSupabase = await createServerSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authSupabase.auth.getUser();
 
   if (!user) {
     redirect("/auth");
   }
 
+  const supabase = createServerAdminSupabaseClient();
   const data = await getDashboardData(supabase, user.id);
   const group = data.groups.find((item) => item.id === id);
 
