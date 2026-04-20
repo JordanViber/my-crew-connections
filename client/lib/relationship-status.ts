@@ -11,6 +11,8 @@ export type RelationshipHealth = {
   summary: string;
 };
 
+export type RelationshipSubject = "connection" | "group";
+
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
 function startOfDay(input: Date) {
@@ -50,16 +52,20 @@ function getState(daysUntilDue: number, reminderLeadDays: number): RelationshipS
   return "on-track";
 }
 
-function getLabel(state: RelationshipState, isFirstTouchpoint: boolean) {
+function getLabel(state: RelationshipState, isFirstTouchpoint: boolean, subjectType: RelationshipSubject) {
   if (state === "overdue") {
-    return isFirstTouchpoint ? "First plan overdue" : "Overdue";
+    return isFirstTouchpoint ? "First touchpoint overdue" : "Overdue";
   }
 
   if (state === "due-soon") {
-    return isFirstTouchpoint ? "Plan soon" : "Due soon";
+    return isFirstTouchpoint ? "First touchpoint due soon" : "Due soon";
   }
 
-  return isFirstTouchpoint ? "New connection" : "On track";
+  if (isFirstTouchpoint) {
+    return subjectType === "group" ? "No group touchpoint yet" : "No touchpoint yet";
+  }
+
+  return "On track";
 }
 
 function getSummary(state: RelationshipState, daysUntilDue: number) {
@@ -80,6 +86,7 @@ export function getRelationshipHealth({
   cadenceValue,
   cadenceUnit,
   reminderLeadDays,
+  subjectType,
   referenceAt = new Date(),
 }: {
   createdAt: string;
@@ -87,6 +94,7 @@ export function getRelationshipHealth({
   cadenceValue: number;
   cadenceUnit: CadenceUnit;
   reminderLeadDays: number;
+  subjectType: RelationshipSubject;
   referenceAt?: Date;
 }): RelationshipHealth {
   const anchorAt = new Date(lastTouchpointAt ?? createdAt);
@@ -96,7 +104,7 @@ export function getRelationshipHealth({
   const daysUntilDue = Math.ceil((dueDay.getTime() - referenceDay.getTime()) / DAY_IN_MS);
   const isFirstTouchpoint = !lastTouchpointAt;
   const state = getState(daysUntilDue, reminderLeadDays);
-  const label = getLabel(state, isFirstTouchpoint);
+  const label = getLabel(state, isFirstTouchpoint, subjectType);
   const summary = getSummary(state, daysUntilDue);
 
   return {

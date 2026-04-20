@@ -1,10 +1,10 @@
 # My Crew Connections Localhost MVP Requirements
 
-Date: March 16, 2026
+Date: April 19, 2026
 
 ## Goal
 
-Define the smallest set of product functionality and technical dependencies required to run a meaningful My Crew Connections MVP locally on `localhost`.
+Define the smallest set of product functionality and technical dependencies required to run a meaningful My Crew Connections MVP locally on `localhost`, and record what is already satisfied now.
 
 This document is intentionally strict.
 It is about what we absolutely need, not everything we eventually want.
@@ -22,6 +22,28 @@ A localhost MVP is successful if one person can:
 
 That is enough to prove the core value proposition.
 
+## Status On April 19, 2026
+
+This baseline is now achieved locally.
+
+Already shipped:
+- account creation, sign-in, sign-out, and session persistence
+- people and groups CRUD with archive support
+- cadence setup and relationship health computation
+- dashboard reminders and quick actions
+- touchpoint logging with history
+- saved hangout planning plus ICS export
+- mobile-first navigation and section tabs
+
+Partially shipped:
+- collaboration through connection invite links and two-way real-user linking
+
+Still deferred:
+- push notifications
+- production email delivery
+- media uploads
+- richer shared group collaboration and permissions
+
 ## Absolute Product Minimum
 
 ## 1. Authentication
@@ -34,7 +56,8 @@ Yes
 - sign-out
 
 ### Recommendation
-- email magic link only
+- local email and password for fastest localhost iteration
+- keep magic link available as a secondary parity path when useful
 
 ## 2. Connections
 ### Need
@@ -87,8 +110,8 @@ Yes
 - store date
 - optionally store note and activity
 
-### Important simplification
-For the first localhost MVP, a lightweight `touchpoint` model may be enough even if a fuller `hangout` model comes later.
+### Current state
+The app now supports both lightweight `touchpoints` and a persisted `hangout` planning model.
 
 ## 6. Home Dashboard
 ### Need
@@ -107,6 +130,17 @@ Yes
 - show previous touchpoints per person or group
 - show last interaction date
 
+## 8. Lightweight Linking To Real Users
+### Need
+Yes for the current collaboration-ready localhost slice
+
+### Current localhost support
+- create a connection for someone who is not yet on the app
+- generate an invite link from that connection
+- let the recipient sign in or create an account
+- claim the invite and link the original connection to a real user
+- create or reuse a reciprocal connection for the invited user
+
 ## Can Be Deferred Without Breaking MVP
 
 These features are valuable, but they are not necessary for a true localhost MVP.
@@ -121,7 +155,7 @@ Can be added after in-app reminder logic is validated.
 
 ## 3. Google sign-in
 Defer.
-Magic link is enough.
+Local password plus optional magic link is enough.
 
 ## 4. Contact sync
 Defer.
@@ -133,15 +167,15 @@ The core loop works without photos.
 
 ## 6. Place autocomplete or map integrations
 Defer.
-Use freeform location/activity text.
+Use freeform location and activity text.
 
 ## 7. Shared collaboration across multiple users
 Defer deep collaboration.
-The data model can remain collaboration-ready while the UX stays solo-first.
+Lightweight two-way connection linking now exists, but shared groups, shared timelines, and richer permissions are still intentionally deferred.
 
 ## 8. Calendar API integration
 Defer.
-If scheduling exists, ICS export can come later or even after the first local pass.
+The app already supports ICS export, so deep calendar APIs can stay postponed.
 
 ## Strict Technical Minimum
 
@@ -187,6 +221,8 @@ Yes
 - group_memberships
 - cadence_rules
 - touchpoints
+- hangouts
+- connection_invites
 
 ## 5. Authorization rules
 ### Need
@@ -223,9 +259,10 @@ That is the smallest real proof of value.
 After that, add in this order:
 1. groups
 2. timeline views
-3. optional simple hangout scheduling
-4. optional ICS export
+3. simple hangout scheduling
+4. ICS export
 5. optional photos
+6. lightweight real-user invite linking
 
 ## What You Need To Provide Before We Can Build This
 
@@ -236,14 +273,16 @@ After that, add in this order:
 - the local Supabase anon key
 
 ### Helpful but not blocking
-- decision to use magic-link only for MVP
+- decision to keep magic link enabled alongside local password for MVP parity
 - decision to defer push, email, contact sync, and maps
+- decision on how far to take shared groups now that two-way connection linking exists
 
 ## Recommended Localhost MVP Decisions
 
 To move fastest, I recommend:
 - solo-first MVP
-- magic-link auth only
+- local password auth as the default localhost path
+- magic link retained as an optional secondary auth path
 - no push in first pass
 - no email in first pass
 - no contact sync in first pass
@@ -251,6 +290,7 @@ To move fastest, I recommend:
 - no maps integration in first pass
 - no Google OAuth in first pass
 - no deep calendar integration in first pass
+- invite links are acceptable before production email delivery exists
 
 ## Concrete Build Order
 
@@ -262,7 +302,8 @@ To move fastest, I recommend:
 6. build cadence rule UI and logic
 7. build touchpoint logging
 8. build dashboard due-soon and overdue logic
-9. build timeline/history views
+9. build timeline and history views
+10. add lightweight real-user invite linking
 
 ## Definition Of Done For Localhost MVP
 
@@ -274,3 +315,4 @@ The localhost MVP is done when a tester can:
 - log touchpoints
 - see who needs attention
 - return later and still see persisted state
+- optionally save a hangout plan and export it to calendar

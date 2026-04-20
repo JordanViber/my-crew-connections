@@ -13,15 +13,15 @@ The product is meant to feel warm, lightweight, and social rather than like a bu
 
 ## Product Direction
 
-The current product direction is a web-first PWA that supports:
+The product direction is a web-first PWA that supports:
 - individual friends and shared groups
 - cadence setup for how often you want to meet or check in
 - overdue reminders and nudges
 - hangout planning and calendar export
-- memory timelines with notes, activities, places, and limited photos
+- memory timelines with notes, activities, and places
 - collaboration when other participants join the app
 
-The planned MVP focuses on the smallest valuable loop:
+The core loop is:
 1. add a person or group
 2. set a cadence
 3. receive a reminder
@@ -31,7 +31,7 @@ The planned MVP focuses on the smallest valuable loop:
 
 ## Planning Docs
 
-The initial planning work lives in [docs/README.md](docs/README.md).
+The planning work lives in [docs/README.md](docs/README.md).
 
 Key documents:
 - [docs/PRODUCT_BRIEF.md](docs/PRODUCT_BRIEF.md)
@@ -41,44 +41,34 @@ Key documents:
 - [docs/TECH_STACK_DECISIONS.md](docs/TECH_STACK_DECISIONS.md)
 - [docs/MVP_ROADMAP.md](docs/MVP_ROADMAP.md)
 
-## Proposed Tech Stack
+## Current Localhost State
 
-The current recommended starting stack is:
-- Next.js
-- TypeScript
-- Tailwind CSS
-- local Supabase for localhost auth and Postgres during development
-- web push plus email fallback for reminders
-- ICS export for cross-calendar compatibility
+This repository is in active implementation with a working localhost MVP.
 
-The current implementation now includes a Next.js app in `client/` wired to local Supabase for a disciplined first MVP slice.
+Shipped locally:
+- Next.js App Router app in `client/`
+- local Supabase-backed auth with local password as the primary localhost path and magic link kept as a secondary path
+- people and groups CRUD with archive support
+- searchable and filterable people directory with linked, pending, and local-only states
+- searchable and filterable group directory for larger crews
+- mobile people and groups routes now default to the active directory view, with creation available as an explicit next action
+- group creation now uses a searchable picker for existing people instead of a bare checklist
+- cadence rules, relationship health, reminder queue, and dashboard prioritization
+- touchpoint logging with timeline history, activity, and place context
+- persisted hangout planning with ICS export
+- mobile-first navigation and section tabs
+- mobile navigation tuned so list/create screens keep tabs out of the way while detail surfaces stay easier to move around
+- connection invite links that can be claimed by another real app user
+- optional invite start during connection creation
+- two-way relationship linking so invite claim creates or reuses a reciprocal connection for the invited user
+- unit tests plus Playwright coverage for the core authenticated flows
 
-## Project Status
-
-This repository is now in early implementation mode.
-
-What exists now:
-- initial product and technical planning docs
-- local Supabase schema and RLS for the solo-first MVP
-- Next.js client scaffold with magic-link auth, dashboard, people, groups, and touchpoint logging
-- unit and browser smoke test coverage
-
-What does not exist yet:
-- notifications implementation
-- calendar integration layer
-- media upload flow
-
-## Expected Integration Points
-
-Before the app can be fully functional, it will need external services and accounts for areas such as:
-- local Supabase CLI and Docker setup for localhost development
-- deployment and hosting
-- push notification keys
-- email delivery
-- optional OAuth providers
-- optional calendar or location APIs
-
-I can help enumerate these in detail and wire them into the app once the scaffold is created.
+Still intentionally deferred:
+- push notification delivery
+- production email delivery
+- hosted deployment setup
+- rich collaboration beyond connection linking and invite claiming
+- photo and media upload flow
 
 ## Local Supabase
 
@@ -91,10 +81,24 @@ For cross-machine local development:
 
 That keeps [client/.env.local](client/.env.local) machine-specific and reproducible without committing secrets or hard-coding one machine's values into the repo.
 
+Important local-dev note:
+- `supabase db reset --local` wipes local auth users and application data
+- after a reset, any previously created local account must be recreated with the `Create or reset local account` flow before signing in again
+
+## Resume Notes
+
+If we need to pick up quickly, the current product shape is:
+1. solo-first relationship maintenance app with collaboration-ready data
+2. groups are still primarily composed from existing connection records
+3. real-user linking currently happens from a connection detail page through a claimable invite link
+4. invite claim links both sides by creating or reusing a reciprocal connection for the invited user
+5. saved hangouts exist and can be exported to calendar via ICS
+6. mobile validation now uses an iPhone 15-sized viewport in browser coverage
+
 ## Suggested Next Steps
 
-1. finalize the exact first-user persona for launch copy and onboarding
-2. add richer reminder handling and optional scheduling or ICS export
-3. deepen unit coverage around data queries and server actions
-4. add photo or media handling only after the reminder loop feels solid
-5. layer in notifications once the in-app cadence flow is validated
+1. deepen collaborative behavior for linked users and groups now that two-way connection linking exists
+2. decide whether groups should support richer shared membership management beyond connection placeholders
+3. add production invite delivery through email instead of copyable local links only
+4. add notifications after the collaboration and planning model settles
+5. add photo or media handling only after the shared-memory loop is clearer

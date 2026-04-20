@@ -8,6 +8,10 @@ export const magicLinkSchema = z.object({
   email: z.email(),
 });
 
+export const inviteEmailSchema = z.object({
+  email: z.email(),
+});
+
 const baseCadenceSchema = z.object({
   cadenceValue: z.coerce.number().int().min(1).max(90),
   cadenceUnit: cadenceUnitSchema,
@@ -16,6 +20,7 @@ const baseCadenceSchema = z.object({
 
 export const connectionSchema = baseCadenceSchema.extend({
   displayName: z.string().trim().min(1).max(80),
+  inviteEmail: z.email().optional().or(z.literal("")).default(""),
   tags: z.string().trim().max(180).optional().default(""),
   notes: z.string().trim().max(500).optional().default(""),
   preferredActivities: z.string().trim().max(200).optional().default(""),
@@ -38,6 +43,17 @@ export const updateGroupSchema = groupSchema.extend({
 export const groupMemberSchema = z.object({
   groupId: uuidSchema,
   connectionIds: z.array(uuidSchema).min(1),
+});
+
+export const hangoutSchema = z.object({
+  targetType: targetTypeSchema,
+  targetId: uuidSchema,
+  title: z.string().trim().min(1).max(120),
+  startsAt: z.string().min(1),
+  endsAt: z.string().optional().default(""),
+  timezone: z.string().trim().min(1).max(100),
+  location: z.string().trim().max(200).optional().default(""),
+  notes: z.string().trim().max(1000).optional().default(""),
 });
 
 export const touchpointSchema = z.object({

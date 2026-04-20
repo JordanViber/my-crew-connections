@@ -1,4 +1,4 @@
-const { execFileSync, spawnSync } = require("node:child_process");
+import { execFileSync, spawnSync } from "node:child_process";
 
 const ports = process.argv
   .slice(2)

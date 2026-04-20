@@ -1,0 +1,111 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { claimConnectionInviteAction } from "@/app/actions";
+import { FeedbackBanner } from "@/components/feedback-banner";
+import { SectionCard } from "@/components/section-card";
+import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+export default async function InviteClaimPage({
+  params,
+  searchParams,
+}: Readonly<{
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ claimed?: string; error?: string }>;
+}>) {
+  const { token } = await params;
+  const query = await searchParams;
+  const authSupabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await authSupabase.auth.getUser();
+
+  const supabase = createServerAdminSupabaseClient();
+  const { data: invite, error } = await supabase
+    .from("connection_invites")
+    .select("id, connection_id, invited_email, claimed_at, revoked_at, connections!inner(display_name, owner_user_id, linked_user_id)")
+    .eq("token", token)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load invite: ${error.message}`);
+  }
+
+  if (!invite || invite.revoked_at) {
+    notFound();
+  }
+
+  const connection = Array.isArray(invite.connections) ? invite.connections[0] : invite.connections;
+
+  if (!connection) {
+    notFound();
+  }
+
+  const isClaimed = Boolean(invite.claimed_at);
+
+  if (!user) {
+    const nextPath = `/invite/${token}`;
+
+    return (
+      <main className="shell flex items-center justify-center px-4 py-6 md:px-8">
+        <div className="glass-panel grid max-w-3xl gap-6 rounded-4xl p-6 md:p-10">
+          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent-strong">Connection invite</p>
+          <h1 className="text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
+            {connection.display_name} wants to connect in My Crew Connections.
+          </h1>
+          <p className="text-base leading-8 text-foreground/72">
+            Sign in or create your account with <strong>{invite.invited_email}</strong>, then come right back here to claim the connection.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link className="button-primary w-full sm:w-auto" href={`/auth?next=${encodeURIComponent(nextPath)}`}>
+              Sign in to claim
+            </Link>
+            <Link className="button-secondary w-full sm:w-auto" href={`/auth?next=${encodeURIComponent(nextPath)}`}>
+              Open auth
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="shell flex items-center justify-center px-4 py-6 md:px-8">
+      <div className="glass-panel grid max-w-3xl gap-6 rounded-4xl p-6 md:p-10">
+        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent-strong">Connection invite</p>
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
+          Claim your connection with {connection.display_name}.
+        </h1>
+        <p className="text-base leading-8 text-foreground/72">
+          Signed in as <strong>{user.email}</strong>. To claim this connection, your signed-in email should match <strong>{invite.invited_email}</strong>.
+        </p>
+
+        {query.error ? (
+          <FeedbackBanner title="Invite issue" body={query.error} tone="error" />
+        ) : null}
+
+        {query.claimed || isClaimed ? (
+          <SectionCard title="Invite claimed" description="This connection is already linked to a real app user.">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link className="button-primary w-full sm:w-auto" href="/connections?feedback=connection-linked">
+                Open people
+              </Link>
+            </div>
+          </SectionCard>
+        ) : (
+          <SectionCard
+            title="Claim this connection"
+            description="Once claimed, the owner can treat this relationship as linked to your real account."
+          >
+            <form action={claimConnectionInviteAction} className="grid gap-4">
+              <input type="hidden" name="token" value={token} />
+              <button className="button-primary w-full sm:w-auto" type="submit">
+                Claim connection
+              </button>
+            </form>
+          </SectionCard>
+        )}
+      </div>
+    </main>
+  );
+}

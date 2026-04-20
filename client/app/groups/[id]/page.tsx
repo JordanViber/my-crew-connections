@@ -1,8 +1,25 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { ConnectionLinkBadge } from "@/components/connection-link-badge";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { EditableDetailsForm } from "@/components/editable-details-form";
+import { FeedbackBanner } from "@/components/feedback-banner";
+import { HangoutList } from "@/components/hangout-list";
+import { HangoutPlanForm } from "@/components/hangout-plan-form";
+import { MobileSectionTabs } from "@/components/mobile-section-tabs";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
-import { addGroupMembersAction, createTouchpointAction, updateGroupAction } from "@/app/actions";
+import {
+  addGroupMembersAction,
+  archiveGroupAction,
+  cancelHangoutAction,
+  completeHangoutAction,
+  createHangoutAction,
+  createTouchpointAction,
+  updateGroupAction,
+} from "@/app/actions";
+import { getFeedback } from "@/lib/feedback";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -15,8 +32,13 @@ function toInputDateTime() {
 
 export default async function GroupDetailPage({
   params,
-}: Readonly<{ params: Promise<{ id: string }> }>) {
+  searchParams,
+}: Readonly<{
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ feedback?: string }>;
+}>) {
   const { id } = await params;
+  const query = await searchParams;
   const authSupabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -34,8 +56,16 @@ export default async function GroupDetailPage({
     notFound();
   }
 
-  const timeline = data.recentTouchpoints.filter((touchpoint) => touchpoint.targetLabel === group.title);
-  const availableConnections = data.connections.filter((connection) => !group.memberNames.includes(connection.title));
+  const timeline = data.recentTouchpoints.filter(
+    (touchpoint) => touchpoint.targetType === "group" && touchpoint.targetId === group.id,
+  );
+  const plannedHangouts = data.hangouts.filter(
+    (hangout) => hangout.targetType === "group" && hangout.targetId === group.id && hangout.status === "planned",
+  );
+  const memberConnections = data.connections.filter((connection) => group.memberConnectionIds.includes(connection.id));
+  const availableConnections = data.connections.filter((connection) => !group.memberConnectionIds.includes(connection.id));
+  const feedback = getFeedback(query.feedback);
+  const latestActivity = timeline.find((touchpoint) => touchpoint.activityLabel || touchpoint.locationLabel);
 
   return (
     <AppShell
@@ -43,7 +73,259 @@ export default async function GroupDetailPage({
       subtitle="Group surfaces stay lightweight for now: cadence, membership, and logged history without collaboration complexity."
       email={user.email ?? "Signed in"}
     >
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      {feedback ? (
+        <div className="mb-4">
+          <FeedbackBanner title={feedback.title} body={feedback.body} tone={feedback.tone} />
+        </div>
+      ) : null}
+
+      <MobileSectionTabs
+        initialSectionId="manage"
+        sections={[
+          {
+            id: "manage",
+            label: "Manage",
+            content: (
+              <div className="grid gap-4">
+                <SectionCard title="Group settings" description={group.subtitle}>
+                  <div className="mb-5 flex items-center justify-between gap-4">
+                    <StatusPill health={group.health} />
+                    <p className="text-sm text-foreground/65">{group.health.summary}</p>
+                  </div>
+
+                  <EditableDetailsForm
+                    action={updateGroupAction}
+                    editLabel="Edit group"
+                    saveLabel="Save group"
+                    helperText="This is the organizer-facing version of the group. Keep settings simple enough that updating them never feels like work."
+                  >
+                    <input type="hidden" name="groupId" value={group.id} />
+                    <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
+                    <label className="grid gap-2">
+                      <span className="field-label">Group name</span>
+                      <input className="field-input" name="name" type="text" defaultValue={group.title} required />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">Description</span>
+                      <textarea className="field-input min-h-24" name="description" defaultValue={group.notes ?? ""} />
+                    </label>
+                    <div className="grid gap-4">
+                      <label className="grid gap-2">
+                        <span className="field-label">Cadence value</span>
+                        <input className="field-input" name="cadenceValue" type="number" min="1" max="90" defaultValue={group.cadenceValue} required />
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="field-label">Unit</span>
+                        <select className="field-input" name="cadenceUnit" defaultValue={group.cadenceUnit}>
+                          <option value="days">Days</option>
+                          <option value="weeks">Weeks</option>
+                          <option value="months">Months</option>
+                        </select>
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="field-label">Reminder lead</span>
+                        <input className="field-input" name="reminderLeadDays" type="number" min="0" max="30" defaultValue={group.reminderLeadDays} required />
+                      </label>
+                    </div>
+                  </EditableDetailsForm>
+
+                  <form action={archiveGroupAction} className="mt-4">
+                    <input type="hidden" name="groupId" value={group.id} />
+                    <ConfirmSubmitButton
+                      className="button-secondary w-full sm:w-auto"
+                      confirmMessage="Archive this group and remove it from active reminder surfaces?"
+                    >
+                      Archive group
+                    </ConfirmSubmitButton>
+                  </form>
+                </SectionCard>
+
+                <SectionCard title="Members" description="Group records can include placeholder members before anyone else uses the app.">
+                  <div className="mb-5 grid gap-3">
+                    {memberConnections.length > 0 ? (
+                      memberConnections.map((member) => (
+                        <article key={member.id} className="rounded-[1.2rem] border border-border/85 bg-white/78 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-base font-semibold text-foreground">{member.title}</p>
+                              <p className="mt-1 text-sm text-foreground/65">{member.subtitle}</p>
+                            </div>
+                            <ConnectionLinkBadge linkState={member.linkState} pendingInviteEmail={member.pendingInviteEmail} />
+                          </div>
+                          <div className="mt-3">
+                            <Link className="button-secondary inline-flex" href={`/connections/${member.id}`}>
+                              Open person
+                            </Link>
+                          </div>
+                        </article>
+                      ))
+                    ) : (
+                      <p className="text-sm leading-7 text-foreground/68">No connection members are attached yet. Add people below to turn this into a real crew.</p>
+                    )}
+                  </div>
+
+                  <form action={addGroupMembersAction} className="grid gap-4">
+                    <input type="hidden" name="groupId" value={group.id} />
+                    <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
+                    <fieldset className="grid gap-3 rounded-[1.3rem] border border-border/85 bg-white/75 p-4">
+                      <legend className="field-label px-2">Add existing connections</legend>
+                      {availableConnections.length === 0 ? (
+                        <p className="text-sm leading-7 text-foreground/68">No additional connections are available to add right now.</p>
+                      ) : (
+                        availableConnections.map((connection) => (
+                          <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
+                            <input className="h-4 w-4" type="checkbox" name="connectionIds" value={connection.id} />
+                            <span>{connection.title}</span>
+                            <ConnectionLinkBadge linkState={connection.linkState} pendingInviteEmail={connection.pendingInviteEmail} />
+                          </label>
+                        ))
+                      )}
+                    </fieldset>
+                    <button className="button-secondary" type="submit" disabled={availableConnections.length === 0}>
+                      Add selected members
+                    </button>
+                  </form>
+                </SectionCard>
+
+                <SectionCard
+                  title="Next plan context"
+                  description="Use the most recent place and activity as an easy starting point for the next invite."
+                >
+                  {latestActivity ? (
+                    <div className="grid gap-3">
+                      <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent activity</p>
+                        <p className="mt-2 text-base font-medium text-foreground">
+                          {latestActivity.activityLabel ?? "No activity saved yet"}
+                        </p>
+                      </div>
+                      <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent place</p>
+                        <p className="mt-2 text-base font-medium text-foreground">
+                          {latestActivity.locationLabel ?? "No place saved yet"}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-7 text-foreground/68">
+                      Log one group touchpoint with an activity or place and this section becomes a lightweight planning shortcut.
+                    </p>
+                  )}
+                </SectionCard>
+              </div>
+            ),
+          },
+          {
+            id: "log",
+            label: "Log",
+            content: (
+              <SectionCard title="Log a group touchpoint" description="Use this for dinners, hikes, game nights, or any shared check-in worth remembering.">
+                <form action={createTouchpointAction} className="grid gap-4">
+                  <input type="hidden" name="targetType" value="group" />
+                  <input type="hidden" name="targetId" value={group.id} />
+                  <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
+                  <label className="grid gap-2">
+                    <span className="field-label">Type</span>
+                    <select className="field-input" name="touchpointType" defaultValue="hangout">
+                      <option value="hangout">Hangout</option>
+                      <option value="check-in">Check-in</option>
+                      <option value="message">Message</option>
+                      <option value="call">Call</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-2">
+                    <span className="field-label">When</span>
+                    <input className="field-input" name="occurredAt" type="datetime-local" defaultValue={toInputDateTime()} required />
+                  </label>
+                  <label className="grid gap-2">
+                    <span className="field-label">Activity</span>
+                    <input className="field-input" name="activityLabel" type="text" placeholder="Dinner, run club, game night" />
+                  </label>
+                  <label className="grid gap-2">
+                    <span className="field-label">Location</span>
+                    <input className="field-input" name="locationLabel" type="text" placeholder="Optional freeform location" />
+                  </label>
+                  <label className="grid gap-2">
+                    <span className="field-label">Note</span>
+                    <textarea className="field-input min-h-28" name="note" placeholder="Why did this matter, and what should the next plan build on?" />
+                  </label>
+                  <p className="text-sm leading-6 text-foreground/68">
+                    Saving here refreshes the group&apos;s memory timeline and moves the cadence anchor forward.
+                  </p>
+                  <button className="button-primary" type="submit">
+                    Save group touchpoint
+                  </button>
+                </form>
+              </SectionCard>
+            ),
+          },
+          {
+            id: "plans",
+            label: "Plans",
+            content: (
+              <div className="grid gap-4">
+                <SectionCard
+                  title="Plan the next hangout"
+                  description="Saved group plans now live in the app until they are completed, canceled, or exported."
+                >
+                  <HangoutPlanForm
+                    action={createHangoutAction}
+                    subjectLabel={group.title}
+                    targetType="group"
+                    targetId={group.id}
+                    redirectTo={`/groups/${group.id}`}
+                  />
+                </SectionCard>
+
+                <SectionCard
+                  title="Saved plans"
+                  description="Keep upcoming crew plans visible without needing a heavier collaboration system yet."
+                >
+                  <HangoutList
+                    hangouts={plannedHangouts}
+                    emptyCopy="No saved plans yet. The next dinner, hike, or game night can live here before it becomes history."
+                    completeAction={completeHangoutAction}
+                    cancelAction={cancelHangoutAction}
+                    redirectTo={`/groups/${group.id}`}
+                  />
+                </SectionCard>
+              </div>
+            ),
+          },
+          {
+            id: "history",
+            label: "History",
+            content: (
+              <SectionCard title="Recent timeline" description={`Last touchpoint: ${group.lastTouchpointLabel}`}>
+                <div className="grid gap-4">
+                  {timeline.length === 0 ? (
+                    <p className="text-sm leading-7 text-foreground/68">No group touchpoints yet. Log one event and the timeline becomes the memory surface.</p>
+                  ) : (
+                    timeline.map((touchpoint) => (
+                      <article key={touchpoint.id} className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
+                            {touchpoint.activityLabel || touchpoint.locationLabel ? (
+                              <p className="mt-2 text-sm font-medium text-foreground/70">
+                                {[touchpoint.activityLabel, touchpoint.locationLabel].filter(Boolean).join(" at ")}
+                              </p>
+                            ) : null}
+                            <p className="mt-2 text-sm leading-7 text-foreground/72">{touchpoint.note}</p>
+                          </div>
+                          <p className="text-sm text-foreground/60">{touchpoint.occurredAtLabel}</p>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </SectionCard>
+            ),
+          },
+        ]}
+      />
+
+      <div className="hidden gap-6 xl:grid-cols-[0.95fr_1.05fr] md:grid">
         <div className="grid gap-6">
           <SectionCard title="Group settings" description={group.subtitle}>
             <div className="mb-5 flex items-center justify-between gap-4">
@@ -51,8 +333,14 @@ export default async function GroupDetailPage({
               <p className="text-sm text-foreground/65">{group.health.summary}</p>
             </div>
 
-            <form action={updateGroupAction} className="grid gap-4">
+            <EditableDetailsForm
+              action={updateGroupAction}
+              editLabel="Edit group"
+              saveLabel="Save group"
+              helperText="This is the organizer-facing version of the group. Keep settings simple enough that updating them never feels like work."
+            >
               <input type="hidden" name="groupId" value={group.id} />
+              <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
               <label className="grid gap-2">
                 <span className="field-label">Group name</span>
                 <input className="field-input" name="name" type="text" defaultValue={group.title} required />
@@ -64,11 +352,11 @@ export default async function GroupDetailPage({
               <div className="grid gap-4 md:grid-cols-3">
                 <label className="grid gap-2">
                   <span className="field-label">Cadence value</span>
-                    <input className="field-input" name="cadenceValue" type="number" min="1" max="90" defaultValue={group.cadenceValue} required />
+                  <input className="field-input" name="cadenceValue" type="number" min="1" max="90" defaultValue={group.cadenceValue} required />
                 </label>
                 <label className="grid gap-2">
                   <span className="field-label">Unit</span>
-                    <select className="field-input" name="cadenceUnit" defaultValue={group.cadenceUnit}>
+                  <select className="field-input" name="cadenceUnit" defaultValue={group.cadenceUnit}>
                     <option value="days">Days</option>
                     <option value="weeks">Weeks</option>
                     <option value="months">Months</option>
@@ -79,23 +367,46 @@ export default async function GroupDetailPage({
                   <input className="field-input" name="reminderLeadDays" type="number" min="0" max="30" defaultValue={group.reminderLeadDays} required />
                 </label>
               </div>
-              <button className="button-primary" type="submit">
-                Save group
-              </button>
+            </EditableDetailsForm>
+
+            <form action={archiveGroupAction} className="mt-4">
+              <input type="hidden" name="groupId" value={group.id} />
+              <ConfirmSubmitButton
+                className="button-secondary w-full sm:w-auto"
+                confirmMessage="Archive this group and remove it from active reminder surfaces?"
+              >
+                Archive group
+              </ConfirmSubmitButton>
             </form>
           </SectionCard>
 
           <SectionCard title="Members" description="Group records can include placeholder members before anyone else uses the app.">
-            <div className="mb-5 flex flex-wrap gap-2">
-              {group.memberNames.map((memberName) => (
-                <span key={memberName} className="rounded-full bg-mint px-3 py-2 text-sm font-medium text-[#214c35]">
-                  {memberName}
-                </span>
-              ))}
+            <div className="mb-5 grid gap-3">
+              {memberConnections.length > 0 ? (
+                memberConnections.map((member) => (
+                  <article key={member.id} className="rounded-[1.2rem] border border-border/85 bg-white/78 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-base font-semibold text-foreground">{member.title}</p>
+                        <p className="mt-1 text-sm text-foreground/65">{member.subtitle}</p>
+                      </div>
+                      <ConnectionLinkBadge linkState={member.linkState} pendingInviteEmail={member.pendingInviteEmail} />
+                    </div>
+                    <div className="mt-3">
+                      <Link className="button-secondary inline-flex" href={`/connections/${member.id}`}>
+                        Open person
+                      </Link>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p className="text-sm leading-7 text-foreground/68">No connection members are attached yet. Add people below to turn this into a real crew.</p>
+              )}
             </div>
 
             <form action={addGroupMembersAction} className="grid gap-4">
               <input type="hidden" name="groupId" value={group.id} />
+              <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
               <fieldset className="grid gap-3 rounded-[1.3rem] border border-border/85 bg-white/75 p-4">
                 <legend className="field-label px-2">Add existing connections</legend>
                 {availableConnections.length === 0 ? (
@@ -105,6 +416,7 @@ export default async function GroupDetailPage({
                     <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
                       <input className="h-4 w-4" type="checkbox" name="connectionIds" value={connection.id} />
                       <span>{connection.title}</span>
+                      <ConnectionLinkBadge linkState={connection.linkState} pendingInviteEmail={connection.pendingInviteEmail} />
                     </label>
                   ))
                 )}
@@ -121,6 +433,7 @@ export default async function GroupDetailPage({
             <form action={createTouchpointAction} className="grid gap-4">
               <input type="hidden" name="targetType" value="group" />
               <input type="hidden" name="targetId" value={group.id} />
+              <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
               <label className="grid gap-2">
                 <span className="field-label">Type</span>
                 <select className="field-input" name="touchpointType" defaultValue="hangout">
@@ -146,10 +459,65 @@ export default async function GroupDetailPage({
                 <span className="field-label">Note</span>
                 <textarea className="field-input min-h-28" name="note" placeholder="Why did this matter, and what should the next plan build on?" />
               </label>
+              <p className="text-sm leading-6 text-foreground/68">
+                Saving here refreshes the group&apos;s memory timeline and moves the cadence anchor forward.
+              </p>
               <button className="button-primary" type="submit">
                 Save group touchpoint
               </button>
             </form>
+          </SectionCard>
+
+          <SectionCard
+            title="Next plan context"
+            description="Use the most recent place and activity as an easy starting point for the next invite."
+          >
+            {latestActivity ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent activity</p>
+                  <p className="mt-2 text-base font-medium text-foreground">
+                    {latestActivity.activityLabel ?? "No activity saved yet"}
+                  </p>
+                </div>
+                <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent place</p>
+                  <p className="mt-2 text-base font-medium text-foreground">
+                    {latestActivity.locationLabel ?? "No place saved yet"}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm leading-7 text-foreground/68">
+                Log one group touchpoint with an activity or place and this section becomes a lightweight planning shortcut.
+              </p>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title="Plan the next hangout"
+            description="Saved group plans now live in the app until they are completed, canceled, or exported."
+          >
+            <HangoutPlanForm
+              action={createHangoutAction}
+              subjectLabel={group.title}
+              targetType="group"
+              targetId={group.id}
+              redirectTo={`/groups/${group.id}`}
+            />
+          </SectionCard>
+
+          <SectionCard
+            title="Saved plans"
+            description="Keep upcoming crew plans visible without needing a heavier collaboration system yet."
+          >
+            <HangoutList
+              hangouts={plannedHangouts}
+              emptyCopy="No saved plans yet. The next dinner, hike, or game night can live here before it becomes history."
+              completeAction={completeHangoutAction}
+              cancelAction={cancelHangoutAction}
+              redirectTo={`/groups/${group.id}`}
+            />
           </SectionCard>
 
           <SectionCard title="Recent timeline" description={`Last touchpoint: ${group.lastTouchpointLabel}`}>
@@ -162,6 +530,11 @@ export default async function GroupDetailPage({
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
+                        {touchpoint.activityLabel || touchpoint.locationLabel ? (
+                          <p className="mt-2 text-sm font-medium text-foreground/70">
+                            {[touchpoint.activityLabel, touchpoint.locationLabel].filter(Boolean).join(" at ")}
+                          </p>
+                        ) : null}
                         <p className="mt-2 text-sm leading-7 text-foreground/72">{touchpoint.note}</p>
                       </div>
                       <p className="text-sm text-foreground/60">{touchpoint.occurredAtLabel}</p>

@@ -40,7 +40,7 @@ export default async function Home({
   } = await supabase.auth.getUser();
 
   const primaryHref = user ? "/dashboard" : "/auth";
-  const primaryLabel = user ? "Open your dashboard" : "Start with magic link";
+  const primaryLabel = user ? "Open your dashboard" : "Open sign in";
 
   return (
     <main className="shell px-6 py-6 md:px-10">
@@ -120,7 +120,7 @@ export default async function Home({
             </div>
 
             <div className="rounded-[1.75rem] border border-white/12 bg-white/6 p-6 text-sm leading-7 text-white/75">
-              This initial build keeps the scope disciplined: magic-link auth, connection and group CRUD, cadence health, touchpoint history, and a reminder-oriented dashboard.
+              This initial build keeps the scope disciplined: localhost password auth first, magic-link parity support, connection and group CRUD, cadence health, touchpoint history, and a reminder-oriented dashboard.
             </div>
           </div>
         </aside>

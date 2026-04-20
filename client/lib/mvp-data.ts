@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { formatHangoutWindow, getHangoutWindowBucket, type HangoutStatus } from "@/lib/hangouts";
 import {
   formatCadence,
   formatDateLabel,
@@ -10,6 +11,7 @@ import {
 export type ConnectionRow = {
   id: string;
   display_name: string;
+  linked_user_id: string | null;
   tags: string[] | null;
   notes: string | null;
   preferred_activities: string | null;
@@ -43,11 +45,32 @@ export type TouchpointRow = {
   location_label: string | null;
 };
 
+export type HangoutRow = {
+  id: string;
+  target_type: "connection" | "group";
+  target_id: string;
+  title: string;
+  starts_at: string;
+  ends_at: string | null;
+  timezone: string;
+  location: string | null;
+  notes: string | null;
+  status: HangoutStatus;
+  completed_at: string | null;
+  created_at: string;
+};
+
 type GroupMembershipRow = {
   group_id: string;
   connection_id: string | null;
   user_id: string | null;
   role: string;
+};
+
+type ConnectionInviteRow = {
+  connection_id: string;
+  invited_email: string;
+  created_at: string;
 };
 
 export type RelationshipSummary = {
@@ -62,19 +85,44 @@ export type RelationshipSummary = {
   health: RelationshipHealth;
   notes?: string;
   tags: string[];
+  linkedUserId?: string;
+  linkState?: "linked" | "pending" | "unlinked";
+  pendingInviteEmail?: string;
   preferredActivities?: string;
   lastTouchpointAt?: string;
   lastTouchpointLabel: string;
+  nextHangoutLabel?: string;
   touchpointCount: number;
   memberNames: string[];
+  memberConnectionIds: string[];
+};
+
+export type HangoutSummary = {
+  id: string;
+  targetType: "connection" | "group";
+  targetId: string;
+  targetLabel: string;
+  title: string;
+  startsAt: string;
+  endsAt?: string;
+  timezone: string;
+  location?: string;
+  notes?: string;
+  status: HangoutStatus;
+  windowLabel: string;
+  bucketLabel: string;
 };
 
 export type RecentTouchpoint = {
   id: string;
+  targetType: "connection" | "group";
+  targetId: string;
   targetLabel: string;
   touchpointType: string;
   occurredAtLabel: string;
   note: string;
+  activityLabel?: string;
+  locationLabel?: string;
 };
 
 export type DashboardData = {
@@ -83,6 +131,8 @@ export type DashboardData = {
   overdue: RelationshipSummary[];
   dueSoon: RelationshipSummary[];
   onTrack: RelationshipSummary[];
+  hangouts: HangoutSummary[];
+  upcomingHangouts: HangoutSummary[];
   recentTouchpoints: RecentTouchpoint[];
   connections: RelationshipSummary[];
   groups: RelationshipSummary[];
@@ -140,11 +190,11 @@ function buildGroupMemberMap(groups: GroupRow[], memberships: GroupMembershipRow
 }
 
 export async function getDashboardData(supabase: SupabaseClient, userId: string) {
-  const [profileResult, connectionResult, groupResult, cadenceResult, touchpointResult] = await Promise.all([
+  const [profileResult, connectionResult, groupResult, cadenceResult, touchpointResult, hangoutResult, inviteResult] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
     supabase
       .from("connections")
-      .select("id, display_name, tags, notes, preferred_activities, created_at")
+      .select("id, display_name, linked_user_id, tags, notes, preferred_activities, created_at")
       .eq("owner_user_id", userId)
       .is("archived_at", null)
       .order("display_name"),
@@ -164,6 +214,18 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       .eq("owner_user_id", userId)
       .order("occurred_at", { ascending: false })
       .limit(100),
+    supabase
+      .from("hangouts")
+      .select("id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, completed_at, created_at")
+      .eq("owner_user_id", userId)
+      .order("starts_at"),
+    supabase
+      .from("connection_invites")
+      .select("connection_id, invited_email, created_at")
+      .eq("owner_user_id", userId)
+      .is("claimed_at", null)
+      .is("revoked_at", null)
+      .order("created_at", { ascending: false }),
   ]);
 
   assertNoError(profileResult.error, "Failed to load profile");
@@ -171,11 +233,15 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   assertNoError(groupResult.error, "Failed to load groups");
   assertNoError(cadenceResult.error, "Failed to load cadence rules");
   assertNoError(touchpointResult.error, "Failed to load touchpoints");
+  assertNoError(hangoutResult.error, "Failed to load hangouts");
+  assertNoError(inviteResult.error, "Failed to load connection invites");
 
   const connections = (connectionResult.data ?? []) as ConnectionRow[];
   const groups = (groupResult.data ?? []) as GroupRow[];
   const cadenceRules = (cadenceResult.data ?? []) as CadenceRuleRow[];
   const touchpoints = (touchpointResult.data ?? []) as TouchpointRow[];
+  const hangouts = (hangoutResult.data ?? []) as HangoutRow[];
+  const invites = (inviteResult.data ?? []) as ConnectionInviteRow[];
 
   let memberships: GroupMembershipRow[] = [];
 
@@ -196,6 +262,36 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   const cadenceMap = new Map(cadenceRules.map((rule) => [`${rule.target_type}:${rule.target_id}`, rule]));
   const latestTouchpoints = latestTouchpointMap(touchpoints);
   const groupMemberMap = buildGroupMemberMap(groups, memberships, connections);
+  const groupMemberIdsMap = memberships.reduce<Map<string, string[]>>((accumulator, membership) => {
+    if (!membership.connection_id) {
+      return accumulator;
+    }
+
+    const current = accumulator.get(membership.group_id) ?? [];
+    current.push(membership.connection_id);
+    accumulator.set(membership.group_id, current);
+    return accumulator;
+  }, new Map());
+  const inviteMap = invites.reduce<Map<string, ConnectionInviteRow>>((accumulator, current) => {
+    if (!accumulator.has(current.connection_id)) {
+      accumulator.set(current.connection_id, current);
+    }
+
+    return accumulator;
+  }, new Map());
+  const nextHangoutMap = hangouts.reduce<Map<string, HangoutRow>>((accumulator, current) => {
+    if (current.status !== "planned") {
+      return accumulator;
+    }
+
+    const key = `${current.target_type}:${current.target_id}`;
+
+    if (!accumulator.has(key)) {
+      accumulator.set(key, current);
+    }
+
+    return accumulator;
+  }, new Map());
   const touchpointCounts = touchpoints.reduce<Map<string, number>>((accumulator, current) => {
     const key = `${current.target_type}:${current.target_id}`;
     accumulator.set(key, (accumulator.get(key) ?? 0) + 1);
@@ -211,12 +307,14 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     }
 
     const latestTouchpoint = latestTouchpoints.get(key);
+    const pendingInvite = inviteMap.get(connection.id);
     const health = getRelationshipHealth({
       createdAt: connection.created_at,
       lastTouchpointAt: latestTouchpoint?.occurred_at,
       cadenceValue: cadenceRule.cadence_value,
       cadenceUnit: cadenceRule.cadence_unit,
       reminderLeadDays: cadenceRule.reminder_lead_days,
+      subjectType: "connection",
     });
 
     return {
@@ -231,11 +329,22 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       health,
       notes: connection.notes ?? undefined,
       tags: connection.tags ?? [],
+      linkedUserId: connection.linked_user_id ?? undefined,
+      linkState: connection.linked_user_id ? "linked" : pendingInvite ? "pending" : "unlinked",
+      pendingInviteEmail: pendingInvite?.invited_email,
       preferredActivities: connection.preferred_activities ?? undefined,
       lastTouchpointAt: latestTouchpoint?.occurred_at,
       lastTouchpointLabel: formatDateLabel(latestTouchpoint?.occurred_at),
+      nextHangoutLabel: nextHangoutMap.get(key)
+        ? formatHangoutWindow({
+            startsAt: nextHangoutMap.get(key)!.starts_at,
+            endsAt: nextHangoutMap.get(key)!.ends_at ?? undefined,
+            timezone: nextHangoutMap.get(key)!.timezone,
+          })
+        : undefined,
       touchpointCount: touchpointCounts.get(key) ?? 0,
       memberNames: [],
+      memberConnectionIds: [],
     };
   });
 
@@ -254,9 +363,11 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       cadenceValue: cadenceRule.cadence_value,
       cadenceUnit: cadenceRule.cadence_unit,
       reminderLeadDays: cadenceRule.reminder_lead_days,
+      subjectType: "group",
     });
 
     const memberNames = groupMemberMap.get(group.id) ?? [];
+    const memberConnectionIds = groupMemberIdsMap.get(group.id) ?? [];
 
     return {
       id: group.id,
@@ -272,8 +383,16 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       tags: [],
       lastTouchpointAt: latestTouchpoint?.occurred_at,
       lastTouchpointLabel: formatDateLabel(latestTouchpoint?.occurred_at),
+      nextHangoutLabel: nextHangoutMap.get(key)
+        ? formatHangoutWindow({
+            startsAt: nextHangoutMap.get(key)!.starts_at,
+            endsAt: nextHangoutMap.get(key)!.ends_at ?? undefined,
+            timezone: nextHangoutMap.get(key)!.timezone,
+          })
+        : undefined,
       touchpointCount: touchpointCounts.get(key) ?? 0,
       memberNames,
+      memberConnectionIds,
     };
   });
 
@@ -287,12 +406,35 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   });
 
   const targetNames = new Map(relationships.map((relationship) => [`${relationship.targetType}:${relationship.id}`, relationship.title]));
+  const hangoutSummaries: HangoutSummary[] = hangouts.map((hangout) => ({
+    id: hangout.id,
+    targetType: hangout.target_type,
+    targetId: hangout.target_id,
+    targetLabel: targetNames.get(`${hangout.target_type}:${hangout.target_id}`) ?? "Unknown relationship",
+    title: hangout.title,
+    startsAt: hangout.starts_at,
+    endsAt: hangout.ends_at ?? undefined,
+    timezone: hangout.timezone,
+    location: hangout.location ?? undefined,
+    notes: hangout.notes ?? undefined,
+    status: hangout.status,
+    windowLabel: formatHangoutWindow({
+      startsAt: hangout.starts_at,
+      endsAt: hangout.ends_at ?? undefined,
+      timezone: hangout.timezone,
+    }),
+    bucketLabel: getHangoutWindowBucket(hangout.starts_at),
+  }));
   const recentTouchpoints: RecentTouchpoint[] = touchpoints.slice(0, 8).map((touchpoint) => ({
     id: touchpoint.id,
+    targetType: touchpoint.target_type,
+    targetId: touchpoint.target_id,
     targetLabel: targetNames.get(`${touchpoint.target_type}:${touchpoint.target_id}`) ?? "Unknown relationship",
     touchpointType: touchpoint.touchpoint_type,
     occurredAtLabel: formatDateLabel(touchpoint.occurred_at),
     note: touchpoint.note ?? touchpoint.activity_label ?? touchpoint.location_label ?? "No extra context yet",
+    activityLabel: touchpoint.activity_label ?? undefined,
+    locationLabel: touchpoint.location_label ?? undefined,
   }));
 
   return {
@@ -301,6 +443,8 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     overdue: relationships.filter((relationship) => relationship.health.state === "overdue"),
     dueSoon: relationships.filter((relationship) => relationship.health.state === "due-soon"),
     onTrack: relationships.filter((relationship) => relationship.health.state === "on-track"),
+    hangouts: hangoutSummaries,
+    upcomingHangouts: hangoutSummaries.filter((hangout) => hangout.status === "planned").slice(0, 6),
     recentTouchpoints,
     connections: connectionSummaries,
     groups: groupSummaries,

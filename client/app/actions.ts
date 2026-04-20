@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -10,12 +11,15 @@ import {
   getStringList,
   groupMemberSchema,
   groupSchema,
+  hangoutSchema,
+  inviteEmailSchema,
   parseTargetReference,
   parseCommaSeparatedList,
   touchpointSchema,
   updateConnectionSchema,
   updateGroupSchema,
 } from "@/lib/validations";
+import { buildConnectionInvitePath, normalizeInviteEmail } from "@/lib/invites";
 
 async function getAuthenticatedClient() {
   const authSupabase = await createServerSupabaseClient();
@@ -37,10 +41,49 @@ function assertMutation(error: { message: string } | null, label: string) {
   }
 }
 
+function getFallbackDisplayNameFromEmail(email?: string | null) {
+  if (!email) {
+    return "Linked user";
+  }
+
+  return email.split("@")[0] || "Linked user";
+}
+
 function revalidateRelationshipPaths(targetType: "connection" | "group", targetId: string) {
   revalidatePath("/dashboard");
   revalidatePath(targetType === "connection" ? "/connections" : "/groups");
   revalidatePath(`/${targetType === "connection" ? "connections" : "groups"}/${targetId}`);
+}
+
+function revalidateHangoutPaths(targetType: "connection" | "group", targetId: string) {
+  revalidateRelationshipPaths(targetType, targetId);
+}
+
+function withFeedback(path: string, feedback: string) {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}feedback=${feedback}`;
+}
+
+async function resolveRedirectTarget(formData: FormData, fallbackPath: string, feedback: string) {
+  const redirectTo = getString(formData, "redirectTo");
+
+  if (redirectTo) {
+    return withFeedback(redirectTo, feedback);
+  }
+
+  const requestHeaders = await headers();
+  const referer = requestHeaders.get("referer");
+
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer);
+      return withFeedback(`${refererUrl.pathname}${refererUrl.search}`, feedback);
+    } catch {
+      return withFeedback(fallbackPath, feedback);
+    }
+  }
+
+  return withFeedback(fallbackPath, feedback);
 }
 
 export async function signOutAction() {
@@ -55,6 +98,7 @@ export async function createConnectionAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
   const payload = connectionSchema.parse({
     displayName: getString(formData, "displayName"),
+    inviteEmail: getString(formData, "inviteEmail"),
     tags: getString(formData, "tags"),
     notes: getString(formData, "notes"),
     preferredActivities: getString(formData, "preferredActivities"),
@@ -92,8 +136,22 @@ export async function createConnectionAction(formData: FormData) {
 
   assertMutation(cadenceError, "Failed to create cadence rule");
 
+  if (payload.inviteEmail) {
+    const normalizedEmail = normalizeInviteEmail(payload.inviteEmail);
+    const token = crypto.randomUUID();
+
+    const { error: inviteError } = await supabase.from("connection_invites").insert({
+      owner_user_id: user.id,
+      connection_id: connection.id,
+      invited_email: normalizedEmail,
+      token,
+    });
+
+    assertMutation(inviteError, "Failed to create connection invite");
+  }
+
   revalidateRelationshipPaths("connection", connection.id);
-  redirect(`/connections/${connection.id}`);
+  redirect(withFeedback(`/connections/${connection.id}`, "connection-created"));
 }
 
 export async function updateConnectionAction(formData: FormData) {
@@ -137,6 +195,7 @@ export async function updateConnectionAction(formData: FormData) {
   assertMutation(cadenceError, "Failed to update cadence rule");
 
   revalidateRelationshipPaths("connection", payload.connectionId);
+  redirect(withFeedback(`/connections/${payload.connectionId}`, "connection-saved"));
 }
 
 export async function createGroupAction(formData: FormData) {
@@ -190,7 +249,7 @@ export async function createGroupAction(formData: FormData) {
   assertMutation(membershipError, "Failed to create group memberships");
 
   revalidateRelationshipPaths("group", group.id);
-  redirect(`/groups/${group.id}`);
+  redirect(withFeedback(`/groups/${group.id}`, "group-created"));
 }
 
 export async function updateGroupAction(formData: FormData) {
@@ -230,6 +289,7 @@ export async function updateGroupAction(formData: FormData) {
 
   assertMutation(cadenceError, "Failed to update group cadence");
   revalidateRelationshipPaths("group", payload.groupId);
+  redirect(withFeedback(`/groups/${payload.groupId}`, "group-saved"));
 }
 
 export async function addGroupMembersAction(formData: FormData) {
@@ -251,6 +311,7 @@ export async function addGroupMembersAction(formData: FormData) {
 
   assertMutation(error, "Failed to add group members");
   revalidateRelationshipPaths("group", payload.groupId);
+  redirect(withFeedback(`/groups/${payload.groupId}`, "members-added"));
 }
 
 export async function createTouchpointAction(formData: FormData) {
@@ -280,4 +341,338 @@ export async function createTouchpointAction(formData: FormData) {
 
   assertMutation(error, "Failed to create touchpoint");
   revalidateRelationshipPaths(payload.targetType, payload.targetId);
+  const fallbackPath = payload.targetType === "connection"
+    ? `/connections/${payload.targetId}`
+    : payload.targetType === "group"
+      ? `/groups/${payload.targetId}`
+      : "/dashboard";
+  const target = await resolveRedirectTarget(formData, fallbackPath, "touchpoint-saved");
+  redirect(target);
+}
+
+export async function createHangoutAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const payload = hangoutSchema.parse({
+    targetType: getString(formData, "targetType"),
+    targetId: getString(formData, "targetId"),
+    title: getString(formData, "title"),
+    startsAt: getString(formData, "startsAt"),
+    endsAt: getString(formData, "endsAt"),
+    timezone: getString(formData, "timezone"),
+    location: getString(formData, "location"),
+    notes: getString(formData, "notes"),
+  });
+
+  const { error } = await supabase.from("hangouts").insert({
+    owner_user_id: user.id,
+    target_type: payload.targetType,
+    target_id: payload.targetId,
+    title: payload.title,
+    starts_at: new Date(payload.startsAt).toISOString(),
+    ends_at: payload.endsAt ? new Date(payload.endsAt).toISOString() : null,
+    timezone: payload.timezone,
+    location: payload.location || null,
+    notes: payload.notes || null,
+  });
+
+  assertMutation(error, "Failed to save hangout plan");
+  revalidateHangoutPaths(payload.targetType, payload.targetId);
+  const fallbackPath = payload.targetType === "connection" ? `/connections/${payload.targetId}` : `/groups/${payload.targetId}`;
+  const target = await resolveRedirectTarget(formData, fallbackPath, "hangout-saved");
+  redirect(target);
+}
+
+export async function createConnectionInviteAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const connectionId = getString(formData, "connectionId");
+  const redirectTo = getString(formData, "redirectTo");
+  const payload = inviteEmailSchema.parse({
+    email: getString(formData, "email"),
+  });
+  const normalizedEmail = normalizeInviteEmail(payload.email);
+
+  const { error: revokeError } = await supabase
+    .from("connection_invites")
+    .update({
+      revoked_at: new Date().toISOString(),
+    })
+    .eq("owner_user_id", user.id)
+    .eq("connection_id", connectionId)
+    .eq("invited_email", normalizedEmail)
+    .is("claimed_at", null)
+    .is("revoked_at", null);
+
+  assertMutation(revokeError, "Failed to replace existing invite");
+
+  const token = crypto.randomUUID();
+  const { error } = await supabase.from("connection_invites").insert({
+    owner_user_id: user.id,
+    connection_id: connectionId,
+    invited_email: normalizedEmail,
+    token,
+  });
+
+  assertMutation(error, "Failed to create invite");
+  revalidatePath("/dashboard");
+  revalidatePath(`/connections/${connectionId}`);
+  redirect(withFeedback(redirectTo || `/connections/${connectionId}`, "invite-created"));
+}
+
+export async function claimConnectionInviteAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const token = getString(formData, "token");
+  const fallbackPath = buildConnectionInvitePath(token);
+  const normalizedUserEmail = normalizeInviteEmail(user.email ?? "");
+
+  const { data: invite, error } = await supabase
+    .from("connection_invites")
+    .select("id, connection_id, invited_email, claimed_at, revoked_at")
+    .eq("token", token)
+    .maybeSingle();
+
+  assertMutation(error, "Failed to load invite");
+
+  if (!invite || invite.revoked_at) {
+    redirect(withFeedback("/auth", "invite-created"));
+  }
+
+  if (invite.claimed_at) {
+    redirect(`${fallbackPath}?claimed=1`);
+  }
+
+  if (normalizeInviteEmail(invite.invited_email) !== normalizedUserEmail) {
+    redirect(`${fallbackPath}?error=${encodeURIComponent("This invite was created for a different email address.")}`);
+  }
+
+  const { data: sourceConnection, error: sourceConnectionError } = await supabase
+    .from("connections")
+    .select("id, owner_user_id, display_name, tags, preferred_activities, notes")
+    .eq("id", invite.connection_id)
+    .maybeSingle();
+
+  assertMutation(sourceConnectionError, "Failed to load source connection");
+
+  if (!sourceConnection) {
+    throw new Error("Failed to claim invite: source connection not found.");
+  }
+
+  const { data: sourceCadence, error: sourceCadenceError } = await supabase
+    .from("cadence_rules")
+    .select("cadence_value, cadence_unit, reminder_lead_days")
+    .eq("owner_user_id", sourceConnection.owner_user_id)
+    .eq("target_type", "connection")
+    .eq("target_id", sourceConnection.id)
+    .maybeSingle();
+
+  assertMutation(sourceCadenceError, "Failed to load source cadence");
+
+  const { data: ownerProfile, error: ownerProfileError } = await supabase
+    .from("profiles")
+    .select("display_name")
+    .eq("id", sourceConnection.owner_user_id)
+    .maybeSingle();
+
+  assertMutation(ownerProfileError, "Failed to load inviter profile");
+
+  const ownerUserResult = await supabase.auth.admin.getUserById(sourceConnection.owner_user_id);
+  if (ownerUserResult.error) {
+    throw new Error(`Failed to load inviter account: ${ownerUserResult.error.message}`);
+  }
+
+  const reciprocalDisplayName = ownerProfile?.display_name?.trim()
+    || getFallbackDisplayNameFromEmail(ownerUserResult.data.user?.email);
+
+  const { error: updateConnectionError } = await supabase
+    .from("connections")
+    .update({
+      linked_user_id: user.id,
+    })
+    .eq("id", invite.connection_id);
+
+  assertMutation(updateConnectionError, "Failed to link connection");
+
+  const { data: reciprocalConnection, error: reciprocalConnectionError } = await supabase
+    .from("connections")
+    .select("id")
+    .eq("owner_user_id", user.id)
+    .eq("linked_user_id", sourceConnection.owner_user_id)
+    .is("archived_at", null)
+    .maybeSingle();
+
+  assertMutation(reciprocalConnectionError, "Failed to load reciprocal connection");
+
+  let reciprocalConnectionId = reciprocalConnection?.id;
+
+  if (!reciprocalConnectionId) {
+    const { data: createdReciprocalConnection, error: createReciprocalConnectionError } = await supabase
+      .from("connections")
+      .insert({
+        owner_user_id: user.id,
+        linked_user_id: sourceConnection.owner_user_id,
+        display_name: reciprocalDisplayName,
+        tags: [],
+      })
+      .select("id")
+      .single();
+
+    assertMutation(createReciprocalConnectionError, "Failed to create reciprocal connection");
+
+    if (!createdReciprocalConnection) {
+      throw new Error("Failed to create reciprocal connection: no record returned.");
+    }
+
+    reciprocalConnectionId = createdReciprocalConnection.id;
+  }
+
+  if (!reciprocalConnectionId) {
+    throw new Error("Failed to create or load reciprocal connection.");
+  }
+
+  const cadenceValue = sourceCadence?.cadence_value ?? 3;
+  const cadenceUnit = sourceCadence?.cadence_unit ?? "weeks";
+  const reminderLeadDays = sourceCadence?.reminder_lead_days ?? 5;
+
+  const { error: reciprocalCadenceError } = await supabase.from("cadence_rules").upsert(
+    {
+      owner_user_id: user.id,
+      target_type: "connection",
+      target_id: reciprocalConnectionId,
+      cadence_value: cadenceValue,
+      cadence_unit: cadenceUnit,
+      reminder_lead_days: reminderLeadDays,
+    },
+    { onConflict: "owner_user_id,target_type,target_id" },
+  );
+
+  assertMutation(reciprocalCadenceError, "Failed to create reciprocal cadence");
+
+  const { error: claimError } = await supabase
+    .from("connection_invites")
+    .update({
+      claimed_by_user_id: user.id,
+      claimed_at: new Date().toISOString(),
+    })
+    .eq("id", invite.id);
+
+  assertMutation(claimError, "Failed to claim invite");
+  revalidatePath("/dashboard");
+  revalidatePath("/connections");
+  revalidatePath(`/connections/${invite.connection_id}`);
+  revalidatePath(`/connections/${reciprocalConnectionId}`);
+  redirect(`${fallbackPath}?claimed=1`);
+}
+
+export async function completeHangoutAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const hangoutId = getString(formData, "hangoutId");
+  const { data: hangout, error: hangoutError } = await supabase
+    .from("hangouts")
+    .select("id, owner_user_id, target_type, target_id, title, starts_at, location, notes, status")
+    .eq("id", hangoutId)
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+
+  assertMutation(hangoutError, "Failed to load hangout");
+
+  if (!hangout) {
+    throw new Error("Failed to complete hangout: plan not found.");
+  }
+
+  const occurredAt = new Date(Math.min(Date.now(), new Date(hangout.starts_at).getTime())).toISOString();
+  const note = hangout.notes || `Completed planned hangout: ${hangout.title}`;
+
+  const { error: touchpointError } = await supabase.from("touchpoints").insert({
+    owner_user_id: user.id,
+    target_type: hangout.target_type,
+    target_id: hangout.target_id,
+    touchpoint_type: "hangout",
+    occurred_at: occurredAt,
+    note,
+    activity_label: hangout.title,
+    location_label: hangout.location || null,
+  });
+
+  assertMutation(touchpointError, "Failed to log completed hangout");
+
+  const { error: updateError } = await supabase
+    .from("hangouts")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", hangout.id)
+    .eq("owner_user_id", user.id);
+
+  assertMutation(updateError, "Failed to mark hangout as completed");
+  revalidateHangoutPaths(hangout.target_type, hangout.target_id);
+  const fallbackPath = hangout.target_type === "connection" ? `/connections/${hangout.target_id}` : `/groups/${hangout.target_id}`;
+  const target = await resolveRedirectTarget(formData, fallbackPath, "hangout-completed");
+  redirect(target);
+}
+
+export async function cancelHangoutAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const hangoutId = getString(formData, "hangoutId");
+  const { data: hangout, error: hangoutError } = await supabase
+    .from("hangouts")
+    .select("id, target_type, target_id")
+    .eq("id", hangoutId)
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+
+  assertMutation(hangoutError, "Failed to load hangout");
+
+  if (!hangout) {
+    throw new Error("Failed to cancel hangout: plan not found.");
+  }
+
+  const { error } = await supabase
+    .from("hangouts")
+    .update({
+      status: "canceled",
+    })
+    .eq("id", hangoutId)
+    .eq("owner_user_id", user.id);
+
+  assertMutation(error, "Failed to cancel hangout");
+  revalidateHangoutPaths(hangout.target_type, hangout.target_id);
+  const fallbackPath = hangout.target_type === "connection" ? `/connections/${hangout.target_id}` : `/groups/${hangout.target_id}`;
+  const target = await resolveRedirectTarget(formData, fallbackPath, "hangout-canceled");
+  redirect(target);
+}
+
+export async function archiveConnectionAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const connectionId = getString(formData, "connectionId");
+
+  const { error } = await supabase
+    .from("connections")
+    .update({
+      archived_at: new Date().toISOString(),
+    })
+    .eq("id", connectionId)
+    .eq("owner_user_id", user.id);
+
+  assertMutation(error, "Failed to archive connection");
+  revalidatePath("/dashboard");
+  revalidatePath("/connections");
+  redirect(withFeedback("/connections", "connection-archived"));
+}
+
+export async function archiveGroupAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const groupId = getString(formData, "groupId");
+
+  const { error } = await supabase
+    .from("groups")
+    .update({
+      archived_at: new Date().toISOString(),
+    })
+    .eq("id", groupId)
+    .eq("owner_user_id", user.id);
+
+  assertMutation(error, "Failed to archive group");
+  revalidatePath("/dashboard");
+  revalidatePath("/groups");
+  redirect(withFeedback("/groups", "group-archived"));
 }

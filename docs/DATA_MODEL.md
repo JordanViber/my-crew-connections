@@ -1,29 +1,38 @@
 # My Crew Connections Data Model Direction
 
-Date: March 16, 2026
+Date: April 19, 2026
 
 ## Overview
 
-This document proposes the core persisted entities needed for the first version of the app.
+This document proposes the core persisted entities needed for the first version of the app and records the shape of the current localhost implementation.
 
 The data model should support:
 - individual relationships
 - group relationships
 - reminders and cadence rules
 - hangout planning and history
-- photos and memory context
 - private and shared visibility boundaries
+
+## Current Localhost Snapshot
+
+The implemented localhost app currently centers on:
+- `connections` owned by one user and optionally linked to a real app user through `linked_user_id`
+- `groups` built primarily from connection membership records
+- `cadence_rules` for both connections and groups
+- `touchpoints` for logged interactions
+- `hangouts` for saved plans and exported ICS events
+- `connection_invites` for claimable linking between a connection and a real user account
 
 ## Design Principles
 
 ### Separate relationship identity from actual events
-A person or group record should remain stable while hangouts and reminders accumulate over time.
+A person or group record should remain stable while hangouts, touchpoints, and reminders accumulate over time.
 
-### Support both private and shared records
+### Support both private and collaboration-ready records
 The model should make room for:
 - user-private notes or reminder preferences
-- shared group and hangout objects
-- access-controlled media
+- shared group and hangout objects later
+- invite-based linking between personal records and real users
 
 ### Prefer append-only history where possible
 Hangouts, touchpoints, and reminders should be historical records rather than fields that constantly overwrite the past.
@@ -37,29 +46,21 @@ Represents an app account.
 - id
 - display_name
 - email or auth provider identity
-- profile_photo_url
 - timezone
-- notification_preferences
 - created_at
 - updated_at
 
 ## Connection
 Represents a person the user wants to stay in touch with.
 
-This does not require the person to have an account.
-
 ### Fields
 - id
 - owner_user_id
 - linked_user_id nullable
 - display_name
-- avatar_url
-- phone_number nullable
 - email nullable
-- birthday nullable
-- tags array or join table
-- preferred_activities summary text or normalized later
-- notes_private
+- preferred_activities nullable
+- notes_private nullable
 - created_at
 - updated_at
 - archived_at nullable
@@ -67,6 +68,7 @@ This does not require the person to have an account.
 ### Notes
 - `owner_user_id` lets one user manage their own view of a relationship.
 - `linked_user_id` lets the record connect to a real app user if that person joins.
+- reciprocal connections can exist on both sides rather than requiring one shared canonical relationship row.
 
 ## Group
 Represents a friend group, family group, recurring crew, or shared tradition container.
@@ -75,9 +77,7 @@ Represents a friend group, family group, recurring crew, or shared tradition con
 - id
 - owner_user_id
 - name
-- cover_image_url nullable
 - description nullable
-- default_cadence_rule_id nullable
 - created_at
 - updated_at
 - archived_at nullable
@@ -90,12 +90,13 @@ Represents membership of users or connection placeholders in a group.
 - group_id
 - user_id nullable
 - connection_id nullable
-- role such as owner, organizer, member
+- role
 - joined_at
 - removed_at nullable
 
 ### Notes
 This structure allows groups to exist before every participant joins the app.
+The current localhost product treats groups as connection-first rather than fully shared collaborative objects.
 
 ## CadenceRule
 Represents how often a user wants to reconnect with a person or group.
@@ -105,180 +106,84 @@ Represents how often a user wants to reconnect with a person or group.
 - owner_user_id
 - target_type enum person or group
 - target_id
-- cadence_unit such as days, weeks, months
+- cadence_unit
 - cadence_value
 - reminder_lead_days nullable
-- snoozed_until nullable
-- status derived or cached
 - created_at
 - updated_at
-
-### Future fields
-- interaction_type such as message, call, in_person
-- flexibility_score
-- smart_rule_enabled boolean
 
 ## Touchpoint
 Represents a lightweight interaction that may or may not be a full hangout.
 
-### Examples
-- texted
-- called
-- caught up briefly
-- had coffee
-
 ### Fields
 - id
 - owner_user_id
 - target_type enum person or group
 - target_id
-- touchpoint_type
 - occurred_at
 - notes nullable
-- source enum manual, reminder_action, imported_later
-- hangout_id nullable
+- activity nullable
+- location nullable
 - created_at
 
 ## Hangout
-Represents a planned or completed social event.
-
-### Fields
-- id
-- created_by_user_id
-- title
-- description nullable
-- status enum proposed, scheduled, completed, canceled
-- starts_at nullable
-- ends_at nullable
-- timezone
-- location_name nullable
-- location_address nullable
-- activity_label nullable
-- group_id nullable
-- created_at
-- updated_at
-
-## HangoutParticipant
-Represents who was invited or attended.
-
-### Fields
-- id
-- hangout_id
-- user_id nullable
-- connection_id nullable
-- attendance_status enum invited, accepted, declined, attended
-- response_at nullable
-
-## HangoutPhoto
-Represents photos tied to a hangout.
-
-### Fields
-- id
-- hangout_id
-- uploaded_by_user_id
-- storage_path or external_url
-- thumbnail_path nullable
-- caption nullable
-- visibility enum participants, group_members, private
-- created_at
-
-### Notes
-The first version should limit count and size aggressively to control cost.
-
-## PlaceHistory
-Represents a remembered place or activity context.
+Represents a saved or completed social plan.
 
 ### Fields
 - id
 - owner_user_id
 - target_type enum person or group
 - target_id
-- label
-- place_name nullable
-- address nullable
-- category nullable
-- last_used_at
-- use_count cached
+- title
+- starts_at nullable
+- ends_at nullable
+- location nullable
+- notes nullable
+- status enum planned, completed, canceled
+- created_at
+- updated_at
 
-### Purpose
-This makes suggestions easier without needing a heavy recommendation system.
+### Current use
+Saved hangouts power planning history and ICS export without needing an external calendar provider.
 
-## Invitation
-Represents a pending invite to join the app or shared object.
+## ConnectionInvite
+Represents a pending invite to link a connection to a real user account.
 
 ### Fields
 - id
-- created_by_user_id
-- target_type enum app, connection_link, group_membership, hangout
-- target_id nullable
-- invite_channel enum link, email, sms
-- recipient_value nullable
+- connection_id
+- owner_user_id
+- invited_email
 - token
 - status enum pending, accepted, expired, revoked
+- claimed_by_user_id nullable
+- accepted_at nullable
 - expires_at
 - created_at
+
+### Current behavior
+- owner creates an invite from a connection detail page
+- recipient signs in or creates an account
+- invite claim links the owner's connection to the recipient account
+- invite claim also creates or reuses a reciprocal connection for the recipient
 
 ## Notification
 Represents in-app or outbound reminders and updates.
 
-### Fields
-- id
-- user_id
-- type
-- title
-- body
-- target_type nullable
-- target_id nullable
-- delivery_channel enum in_app, push, email
-- sent_at nullable
-- read_at nullable
-- acted_at nullable
-- created_at
-
-## Suggested Derived Views
-
-The app will likely need efficient server-side queries or materialized views for:
-- connections most overdue
-- groups with no recent completed hangout
-- upcoming hangouts
-- recent memories
-- frequently used places and activities
+### Current state
+Reminder surfacing exists in-app today. Dedicated persisted notification delivery records can be added later if push or email delivery becomes a priority.
 
 ## Access Control Model Direction
 
 ### Private by default
 The safest starting point is:
 - private notes belong only to the user who wrote them
-- shared hangouts are visible to invited or participating members
-- photos inherit hangout or group visibility
-- group membership determines access to group-level timelines
-
-### Hybrid sharing model
-The product likely needs both:
-- personal relationship tracking
-- shared group coordination
-
-This means access rules should be designed early rather than bolted on later.
-
-## Data Retention And Cost Considerations
-
-### Photos
-- compress on upload
-- generate thumbnails
-- set per-event and per-user upload caps
-- consider quota tiers if storage expands
-
-### Notifications
-- avoid storing unnecessary payload history forever
-- keep enough data for analytics and auditing
-
-### Contact imports
-- store only fields needed for the app experience
-- preserve clear delete behavior and consent boundaries
+- invite linking does not automatically expose private notes
+- shared group visibility should be added deliberately rather than implied by a user link
 
 ## Open Schema Questions
 
-1. Should one real-world person have multiple connection records per user, or should there be a shared canonical identity model later?
-2. Should cadence rules belong only to a user, or can groups eventually have shared cadence ownership?
-3. Should photos be stored directly in product storage from day one, or should external album linking be an option in the first release?
-4. How much participant response state is necessary before scheduling becomes too complex for MVP?
+1. Should linked users eventually share a canonical relationship identity, or should reciprocal per-user connections remain the core model?
+2. Should groups evolve from connection-based membership into first-class shared groups for linked users?
+3. Should saved hangouts eventually support participant response state, or stay organizer-owned until collaboration deepens?
+4. Should photos be stored directly in product storage, or should external album linking remain the lighter option?
