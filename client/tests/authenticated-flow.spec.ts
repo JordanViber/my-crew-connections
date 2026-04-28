@@ -210,6 +210,44 @@ test("saved group plans can be exported and canceled", async ({ page }) => {
   await expect(page.locator("h3:visible", { hasText: "Dinner with ICS Group" })).toHaveCount(0);
 });
 
+test("dashboard quick log and drawer navigation work on mobile", async ({ page }) => {
+  await page.setViewportSize(iphone15Viewport);
+  const dashboardEmail = `dashboard-${Date.now()}@example.com`;
+
+  await page.goto("/auth");
+  await prepareLocalAccount(page, dashboardEmail, password);
+  await signInWithPassword(page, dashboardEmail, password);
+  await page.waitForURL("**/dashboard");
+
+  await page.goto("/connections?tab=create");
+  await page.locator('input[name="displayName"]:visible').fill("Dashboard Friend");
+  await page.locator('input[name="cadenceValue"]:visible').fill("2");
+  await page.locator('input[name="reminderLeadDays"]:visible').fill("3");
+  await page.getByRole("button", { name: "Create connection" }).click();
+  await expect(page).toHaveURL(/\/connections\/.+feedback=connection-created/);
+
+  await page.goto("/dashboard");
+  await page.getByRole("button", { name: "Log" }).click();
+  await page.locator('input[name="activityLabel"]:visible').fill("Lunch");
+  await page.locator('input[name="locationLabel"]:visible').fill("Corner cafe");
+  await page.locator('textarea[name="note"]:visible').fill("Turned a quick catch-up into a real plan.");
+  await page.getByRole("button", { name: "Log touchpoint" }).click();
+
+  await expect(page).toHaveURL(/\/dashboard\?feedback=touchpoint-saved/);
+  await expect(page.getByText(/touchpoint logged/i)).toBeVisible();
+
+  await page.getByRole("button", { name: "History" }).click();
+  await expect(page.locator('p:visible', { hasText: /turned a quick catch-up into a real plan/i })).toBeVisible();
+
+  await page.getByRole("button", { name: "Menu" }).click();
+  await expect(page.locator('[aria-label="Quick navigation menu"]')).toBeVisible();
+  await expect(page.getByText(/move around faster/i)).toBeVisible();
+  await expect(page.getByText(dashboardEmail)).toBeVisible();
+
+  await page.locator('[aria-label="Quick navigation menu"]').getByRole("link", { name: "Groups" }).click();
+  await expect(page).toHaveURL(/\/groups$/);
+});
+
 test("archiving a connection removes it from active lists", async ({ page }) => {
   await page.setViewportSize(iphone15Viewport);
   const archiveEmail = `archive-${Date.now()}@example.com`;

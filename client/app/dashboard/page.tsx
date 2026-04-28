@@ -21,9 +21,9 @@ function StatChip({
   value: string;
 }>) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-white/72 px-3 py-1.5">
+    <div className="rounded-2xl border border-border/80 bg-white/76 px-3 py-3 shadow-[0_10px_24px_rgba(69,42,24,0.06)]">
       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">{label}</p>
-      <p className="text-sm font-semibold tracking-tight text-foreground">{value}</p>
+      <p className="mt-2 text-[1.4rem] font-semibold leading-none tracking-tight text-foreground">{value}</p>
     </div>
   );
 }
@@ -317,7 +317,7 @@ export default async function DashboardPage({
             content: (
               <div className="grid gap-4">
                 <section className="section-card rounded-[1.45rem] p-4">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <StatChip label="Needs now" value={String(needsAttention.length)} />
                     <StatChip label="Plans" value={String(data.upcomingHangouts.length)} />
                     <StatChip label="People" value={String(data.connections.length)} />
@@ -337,6 +337,13 @@ export default async function DashboardPage({
                     </Link>
                   </div>
                 </section>
+
+                <NextStepCard
+                  title={nextStep.title}
+                  description={nextStep.description}
+                  ctaHref={nextStep.ctaHref}
+                  ctaLabel={nextStep.ctaLabel}
+                />
 
                 <MobileRelationshipRail
                   title="Needs attention"
@@ -358,13 +365,6 @@ export default async function DashboardPage({
                     ctaLabel="Take action"
                   />
                 </section>
-
-                <NextStepCard
-                  title={nextStep.title}
-                  description={nextStep.description}
-                  ctaHref={nextStep.ctaHref}
-                  ctaLabel={nextStep.ctaLabel}
-                />
               </div>
             ),
           },

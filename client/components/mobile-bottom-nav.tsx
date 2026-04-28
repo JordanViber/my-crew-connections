@@ -58,7 +58,7 @@ export function MobileBottomNav({
 
           <Drawer.Portal>
             <Drawer.Overlay className="fixed inset-0 bg-[rgba(29,36,40,0.24)] backdrop-blur-[2px]" />
-            <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 outline-none">
+            <Drawer.Content aria-label="Quick navigation menu" className="fixed inset-x-0 bottom-0 z-50 outline-none">
               <div className="mx-auto max-w-lg rounded-t-4xl border border-border/80 bg-[#fdf7f0]/95 px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pt-4 shadow-[0_-22px_64px_rgba(69,42,24,0.16)] backdrop-blur-2xl">
                 <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-foreground/12" />
                 <Drawer.Title className="text-lg font-semibold tracking-tight text-foreground">Move around faster</Drawer.Title>

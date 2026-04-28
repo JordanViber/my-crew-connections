@@ -20,38 +20,38 @@ export function AppShell({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="shell px-3 py-3 md:px-6 md:py-5">
-      <div className="glass-panel mx-auto max-w-7xl rounded-4xl px-4 py-4 md:px-6 md:py-6">
-        <header className="border-b border-border/70 pb-4 md:pb-5">
-          <div className="flex flex-col gap-4 md:gap-4.5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-accent-strong md:gap-3 md:text-sm md:tracking-[0.28em]">
+    <div className="shell px-2.5 py-2.5 md:px-6 md:py-5">
+      <div className="glass-panel mx-auto max-w-7xl rounded-4xl px-3.5 py-3.5 md:px-6 md:py-6">
+        <header className="border-b border-border/70 pb-3.5 md:pb-5">
+          <div className="flex flex-col gap-3.5 md:gap-4.5">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-accent-strong md:gap-3 md:text-sm md:tracking-[0.28em]">
                 <span>My Crew Connections</span>
-                <span className="rounded-full border border-accent/15 bg-white/75 px-3 py-1 text-[0.62rem] text-foreground/72 md:text-[0.68rem]">
+                <span className="rounded-full border border-accent/15 bg-white/75 px-3 py-1 text-[0.6rem] text-foreground/72 md:text-[0.68rem]">
                   Private by default
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                <div className="inline-flex max-w-full items-center rounded-full border border-border/85 bg-white/72 px-3 py-1.5 text-xs text-foreground/68 md:text-sm">
+              <div className="flex flex-wrap items-center gap-1.5 md:gap-3">
+                <div className="inline-flex max-w-full items-center rounded-full border border-border/85 bg-white/72 px-3 py-1.5 text-[0.82rem] text-foreground/68 md:text-sm">
                   <span className="min-w-0 truncate">{email}</span>
                 </div>
                 <form action={signOutAction}>
-                  <button className="button-secondary" type="submit">
+                  <button className="button-secondary px-4 py-2 text-sm md:px-[1.05rem] md:py-[0.7rem]" type="submit">
                     Sign out
                   </button>
                 </form>
               </div>
             </div>
 
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="space-y-3">
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-accent-strong md:text-[0.72rem]">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-2.5 md:space-y-3">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-accent-strong md:text-[0.72rem]">
                   Your relationship space
                 </p>
                 <div>
-                  <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-[2.85rem]">{title}</h1>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-foreground/70 md:text-[0.98rem] md:leading-7">{subtitle}</p>
+                  <h1 className="text-[2.15rem] leading-[1.02] font-semibold tracking-tight text-foreground md:text-[2.85rem]">{title}</h1>
+                  <p className="mt-2 max-w-2xl text-[0.98rem] leading-7 text-foreground/70 md:text-[0.98rem] md:leading-7">{subtitle}</p>
                 </div>
               </div>
 
@@ -66,7 +66,7 @@ export function AppShell({
           </div>
         </header>
 
-        <div className="pb-34 pt-4 md:pb-0 md:pt-5">{children}</div>
+        <div className="pb-34 pt-3.5 md:pb-0 md:pt-5">{children}</div>
       </div>
       <MobileBottomNav title={title} email={email} />
     </div>
