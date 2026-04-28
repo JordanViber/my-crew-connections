@@ -41,13 +41,13 @@ Key documents:
 - [docs/TECH_STACK_DECISIONS.md](docs/TECH_STACK_DECISIONS.md)
 - [docs/MVP_ROADMAP.md](docs/MVP_ROADMAP.md)
 
-## Current Localhost State
+## Current Product State
 
-This repository is in active implementation with a working localhost MVP.
+This repository contains an actively developed local-first build of My Crew Connections.
 
-Shipped locally:
+Available today:
 - Next.js App Router app in `client/`
-- local Supabase-backed auth with local password as the primary localhost path and magic link kept as a secondary path
+- Supabase-backed auth with password sign-in as the primary local path and magic link as a secondary option
 - people and groups CRUD with archive support
 - searchable and filterable people directory with linked, pending, and local-only states
 - searchable and filterable group directory for larger crews
@@ -70,7 +70,7 @@ Still intentionally deferred:
 - rich collaboration beyond connection linking and invite claiming
 - photo and media upload flow
 
-## Local Supabase
+## Local Development
 
 This repo already includes a local Supabase CLI config in [supabase/config.toml](supabase/config.toml).
 
@@ -78,6 +78,8 @@ For cross-machine local development:
 - use [scripts/supabase-start.ps1](scripts/supabase-start.ps1) on Windows
 - use [scripts/supabase-start.sh](scripts/supabase-start.sh) on macOS or Linux
 - generate the app env file from the running local stack with [scripts/supabase-sync-env.ps1](scripts/supabase-sync-env.ps1) or [scripts/supabase-sync-env.sh](scripts/supabase-sync-env.sh)
+- run the web app from `client/` with `npm install` followed by `npm run dev`
+- open `http://127.0.0.1:3100`
 
 That keeps [client/.env.local](client/.env.local) machine-specific and reproducible without committing secrets or hard-coding one machine's values into the repo.
 

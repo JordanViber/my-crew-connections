@@ -43,19 +43,19 @@ export default async function Home({
   const primaryLabel = user ? "Open your dashboard" : "Open sign in";
 
   return (
-    <main className="shell px-6 py-6 md:px-10">
-      <div className="glass-panel mx-auto flex max-w-6xl flex-col overflow-hidden rounded-4xl lg:min-h-[calc(100vh-3rem)] lg:flex-row">
-        <section className="flex flex-1 flex-col justify-between gap-10 px-6 py-8 md:px-10 md:py-10 lg:px-14 lg:py-14">
+    <main className="shell px-4 py-4 md:px-8 md:py-8">
+      <div className="glass-panel mx-auto flex max-w-6xl flex-col overflow-hidden rounded-4xl lg:min-h-[calc(100vh-2rem)] lg:flex-row">
+        <section className="flex flex-1 flex-col justify-between gap-8 px-5 py-6 md:px-8 md:py-8 lg:px-12 lg:py-12">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.32em] text-accent-strong">
                 My Crew Connections
               </p>
-              <p className="mt-2 max-w-md text-sm text-foreground/70">
-                A warm relationship dashboard for adults who care deeply and need a lighter planning system.
+              <p className="mt-2 max-w-md text-sm leading-6 text-foreground/68">
+                A gentle, private place to keep up with the people and groups that shape your life.
               </p>
             </div>
-            <nav className="flex flex-wrap justify-end gap-3">
+            <nav className="flex flex-wrap justify-end gap-2.5">
               <Link className="button-secondary" href={primaryHref}>
                 {user ? "Dashboard" : "Sign in"}
               </Link>
@@ -68,18 +68,18 @@ export default async function Home({
             </nav>
           </div>
 
-          <div className="grid gap-8 lg:max-w-3xl">
-            <div className="inline-flex w-fit items-center gap-3 rounded-full border border-accent/20 bg-white/70 px-4 py-2 text-sm text-foreground/75">
+          <div className="grid gap-7 lg:max-w-3xl">
+            <div className="inline-flex w-fit items-center gap-3 rounded-full border border-accent/20 bg-white/78 px-4 py-2 text-sm text-foreground/72">
               <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-accent" />
-              <span>Solo-first localhost MVP built against local Supabase</span>
+              <span>Thoughtful reminders, easy planning, and lightweight memory-keeping</span>
             </div>
 
             <div className="space-y-6">
-              <h1 className="max-w-3xl text-5xl font-semibold leading-[1.02] tracking-tight text-foreground md:text-7xl">
-                Make staying close feel more natural than remembering alone.
+              <h1 className="max-w-3xl text-5xl font-semibold leading-[0.98] tracking-tight text-foreground md:text-7xl">
+                Stay close without carrying the whole social calendar in your head.
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-foreground/75 md:text-xl">
-                Track the people and groups that matter, set a healthy cadence, and turn overdue intentions into concrete plans.
+                Keep friendships, family, and recurring crews in one calm rhythm with reminders that feel helpful instead of heavy.
               </p>
             </div>
 
@@ -93,9 +93,9 @@ export default async function Home({
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-3">
             {featureCards.map((card) => (
-              <article key={card.title} className="section-card rounded-3xl p-5">
+              <article key={card.title} className="section-card rounded-[1.4rem] p-4 md:p-5">
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent-strong">
                   {card.title}
                 </p>
@@ -105,10 +105,10 @@ export default async function Home({
           </div>
         </section>
 
-        <aside className="relative flex flex-1 items-end bg-[linear-gradient(180deg,#203133_0%,#162224_100%)] p-6 text-white md:p-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(244,196,111,0.35),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(209,96,61,0.28),transparent_26%)]" />
+        <aside className="relative flex flex-1 items-end bg-[linear-gradient(180deg,#1d2d30_0%,#132123_100%)] p-5 text-white md:p-8 lg:p-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(246,201,119,0.35),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(239,107,74,0.24),transparent_26%),radial-gradient(circle_at_20%_75%,rgba(96,179,165,0.16),transparent_20%)]" />
           <div className="relative z-10 grid gap-6">
-            <div className="rounded-[1.75rem] border border-white/12 bg-white/8 p-6 backdrop-blur-xl">
+            <div className="rounded-3xl border border-white/12 bg-white/8 p-5 backdrop-blur-xl md:p-6">
               <p className="text-sm uppercase tracking-[0.28em] text-white/60">Core loop</p>
               <ol className="mt-4 grid gap-3 text-lg leading-7 text-white/88">
                 <li>1. Add a person or group you care about.</li>
@@ -119,8 +119,8 @@ export default async function Home({
               </ol>
             </div>
 
-            <div className="rounded-[1.75rem] border border-white/12 bg-white/6 p-6 text-sm leading-7 text-white/75">
-              This initial build keeps the scope disciplined: localhost password auth first, magic-link parity support, connection and group CRUD, cadence health, touchpoint history, and a reminder-oriented dashboard.
+            <div className="rounded-3xl border border-white/12 bg-white/6 p-5 text-sm leading-7 text-white/75 md:p-6">
+              From quiet check-ins to dinner plans, the app keeps your next step visible while preserving just enough shared history to make reconnecting easier.
             </div>
           </div>
         </aside>

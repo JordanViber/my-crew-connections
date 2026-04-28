@@ -1,0 +1,53 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - paragraph [ref=e7]: My Crew Connections
+            - paragraph [ref=e8]: A gentle, private place to keep up with the people and groups that shape your life.
+          - navigation [ref=e9]:
+            - link "Sign in" [ref=e10] [cursor=pointer]:
+              - /url: /auth
+            - link "People" [ref=e11] [cursor=pointer]:
+              - /url: /connections
+            - link "Groups" [ref=e12] [cursor=pointer]:
+              - /url: /groups
+        - generic [ref=e13]:
+          - generic [ref=e16]: Thoughtful reminders, easy planning, and lightweight memory-keeping
+          - generic [ref=e17]:
+            - heading "Stay close without carrying the whole social calendar in your head." [level=1] [ref=e18]
+            - paragraph [ref=e19]: Keep friendships, family, and recurring crews in one calm rhythm with reminders that feel helpful instead of heavy.
+          - generic [ref=e20]:
+            - link "Open sign in" [ref=e21] [cursor=pointer]:
+              - /url: /auth
+            - link "Explore the relationship workspace" [ref=e22] [cursor=pointer]:
+              - /url: /connections
+        - generic [ref=e23]:
+          - article [ref=e24]:
+            - paragraph [ref=e25]: Track who matters
+            - paragraph [ref=e26]: Keep people and groups in one calm place instead of scattered across notes, texts, and memory.
+          - article [ref=e27]:
+            - paragraph [ref=e28]: Stay ahead of drift
+            - paragraph [ref=e29]: See when a friendship or recurring crew is due soon, overdue, or comfortably on track.
+          - article [ref=e30]:
+            - paragraph [ref=e31]: Log what happened
+            - paragraph [ref=e32]: Turn a quick check-in, call, coffee, or dinner into lightweight history that informs the next plan.
+      - complementary [ref=e33]:
+        - generic [ref=e35]:
+          - generic [ref=e36]:
+            - paragraph [ref=e37]: Core loop
+            - list [ref=e38]:
+              - listitem [ref=e39]: 1. Add a person or group you care about.
+              - listitem [ref=e40]: 2. Pick a cadence that feels healthy.
+              - listitem [ref=e41]: 3. Notice who is drifting before it gets awkward.
+              - listitem [ref=e42]: 4. Log the coffee, call, dinner, or quick check-in.
+              - listitem [ref=e43]: 5. Let the next reconnect be easier than the last.
+          - generic [ref=e44]: From quiet check-ins to dinner plans, the app keeps your next step visible while preserving just enough shared history to make reconnecting easier.
+  - button "Open Next.js Dev Tools" [ref=e50] [cursor=pointer]:
+    - img [ref=e51]
+  - alert [ref=e54]
+```

@@ -4,19 +4,34 @@ const email = `e2e-${Date.now()}@example.com`;
 const password = "test-password-123";
 const iphone15Viewport = { width: 393, height: 852 };
 
+async function prepareLocalAccount(page: Parameters<typeof test>[0]["page"], emailAddress: string, passwordValue: string) {
+  const localEmailInput = page.getByPlaceholder("Enter an email for this device");
+
+  if (!(await localEmailInput.isVisible())) {
+    await page.locator("details summary").click();
+  }
+
+  await localEmailInput.fill(emailAddress);
+  await page.getByPlaceholder("Choose a password for this device").fill(passwordValue);
+  await page.getByRole("button", { name: "Create account or reset password" }).click();
+  await expect(page.getByText(/local account is ready/i)).toBeVisible();
+}
+
+async function signInWithPassword(page: Parameters<typeof test>[0]["page"], emailAddress: string, passwordValue: string) {
+  await page.getByPlaceholder("Enter your email").fill(emailAddress);
+  await page.getByPlaceholder("Enter your password").fill(passwordValue);
+  await page.getByRole("button", { name: "Sign in" }).click();
+}
+
 test("mobile auth and create-person flow works end to end", async ({ page }) => {
   await page.setViewportSize(iphone15Viewport);
   await page.goto("/auth");
 
-  await page.getByLabel("Email").first().fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create or reset local account" }).click();
-  await expect(page.getByText(/local account is ready/i)).toBeVisible();
-
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await prepareLocalAccount(page, email, password);
+  await signInWithPassword(page, email, password);
   await page.waitForURL("**/dashboard");
-  await expect(page.getByRole("link", { name: "People", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Groups", exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation").getByRole("link", { name: "People" })).toBeVisible();
+  await expect(page.getByRole("navigation").getByRole("link", { name: "Groups" })).toBeVisible();
 
   await page.goto("/connections");
   await expect(page.getByRole("button", { name: "Active" })).toBeVisible();
@@ -34,7 +49,7 @@ test("mobile auth and create-person flow works end to end", async ({ page }) => 
   await expect(page.getByRole("heading", { name: "E2E Friend" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit connection" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save connection" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "No real-user link started yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Not linked yet" })).toBeVisible();
 });
 
 test("logging a touchpoint updates the connection timeline", async ({ page }) => {
@@ -42,12 +57,8 @@ test("logging a touchpoint updates the connection timeline", async ({ page }) =>
   const touchpointEmail = `touchpoint-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByLabel("Email").first().fill(touchpointEmail);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create or reset local account" }).click();
-  await expect(page.getByText(/local account is ready/i)).toBeVisible();
-
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await prepareLocalAccount(page, touchpointEmail, password);
+  await signInWithPassword(page, touchpointEmail, password);
   await page.waitForURL("**/dashboard");
 
   await page.goto("/connections?tab=create");
@@ -77,12 +88,8 @@ test("mobile group creation and touchpoint flow works end to end", async ({ page
   const groupEmail = `group-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByLabel("Email").first().fill(groupEmail);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create or reset local account" }).click();
-  await expect(page.getByText(/local account is ready/i)).toBeVisible();
-
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await prepareLocalAccount(page, groupEmail, password);
+  await signInWithPassword(page, groupEmail, password);
   await page.waitForURL("**/dashboard");
 
   await page.goto("/groups");
@@ -118,12 +125,8 @@ test("saved connection plans can be exported and completed", async ({ page }) =>
   const planningEmail = `planning-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByLabel("Email").first().fill(planningEmail);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create or reset local account" }).click();
-  await expect(page.getByText(/local account is ready/i)).toBeVisible();
-
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await prepareLocalAccount(page, planningEmail, password);
+  await signInWithPassword(page, planningEmail, password);
   await page.waitForURL("**/dashboard");
 
   await page.goto("/connections?tab=create");
@@ -146,7 +149,7 @@ test("saved connection plans can be exported and completed", async ({ page }) =>
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("link", { name: "Export ICS" }).click(),
+    page.getByRole("link", { name: "Export to calendar" }).click(),
   ]);
 
   const path = await download.path();
@@ -166,12 +169,8 @@ test("saved group plans can be exported and canceled", async ({ page }) => {
   const planningEmail = `planning-group-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByLabel("Email").first().fill(planningEmail);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create or reset local account" }).click();
-  await expect(page.getByText(/local account is ready/i)).toBeVisible();
-
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await prepareLocalAccount(page, planningEmail, password);
+  await signInWithPassword(page, planningEmail, password);
   await page.waitForURL("**/dashboard");
 
   await page.goto("/groups?tab=create");
@@ -196,7 +195,7 @@ test("saved group plans can be exported and canceled", async ({ page }) => {
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("link", { name: "Export ICS" }).click(),
+    page.getByRole("link", { name: "Export to calendar" }).click(),
   ]);
 
   const path = await download.path();
@@ -216,12 +215,8 @@ test("archiving a connection removes it from active lists", async ({ page }) => 
   const archiveEmail = `archive-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByLabel("Email").first().fill(archiveEmail);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create or reset local account" }).click();
-  await expect(page.getByText(/local account is ready/i)).toBeVisible();
-
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await prepareLocalAccount(page, archiveEmail, password);
+  await signInWithPassword(page, archiveEmail, password);
   await page.waitForURL("**/dashboard");
 
   await page.goto("/connections?tab=create");
@@ -244,12 +239,8 @@ test("archiving a group removes it from active lists", async ({ page }) => {
   const archiveEmail = `archive-group-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByLabel("Email").first().fill(archiveEmail);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create or reset local account" }).click();
-  await expect(page.getByText(/local account is ready/i)).toBeVisible();
-
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await prepareLocalAccount(page, archiveEmail, password);
+  await signInWithPassword(page, archiveEmail, password);
   await page.waitForURL("**/dashboard");
 
   await page.goto("/groups?tab=create");
@@ -275,10 +266,8 @@ test("invite links can be started during creation and then claimed by a second u
   const inviteeEmail = `invitee-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByLabel("Email").first().fill(ownerEmail);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create or reset local account" }).click();
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await prepareLocalAccount(page, ownerEmail, password);
+  await signInWithPassword(page, ownerEmail, password);
   await page.waitForURL("**/dashboard");
 
   await page.goto("/connections?tab=create");
@@ -294,14 +283,14 @@ test("invite links can be started during creation and then claimed by a second u
 
   await page.goto("http://127.0.0.1:3100/connections");
   await page.getByRole("button", { name: "Active" }).click();
-  await expect(page.getByText("Invite pending").first()).toBeVisible();
+  await expect(page.getByText("Invite sent").first()).toBeVisible();
 
   await page.goto("http://127.0.0.1:3100/groups?tab=create");
   await page.locator('input[name="name"]:visible').fill("Invite Status Crew");
   await page.locator('input[type="checkbox"][name="connectionIds"]').first().check();
   await page.getByRole("button", { name: "Create group" }).click();
   await expect(page).toHaveURL(/\/groups\/.+feedback=group-created/);
-  await expect(page.getByText("Invite pending").first()).toBeVisible();
+  await expect(page.getByText("Invite sent").first()).toBeVisible();
 
   const inviteeContext = await browser.newContext({ viewport: iphone15Viewport });
   const inviteePage = await inviteeContext.newPage();
@@ -309,10 +298,8 @@ test("invite links can be started during creation and then claimed by a second u
   await expect(inviteePage.getByText(/Invite Friend wants to connect/i)).toBeVisible();
   await inviteePage.getByRole("link", { name: "Sign in to claim" }).click();
   await inviteePage.waitForURL(/\/auth\?next=/);
-  await inviteePage.getByLabel("Email").first().fill(inviteeEmail);
-  await inviteePage.getByLabel("Password").fill(password);
-  await inviteePage.getByRole("button", { name: "Create or reset local account" }).click();
-  await inviteePage.getByRole("button", { name: "Sign in" }).click();
+  await prepareLocalAccount(inviteePage, inviteeEmail, password);
+  await signInWithPassword(inviteePage, inviteeEmail, password);
   await inviteePage.waitForURL(/\/invite\//);
   await inviteePage.getByRole("button", { name: "Claim connection" }).click();
   await expect(inviteePage.getByText(/invite claimed/i)).toBeVisible();
@@ -323,10 +310,10 @@ test("invite links can be started during creation and then claimed by a second u
   await inviteeContext.close();
 
   await page.reload();
-  await expect(page.getByText("Linked user").first()).toBeVisible();
+  await expect(page.getByText("Connected").first()).toBeVisible();
   await page.goto("http://127.0.0.1:3100/connections");
   await page.getByRole("button", { name: "Active" }).click();
-  await expect(page.getByText("Linked user").first()).toBeVisible();
+  await expect(page.getByText("Connected").first()).toBeVisible();
 });
 
 test("existing account can claim an invite and receive the reciprocal connection", async ({ page, browser }) => {
@@ -335,15 +322,9 @@ test("existing account can claim an invite and receive the reciprocal connection
   const inviteeEmail = `invitee-existing-${Date.now()}@example.com`;
 
   await page.goto("/auth");
-  await page.getByLabel("Email").first().fill(inviteeEmail);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create or reset local account" }).click();
-  await expect(page.getByText(/local account is ready/i)).toBeVisible();
-
-  await page.getByLabel("Email").first().fill(ownerEmail);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Create or reset local account" }).click();
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await prepareLocalAccount(page, inviteeEmail, password);
+  await prepareLocalAccount(page, ownerEmail, password);
+  await signInWithPassword(page, ownerEmail, password);
   await page.waitForURL("**/dashboard");
 
   await page.goto("/connections?tab=create");
@@ -358,9 +339,7 @@ test("existing account can claim an invite and receive the reciprocal connection
   const inviteeContext = await browser.newContext({ viewport: iphone15Viewport });
   const inviteePage = await inviteeContext.newPage();
   await inviteePage.goto("/auth");
-  await inviteePage.getByLabel("Email").first().fill(inviteeEmail);
-  await inviteePage.getByLabel("Password").fill(password);
-  await inviteePage.keyboard.press("Enter");
+  await signInWithPassword(inviteePage, inviteeEmail, password);
   await inviteePage.waitForURL("**/dashboard");
 
   await inviteePage.goto(inviteUrl);

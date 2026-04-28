@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Client App
 
-## Getting Started
+This directory contains the Next.js app for My Crew Connections.
 
-First, run the development server:
+## Local Setup
+
+1. Start the local Supabase stack from the repository root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bash ./scripts/supabase-start.sh
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Sync the app env file from the running stack:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+bash ./scripts/supabase-sync-env.sh
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Install dependencies and start the app from this directory:
 
-## Learn More
+```bash
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. Open `http://127.0.0.1:3100`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Useful Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `npm run dev` starts the app on port `3100`
+- `npm run build` builds the production bundle
+- `npm run lint` runs ESLint
+- `npm run test` runs the Vitest suite
+- `npm run test:e2e` runs the Playwright suite
 
-## Deploy on Vercel
+## Current Product Surface
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The app currently includes:
+- landing, auth, dashboard, people, groups, invite, and auth callback routes
+- password sign-in plus magic link authentication
+- people and group management with cadence tracking
+- reminder-oriented dashboard summaries
+- touchpoint history and hangout planning
+- ICS export for saved plans
+- invite-link based relationship linking
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes
+
+- The app expects a generated `.env.local` file in this directory.
+- `supabase db reset --local` will wipe local users and data; after a reset, create your local account again from the auth screen.

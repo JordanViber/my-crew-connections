@@ -22,19 +22,18 @@ export function ConnectionLinkSection({
     linkedUserLabel: linkedUserLabel ?? undefined,
     pendingInviteEmail: activeInvite?.email,
   });
+  const showInviteForm = linkState.state !== "linked";
+  let cardClasses = "border-border/85 bg-white/78";
+
+  if (linkState.state === "linked") {
+    cardClasses = "border-mint/70 bg-mint/50";
+  } else if (linkState.state === "pending") {
+    cardClasses = "border-[#ebc8a8] bg-[#fff0df]";
+  }
 
   return (
     <div className="grid gap-4">
-      <div
-        className={[
-          "rounded-[1.3rem] border p-4",
-          linkState.state === "linked"
-            ? "border-mint/70 bg-mint/50"
-            : linkState.state === "pending"
-              ? "border-[#ebc8a8] bg-[#fff0df]"
-              : "border-border/85 bg-white/78",
-        ].join(" ")}
-      >
+      <div className={["rounded-[1.3rem] border p-4", cardClasses].join(" ")}>
         <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">{linkState.eyebrow}</p>
         <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{linkState.title}</h3>
         <p className="mt-2 text-sm leading-6 text-foreground/72">{linkState.body}</p>
@@ -42,7 +41,7 @@ export function ConnectionLinkSection({
 
       {activeInvite ? <InviteLinkPanel inviteUrl={activeInvite.inviteUrl} /> : null}
 
-      {linkState.state !== "linked" ? (
+      {showInviteForm ? (
         <form action={createConnectionInviteAction} className="grid gap-4">
           <input type="hidden" name="connectionId" value={connectionId} />
           <input type="hidden" name="redirectTo" value={redirectTo} />
@@ -58,7 +57,7 @@ export function ConnectionLinkSection({
             />
           </label>
           <p className="text-sm leading-6 text-foreground/68">
-            If they already have an account, this link lets them sign in and claim it. If not, they can create one first and then claim it with the same email.
+            They can sign in or create an account with this email, then claim the invite when they open the link.
           </p>
           <button className="button-primary w-full sm:w-auto" type="submit">
             {activeInvite ? "Refresh invite link" : "Create invite link"}

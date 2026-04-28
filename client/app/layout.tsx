@@ -14,7 +14,7 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: "My Crew Connections",
-  description: "A warm, solo-first relationship dashboard for keeping up with the people who matter.",
+  description: "A warm relationship app for keeping up with the people and groups that matter most.",
 };
 
 export default function RootLayout({
@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body className={`${fraunces.variable} ${manrope.variable} antialiased`}>
         {children}
       </body>

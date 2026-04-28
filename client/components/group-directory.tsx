@@ -14,9 +14,9 @@ function SummaryChip({
   value: number;
 }>) {
   return (
-    <div className="rounded-[1.2rem] border border-border/80 bg-white/72 px-4 py-3">
+    <div className="rounded-[1.1rem] border border-border/80 bg-white/72 px-3.5 py-3">
       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-accent-strong">{label}</p>
-      <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">{value}</p>
+      <p className="mt-1.5 text-lg font-semibold tracking-tight text-foreground">{value}</p>
     </div>
   );
 }
@@ -41,11 +41,11 @@ function GroupSection({
         <p className="mt-1 text-sm leading-6 text-foreground/68">{description}</p>
       </div>
       {items.map((group) => (
-        <article key={group.id} className="rounded-[1.4rem] border border-border/90 bg-white/82 p-4">
+        <article key={group.id} className="rounded-[1.25rem] border border-border/90 bg-white/82 p-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">{group.memberNames.length} members</p>
-              <h2 className="mt-2 text-2xl font-semibold text-foreground">{group.title}</h2>
+              <h2 className="mt-2 text-[1.35rem] font-semibold text-foreground">{group.title}</h2>
               <p className="mt-2 text-sm leading-7 text-foreground/72">{group.subtitle}</p>
               <p className="mt-2 text-sm text-foreground/70">{group.cadenceLabel}</p>
               <p className="mt-2 text-sm text-foreground/65">{group.memberNames.length > 0 ? group.memberNames.join(", ") : "No members added yet"}</p>
@@ -84,6 +84,42 @@ export function GroupDirectory({
   const needsAttentionCount = filtered.filter((group) => group.health.state !== "on-track").length;
   const groupsNeedingAttention = filtered.filter((group) => group.health.state !== "on-track");
   const onTrackGroups = filtered.filter((group) => group.health.state === "on-track");
+  let content: React.ReactNode;
+
+  if (groups.length === 0) {
+    content = (
+      <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
+        <p className="text-sm leading-7 text-foreground/68">
+          No groups yet. Add a recurring crew and the app can help keep the rhythm visible.
+        </p>
+        <p className="mt-2 text-sm leading-6 text-foreground/62">
+          Good starting candidates are a monthly dinner crew, a walking group, or any tradition that depends on one organizer remembering to make it happen.
+        </p>
+      </div>
+    );
+  } else if (filtered.length === 0) {
+    content = (
+      <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
+        <p className="text-sm leading-7 text-foreground/68">Nothing matches that group search and filter combination yet.</p>
+        <p className="mt-2 text-sm leading-6 text-foreground/62">Try a broader search or switch between all, attention, and on-track views.</p>
+      </div>
+    );
+  } else {
+    content = (
+      <>
+        <GroupSection
+          title="Needs attention"
+          description="These groups are the most likely to drift if nobody nudges the next plan forward."
+          items={groupsNeedingAttention}
+        />
+        <GroupSection
+          title="On track"
+          description="These crews are in a healthy rhythm right now."
+          items={onTrackGroups}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="grid gap-4">
@@ -121,34 +157,7 @@ export function GroupDirectory({
         </div>
       </div>
 
-      {groups.length === 0 ? (
-        <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
-          <p className="text-sm leading-7 text-foreground/68">
-            No groups yet. The docs recommend getting at least one recurring crew into the app early.
-          </p>
-          <p className="mt-2 text-sm leading-6 text-foreground/62">
-            Good starting candidates are a monthly dinner crew, a walking group, or any tradition that depends on one organizer remembering to make it happen.
-          </p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
-          <p className="text-sm leading-7 text-foreground/68">Nothing matches that group search and filter combination yet.</p>
-          <p className="mt-2 text-sm leading-6 text-foreground/62">Try a broader search or switch between all, attention, and on-track views.</p>
-        </div>
-      ) : (
-        <>
-          <GroupSection
-            title="Needs attention"
-            description="These groups are the most likely to slip without an organizer taking the next step."
-            items={groupsNeedingAttention}
-          />
-          <GroupSection
-            title="On track"
-            description="These crews are in a healthy rhythm right now."
-            items={onTrackGroups}
-          />
-        </>
-      )}
+      {content}
     </div>
   );
 }

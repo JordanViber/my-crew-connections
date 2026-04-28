@@ -22,8 +22,8 @@ describe("invite helpers", () => {
     expect(getConnectionLinkState({ linkedUserLabel: "chloejwallach@gmail.com" })).toEqual({
       state: "linked",
       eyebrow: "Link status",
-      title: "Linked to a real user",
-      body: "This connection is already linked to chloejwallach@gmail.com. No extra invite step is needed now.",
+      title: "Connected to their account",
+      body: "This connection is already tied to chloejwallach@gmail.com. No new invite is needed right now.",
     });
   });
 
@@ -40,8 +40,8 @@ describe("invite helpers", () => {
     expect(getConnectionLinkState({})).toEqual({
       state: "unlinked",
       eyebrow: "Link status",
-      title: "No real-user link started yet",
-      body: "This person is still only a local connection record. Add an email below whenever you want to start the invite flow.",
+      title: "Not linked yet",
+      body: "This person is only in your private list right now. Add an email below whenever you want to invite them in.",
     });
   });
 });

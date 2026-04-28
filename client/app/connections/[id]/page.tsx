@@ -30,6 +30,65 @@ function toInputDateTime() {
   return now.toISOString().slice(0, 16);
 }
 
+type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
+type ConnectionSummary = DashboardData["connections"][number];
+
+async function getRequestOrigin() {
+  const requestHeaders = await headers();
+  const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
+  const host = requestHeaders.get("host") ?? "127.0.0.1:3100";
+
+  return `${proto}://${host}`;
+}
+
+async function loadActiveInviteInfo(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  ownerUserId: string,
+  connectionId: string,
+  origin: string,
+) {
+  const inviteResult = await supabase
+    .from("connection_invites")
+    .select("id, invited_email, token, created_at, claimed_at, revoked_at")
+    .eq("owner_user_id", ownerUserId)
+    .eq("connection_id", connectionId)
+    .is("claimed_at", null)
+    .is("revoked_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (inviteResult.error) {
+    throw new Error(`Failed to load invites: ${inviteResult.error.message}`);
+  }
+
+  if (!inviteResult.data) {
+    return null;
+  }
+
+  return {
+    email: inviteResult.data.invited_email,
+    inviteUrl: buildConnectionInviteUrl(origin, inviteResult.data.token),
+  };
+}
+
+async function loadLinkedUserLabel(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  connection: ConnectionSummary,
+) {
+  if (!connection.linkedUserId) {
+    return null;
+  }
+
+  const linkedUserResult = await supabase.auth.admin.getUserById(connection.linkedUserId);
+
+  if (linkedUserResult.error) {
+    throw new Error(`Failed to load linked user: ${linkedUserResult.error.message}`);
+  }
+
+  return linkedUserResult.data.user?.email ?? "this app user";
+}
+
 export default async function ConnectionDetailPage({
   params,
   searchParams,
@@ -64,42 +123,14 @@ export default async function ConnectionDetailPage({
   );
   const feedback = getFeedback(query.feedback);
   const latestActivity = timeline.find((touchpoint) => touchpoint.activityLabel || touchpoint.locationLabel);
-  const inviteResult = await supabase
-    .from("connection_invites")
-    .select("id, invited_email, token, created_at, claimed_at, revoked_at")
-    .eq("owner_user_id", user.id)
-    .eq("connection_id", connection.id)
-    .is("claimed_at", null)
-    .is("revoked_at", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (inviteResult.error) {
-    throw new Error(`Failed to load invites: ${inviteResult.error.message}`);
-  }
-
-  const activeInvite = inviteResult.data;
-  const requestHeaders = await headers();
-  const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
-  const host = requestHeaders.get("host") ?? "127.0.0.1:3100";
-  const inviteUrl = activeInvite ? buildConnectionInviteUrl(`${proto}://${host}`, activeInvite.token) : null;
-  let linkedUserLabel: string | null = null;
-
-  if (connection.linkedUserId) {
-    const linkedUserResult = await supabase.auth.admin.getUserById(connection.linkedUserId);
-
-    if (linkedUserResult.error) {
-      throw new Error(`Failed to load linked user: ${linkedUserResult.error.message}`);
-    }
-
-    linkedUserLabel = linkedUserResult.data.user?.email ?? "this app user";
-  }
+  const requestOrigin = await getRequestOrigin();
+  const activeInvite = await loadActiveInviteInfo(supabase, user.id, connection.id, requestOrigin);
+  const linkedUserLabel = await loadLinkedUserLabel(supabase, connection);
 
   return (
     <AppShell
       title={connection.title}
-      subtitle="Update cadence and notes here, then keep history moving with one-touch logging."
+      subtitle="Keep cadence, notes, invites, and plans easy to update in one place."
       email={user.email ?? "Signed in"}
     >
       {feedback ? (
@@ -115,7 +146,7 @@ export default async function ConnectionDetailPage({
             id: "manage",
             label: "Manage",
             content: (
-              <div className="grid gap-4">
+              <div className="grid gap-3">
                 <SectionCard title="Connection profile" description={connection.subtitle}>
                   <div className="mb-5 flex items-center justify-between gap-4">
                     <StatusPill health={connection.health} />
@@ -126,18 +157,20 @@ export default async function ConnectionDetailPage({
                     action={updateConnectionAction}
                     editLabel="Edit connection"
                     saveLabel="Save connection"
-                    helperText="Keep this lightweight. The goal is to make your next reconnect easier, not to turn the app into a CRM."
+                    helperText="Keep this light. A few cues are enough to make the next reconnect easier."
                   >
                     <input type="hidden" name="connectionId" value={connection.id} />
                     <input type="hidden" name="redirectTo" value={`/connections/${connection.id}`} />
-                    <label className="grid gap-2">
-                      <span className="field-label">Name</span>
-                      <input className="field-input" name="displayName" type="text" defaultValue={connection.title} required />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="field-label">Tags</span>
-                      <input className="field-input" name="tags" type="text" defaultValue={connection.tags.join(", ")} />
-                    </label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="grid gap-2">
+                        <span className="field-label">Name</span>
+                        <input className="field-input" name="displayName" type="text" defaultValue={connection.title} required />
+                      </label>
+                      <label className="grid gap-2">
+                        <span className="field-label">Tags</span>
+                        <input className="field-input" name="tags" type="text" defaultValue={connection.tags.join(", ")} />
+                      </label>
+                    </div>
                     <div className="grid gap-4">
                       <label className="grid gap-2">
                         <span className="field-label">Cadence value</span>
@@ -204,14 +237,14 @@ export default async function ConnectionDetailPage({
                 </SectionCard>
 
                 <SectionCard
-                  title="Link to a real user"
-                  description="Invite this person to claim the connection with their own account, whether they already use the app or need to create one."
+                  title="Invite them into the app"
+                  description="Send an invite so they can connect this relationship to their own account."
                 >
                   <ConnectionLinkSection
                     connectionId={connection.id}
                     redirectTo={`/connections/${connection.id}`}
                     linkedUserLabel={linkedUserLabel}
-                    activeInvite={activeInvite && inviteUrl ? { email: activeInvite.invited_email, inviteUrl } : null}
+                    activeInvite={activeInvite}
                   />
                 </SectionCard>
               </div>
@@ -226,27 +259,31 @@ export default async function ConnectionDetailPage({
                   <input type="hidden" name="targetType" value="connection" />
                   <input type="hidden" name="targetId" value={connection.id} />
                   <input type="hidden" name="redirectTo" value={`/connections/${connection.id}`} />
-                  <label className="grid gap-2">
-                    <span className="field-label">Type</span>
-                    <select className="field-input" name="touchpointType" defaultValue="hangout">
-                      <option value="hangout">Hangout</option>
-                      <option value="check-in">Check-in</option>
-                      <option value="message">Message</option>
-                      <option value="call">Call</option>
-                    </select>
-                  </label>
-                  <label className="grid gap-2">
-                    <span className="field-label">When</span>
-                    <input className="field-input" name="occurredAt" type="datetime-local" defaultValue={toInputDateTime()} required />
-                  </label>
-                  <label className="grid gap-2">
-                    <span className="field-label">Activity</span>
-                    <input className="field-input" name="activityLabel" type="text" placeholder="Walk, dinner, coffee, check-in" />
-                  </label>
-                  <label className="grid gap-2">
-                    <span className="field-label">Location</span>
-                    <input className="field-input" name="locationLabel" type="text" placeholder="Optional freeform location" />
-                  </label>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="field-label">Type</span>
+                      <select className="field-input" name="touchpointType" defaultValue="hangout">
+                        <option value="hangout">Hangout</option>
+                        <option value="check-in">Check-in</option>
+                        <option value="message">Message</option>
+                        <option value="call">Call</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">When</span>
+                      <input className="field-input" name="occurredAt" type="datetime-local" defaultValue={toInputDateTime()} required />
+                    </label>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="field-label">Activity</span>
+                      <input className="field-input" name="activityLabel" type="text" placeholder="Walk, dinner, coffee, check-in" />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">Location</span>
+                      <input className="field-input" name="locationLabel" type="text" placeholder="Optional freeform location" />
+                    </label>
+                  </div>
                   <label className="grid gap-2">
                     <span className="field-label">Note</span>
                     <textarea className="field-input min-h-28" name="note" placeholder="What mattered? Anything to remember for the next invite?" />
@@ -327,7 +364,7 @@ export default async function ConnectionDetailPage({
         ]}
       />
 
-      <div className="hidden gap-6 xl:grid-cols-[0.95fr_1.05fr] md:grid">
+      <div className="hidden gap-5 xl:grid-cols-[0.95fr_1.05fr] md:grid">
         <SectionCard title="Connection profile" description={connection.subtitle}>
           <div className="mb-5 flex items-center justify-between gap-4">
             <StatusPill health={connection.health} />
@@ -338,18 +375,20 @@ export default async function ConnectionDetailPage({
             action={updateConnectionAction}
             editLabel="Edit connection"
             saveLabel="Save connection"
-            helperText="Keep this lightweight. The goal is to make your next reconnect easier, not to turn the app into a CRM."
+            helperText="Keep this light. A few cues are enough to make the next reconnect easier."
           >
             <input type="hidden" name="connectionId" value={connection.id} />
             <input type="hidden" name="redirectTo" value={`/connections/${connection.id}`} />
-            <label className="grid gap-2">
-              <span className="field-label">Name</span>
-              <input className="field-input" name="displayName" type="text" defaultValue={connection.title} required />
-            </label>
-            <label className="grid gap-2">
-              <span className="field-label">Tags</span>
-              <input className="field-input" name="tags" type="text" defaultValue={connection.tags.join(", ")} />
-            </label>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2">
+                <span className="field-label">Name</span>
+                <input className="field-input" name="displayName" type="text" defaultValue={connection.title} required />
+              </label>
+              <label className="grid gap-2">
+                <span className="field-label">Tags</span>
+                <input className="field-input" name="tags" type="text" defaultValue={connection.tags.join(", ")} />
+              </label>
+            </div>
             <div className="grid gap-4 md:grid-cols-3">
               <label className="grid gap-2">
                 <span className="field-label">Cadence value</span>
@@ -395,27 +434,31 @@ export default async function ConnectionDetailPage({
               <input type="hidden" name="targetType" value="connection" />
               <input type="hidden" name="targetId" value={connection.id} />
               <input type="hidden" name="redirectTo" value={`/connections/${connection.id}`} />
-              <label className="grid gap-2">
-                <span className="field-label">Type</span>
-                <select className="field-input" name="touchpointType" defaultValue="hangout">
-                  <option value="hangout">Hangout</option>
-                  <option value="check-in">Check-in</option>
-                  <option value="message">Message</option>
-                  <option value="call">Call</option>
-                </select>
-              </label>
-              <label className="grid gap-2">
-                <span className="field-label">When</span>
-                <input className="field-input" name="occurredAt" type="datetime-local" defaultValue={toInputDateTime()} required />
-              </label>
-              <label className="grid gap-2">
-                <span className="field-label">Activity</span>
-                <input className="field-input" name="activityLabel" type="text" placeholder="Walk, dinner, coffee, check-in" />
-              </label>
-              <label className="grid gap-2">
-                <span className="field-label">Location</span>
-                <input className="field-input" name="locationLabel" type="text" placeholder="Optional freeform location" />
-              </label>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2">
+                  <span className="field-label">Type</span>
+                  <select className="field-input" name="touchpointType" defaultValue="hangout">
+                    <option value="hangout">Hangout</option>
+                    <option value="check-in">Check-in</option>
+                    <option value="message">Message</option>
+                    <option value="call">Call</option>
+                  </select>
+                </label>
+                <label className="grid gap-2">
+                  <span className="field-label">When</span>
+                  <input className="field-input" name="occurredAt" type="datetime-local" defaultValue={toInputDateTime()} required />
+                </label>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2">
+                  <span className="field-label">Activity</span>
+                  <input className="field-input" name="activityLabel" type="text" placeholder="Walk, dinner, coffee, check-in" />
+                </label>
+                <label className="grid gap-2">
+                  <span className="field-label">Location</span>
+                  <input className="field-input" name="locationLabel" type="text" placeholder="Optional freeform location" />
+                </label>
+              </div>
               <label className="grid gap-2">
                 <span className="field-label">Note</span>
                 <textarea className="field-input min-h-28" name="note" placeholder="What mattered? Anything to remember for the next invite?" />
@@ -456,14 +499,14 @@ export default async function ConnectionDetailPage({
           </SectionCard>
 
           <SectionCard
-            title="Link to a real user"
-            description="Invite this person to claim the connection with their own account, whether they already use the app or need to create one."
+            title="Invite them into the app"
+            description="Send an invite so they can connect this relationship to their own account."
           >
             <ConnectionLinkSection
               connectionId={connection.id}
               redirectTo={`/connections/${connection.id}`}
               linkedUserLabel={linkedUserLabel}
-              activeInvite={activeInvite && inviteUrl ? { email: activeInvite.invited_email, inviteUrl } : null}
+              activeInvite={activeInvite}
             />
           </SectionCard>
 

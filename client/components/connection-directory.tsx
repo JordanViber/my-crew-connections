@@ -15,9 +15,9 @@ function SummaryChip({
   value: number;
 }>) {
   return (
-    <div className="rounded-[1.2rem] border border-border/80 bg-white/72 px-4 py-3">
+    <div className="rounded-[1.1rem] border border-border/80 bg-white/72 px-3.5 py-3">
       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-accent-strong">{label}</p>
-      <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">{value}</p>
+      <p className="mt-1.5 text-lg font-semibold tracking-tight text-foreground">{value}</p>
     </div>
   );
 }
@@ -42,23 +42,17 @@ function ConnectionSection({
         <p className="mt-1 text-sm leading-6 text-foreground/68">{description}</p>
       </div>
       {items.map((connection) => (
-        <article key={connection.id} className="rounded-[1.4rem] border border-border/90 bg-white/82 p-4">
+        <article key={connection.id} className="rounded-[1.25rem] border border-border/90 bg-white/82 p-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">{connection.subtitle}</p>
-              <h2 className="mt-2 text-2xl font-semibold text-foreground">{connection.title}</h2>
+              <h2 className="mt-2 text-[1.35rem] font-semibold text-foreground">{connection.title}</h2>
               <p className="mt-2 text-sm text-foreground/70">{connection.cadenceLabel}</p>
               <p className="mt-1 text-sm text-foreground/65">Last touchpoint: {connection.lastTouchpointLabel}</p>
               <div className="mt-3">
                 <ConnectionLinkBadge linkState={connection.linkState} pendingInviteEmail={connection.pendingInviteEmail} />
               </div>
-              {connection.linkState === "pending" ? (
-                <p className="mt-2 text-sm text-foreground/65">Waiting on {connection.pendingInviteEmail} to claim.</p>
-              ) : connection.linkState === "linked" ? (
-                <p className="mt-2 text-sm text-foreground/65">This person is already tied to a real app user.</p>
-              ) : (
-                <p className="mt-2 text-sm text-foreground/65">No real-user link has been started yet.</p>
-              )}
+              <p className="mt-2 text-sm text-foreground/65">{getConnectionLinkMessage(connection)}</p>
               {connection.nextHangoutLabel ? (
                 <p className="mt-1 text-sm text-foreground/65">Next plan: {connection.nextHangoutLabel}</p>
               ) : null}
@@ -66,7 +60,7 @@ function ConnectionSection({
             <div className="flex flex-col items-start gap-3 md:items-end">
               <StatusPill health={connection.health} />
               <Link className="button-secondary" href={`/connections/${connection.id}`}>
-                Edit details
+                Open person
               </Link>
             </div>
           </div>
@@ -76,11 +70,23 @@ function ConnectionSection({
   );
 }
 
+function getConnectionLinkMessage(connection: RelationshipSummary) {
+  if (connection.linkState === "pending") {
+    return `Waiting on ${connection.pendingInviteEmail} to accept the invite.`;
+  }
+
+  if (connection.linkState === "linked") {
+    return "This person is already connected to their own account.";
+  }
+
+  return "Invite them any time you want to connect this record to their account.";
+}
+
 const filterLabels: { id: ConnectionDirectoryFilter; label: string }[] = [
   { id: "all", label: "All" },
-  { id: "linked", label: "Linked" },
-  { id: "pending", label: "Pending" },
-  { id: "local", label: "Local" },
+  { id: "linked", label: "Connected" },
+  { id: "pending", label: "Invited" },
+  { id: "local", label: "Not linked" },
 ];
 
 export function ConnectionDirectory({
@@ -95,6 +101,44 @@ export function ConnectionDirectory({
   const needsAttentionCount = filtered.filter((connection) => connection.health.state !== "on-track").length;
   const connectionsNeedingAttention = filtered.filter((connection) => connection.health.state !== "on-track");
   const onTrackConnections = filtered.filter((connection) => connection.health.state === "on-track");
+  let content: React.ReactNode;
+
+  if (connections.length === 0) {
+    content = (
+      <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
+        <p className="text-sm leading-7 text-foreground/68">
+          No people yet. Add someone you care about and the app can start shaping your rhythm around them.
+        </p>
+        <p className="mt-2 text-sm leading-6 text-foreground/62">
+          A great starting set is a close friend, a recurring activity buddy, and someone you never want to accidentally lose track of.
+        </p>
+      </div>
+    );
+  } else if (filtered.length === 0) {
+    content = (
+      <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
+        <p className="text-sm leading-7 text-foreground/68">Nothing matches that search and filter combination yet.</p>
+        <p className="mt-2 text-sm leading-6 text-foreground/62">
+          Try a broader search or switch between connected, invited, and not-linked views.
+        </p>
+      </div>
+    );
+  } else {
+    content = (
+      <>
+        <ConnectionSection
+          title="Needs attention"
+          description="These people are due soon or overdue and are the next best ones to reach out to."
+          items={connectionsNeedingAttention}
+        />
+        <ConnectionSection
+          title="On track"
+          description="These relationships are in a comfortable rhythm right now."
+          items={onTrackConnections}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="grid gap-4">
@@ -132,36 +176,7 @@ export function ConnectionDirectory({
         </div>
       </div>
 
-      {connections.length === 0 ? (
-        <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
-          <p className="text-sm leading-7 text-foreground/68">
-            No people added yet. Start with three people or one group to mirror the planned onboarding flow.
-          </p>
-          <p className="mt-2 text-sm leading-6 text-foreground/62">
-            A good first set is one close friend, one recurring activity buddy, and one person you tend to accidentally lose track of.
-          </p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
-          <p className="text-sm leading-7 text-foreground/68">Nothing matches that search and filter combination yet.</p>
-          <p className="mt-2 text-sm leading-6 text-foreground/62">
-            Try a broader search or switch between linked, pending, and local-only views.
-          </p>
-        </div>
-      ) : (
-        <>
-          <ConnectionSection
-            title="Needs attention"
-            description="These people are due soon or overdue and should be the next ones you act on."
-            items={connectionsNeedingAttention}
-          />
-          <ConnectionSection
-            title="On track"
-            description="These connections are healthy right now, so you can focus elsewhere without losing confidence."
-            items={onTrackConnections}
-          />
-        </>
-      )}
+      {content}
     </div>
   );
 }

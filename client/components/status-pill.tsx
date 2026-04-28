@@ -8,7 +8,7 @@ const colorMap: Record<RelationshipHealth["state"], string> = {
 
 export function StatusPill({ health }: Readonly<{ health: RelationshipHealth }>) {
   return (
-    <div className={`inline-flex rounded-full px-3 py-2 text-sm font-semibold ${colorMap[health.state]}`}>
+    <div className={`inline-flex rounded-full px-2.5 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] ${colorMap[health.state]}`}>
       {health.label}
     </div>
   );

@@ -33,7 +33,7 @@ export default async function ConnectionsPage({
   return (
     <AppShell
       title="People you want to keep close"
-      subtitle="Manual entry only for now. The product docs were explicit: get to value fast, and leave contact import for later."
+      subtitle="Keep the people you care about in one calm list, with just enough detail to make the next reach-out easier."
       email={user.email ?? "Signed in"}
     >
       {feedback ? (
@@ -50,7 +50,7 @@ export default async function ConnectionsPage({
             id: "active",
             label: "Active",
             content: (
-              <SectionCard title="Current people" description="Open a detail page to update cadence, notes, plans, or log a touchpoint for a specific person.">
+              <SectionCard title="Current people" description="Search, filter, and open a person to update cadence, notes, plans, or recent touchpoints.">
                 <div className="mb-4 flex flex-wrap gap-2">
                   <Link className="button-secondary" href="/connections?tab=create">
                     Add a person
@@ -64,7 +64,7 @@ export default async function ConnectionsPage({
             id: "create",
             label: "Create",
             content: (
-              <SectionCard title="Add a person" description="A disciplined form: name, cadence, tags, and just enough context to make the next step easier.">
+              <SectionCard title="Add a person" description="Name, cadence, and a bit of context is enough to get started.">
                 <ConnectionCreateForm />
               </SectionCard>
             ),
@@ -73,11 +73,11 @@ export default async function ConnectionsPage({
       />
 
       <div className="hidden gap-6 xl:grid-cols-[0.92fr_1.08fr] md:grid">
-        <SectionCard title="Add a person" description="A disciplined form: name, cadence, tags, and just enough context to make the next step easier.">
+        <SectionCard title="Add a person" description="Name, cadence, and a bit of context is enough to get started.">
           <ConnectionCreateForm />
         </SectionCard>
 
-        <SectionCard title="Current people" description="Open a detail page to update cadence, notes, plans, or log a touchpoint for a specific person.">
+        <SectionCard title="Current people" description="Search, filter, and open a person to update cadence, notes, plans, or recent touchpoints.">
           <div className="mb-4 flex flex-wrap gap-2">
             <Link className="button-secondary" href="/connections?tab=create">
               Add a person

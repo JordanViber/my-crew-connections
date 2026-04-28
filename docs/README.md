@@ -1,6 +1,6 @@
 # My Crew Connections Docs
 
-This folder contains the planning documents plus the running written snapshot of the implemented localhost MVP.
+This folder contains the planning documents plus the current implementation snapshot for the app as it exists in local development today.
 
 ## Documents
 
@@ -11,8 +11,8 @@ This folder contains the planning documents plus the running written snapshot of
 - [TECH_STACK_DECISIONS.md](./TECH_STACK_DECISIONS.md) - architecture and technology choices
 - [MVP_ROADMAP.md](./MVP_ROADMAP.md) - phased delivery plan and current milestone status
 - [INTEGRATIONS_AND_SECRETS.md](./INTEGRATIONS_AND_SECRETS.md) - external services, keys, product decisions, and setup blockers
-- [LOCALHOST_MVP_REQUIREMENTS.md](./LOCALHOST_MVP_REQUIREMENTS.md) - strict local MVP baseline and what is now already shipped
-- [LOCAL_SUPABASE_SETUP.md](./LOCAL_SUPABASE_SETUP.md) - how to use Supabase locally for the first MVP
+- [LOCALHOST_MVP_REQUIREMENTS.md](./LOCALHOST_MVP_REQUIREMENTS.md) - the original local product baseline that shaped the current build
+- [LOCAL_SUPABASE_SETUP.md](./LOCAL_SUPABASE_SETUP.md) - how to run the local Supabase stack and sync app env values
 
 ## Suggested Reading Order
 
@@ -23,7 +23,7 @@ This folder contains the planning documents plus the running written snapshot of
 5. Tech stack decisions
 6. MVP roadmap
 7. Integrations and secrets
-8. Localhost MVP requirements
+8. Localhost MVP requirements and shipped delta
 9. Local Supabase setup
 
 ## Key Throughline
@@ -38,7 +38,7 @@ The core loop for the app is:
 
 ## Current Shipped State
 
-As of April 19, 2026, the localhost app already supports:
+As of April 27, 2026, the local app currently supports:
 - dual-path auth with local password first and magic link second
 - people and groups CRUD
 - cadence rules and relationship health
@@ -56,7 +56,7 @@ As of April 19, 2026, the localhost app already supports:
 ## Resume Here
 
 If we stop and resume later, start from this understanding:
-- the localhost MVP is no longer just a scaffold; the core loop is implemented
+- the core relationship loop is implemented and usable locally end to end
 - local Supabase resets will wipe local auth users and test data
 - groups still center on connection records first, with deeper shared collaboration still to come
 - invite claiming now links both users by creating or reusing a reciprocal connection

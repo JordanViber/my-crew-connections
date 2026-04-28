@@ -70,7 +70,7 @@ export default async function GroupDetailPage({
   return (
     <AppShell
       title={group.title}
-      subtitle="Group surfaces stay lightweight for now: cadence, membership, and logged history without collaboration complexity."
+      subtitle="Keep the group&apos;s cadence, members, plans, and shared history in one calm place."
       email={user.email ?? "Signed in"}
     >
       {feedback ? (
@@ -86,7 +86,7 @@ export default async function GroupDetailPage({
             id: "manage",
             label: "Manage",
             content: (
-              <div className="grid gap-4">
+              <div className="grid gap-3">
                 <SectionCard title="Group settings" description={group.subtitle}>
                   <div className="mb-5 flex items-center justify-between gap-4">
                     <StatusPill health={group.health} />
@@ -97,7 +97,7 @@ export default async function GroupDetailPage({
                     action={updateGroupAction}
                     editLabel="Edit group"
                     saveLabel="Save group"
-                    helperText="This is the organizer-facing version of the group. Keep settings simple enough that updating them never feels like work."
+                    helperText="Keep the basics light so updating this group never feels like work."
                   >
                     <input type="hidden" name="groupId" value={group.id} />
                     <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
@@ -140,7 +140,7 @@ export default async function GroupDetailPage({
                   </form>
                 </SectionCard>
 
-                <SectionCard title="Members" description="Group records can include placeholder members before anyone else uses the app.">
+                <SectionCard title="Members" description="Add people from your existing list to build out the crew over time.">
                   <div className="mb-5 grid gap-3">
                     {memberConnections.length > 0 ? (
                       memberConnections.map((member) => (
@@ -224,27 +224,31 @@ export default async function GroupDetailPage({
                   <input type="hidden" name="targetType" value="group" />
                   <input type="hidden" name="targetId" value={group.id} />
                   <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
-                  <label className="grid gap-2">
-                    <span className="field-label">Type</span>
-                    <select className="field-input" name="touchpointType" defaultValue="hangout">
-                      <option value="hangout">Hangout</option>
-                      <option value="check-in">Check-in</option>
-                      <option value="message">Message</option>
-                      <option value="call">Call</option>
-                    </select>
-                  </label>
-                  <label className="grid gap-2">
-                    <span className="field-label">When</span>
-                    <input className="field-input" name="occurredAt" type="datetime-local" defaultValue={toInputDateTime()} required />
-                  </label>
-                  <label className="grid gap-2">
-                    <span className="field-label">Activity</span>
-                    <input className="field-input" name="activityLabel" type="text" placeholder="Dinner, run club, game night" />
-                  </label>
-                  <label className="grid gap-2">
-                    <span className="field-label">Location</span>
-                    <input className="field-input" name="locationLabel" type="text" placeholder="Optional freeform location" />
-                  </label>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="field-label">Type</span>
+                      <select className="field-input" name="touchpointType" defaultValue="hangout">
+                        <option value="hangout">Hangout</option>
+                        <option value="check-in">Check-in</option>
+                        <option value="message">Message</option>
+                        <option value="call">Call</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">When</span>
+                      <input className="field-input" name="occurredAt" type="datetime-local" defaultValue={toInputDateTime()} required />
+                    </label>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="grid gap-2">
+                      <span className="field-label">Activity</span>
+                      <input className="field-input" name="activityLabel" type="text" placeholder="Dinner, run club, game night" />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">Location</span>
+                      <input className="field-input" name="locationLabel" type="text" placeholder="Optional freeform location" />
+                    </label>
+                  </div>
                   <label className="grid gap-2">
                     <span className="field-label">Note</span>
                     <textarea className="field-input min-h-28" name="note" placeholder="Why did this matter, and what should the next plan build on?" />
@@ -325,7 +329,7 @@ export default async function GroupDetailPage({
         ]}
       />
 
-      <div className="hidden gap-6 xl:grid-cols-[0.95fr_1.05fr] md:grid">
+      <div className="hidden gap-5 xl:grid-cols-[0.95fr_1.05fr] md:grid">
         <div className="grid gap-6">
           <SectionCard title="Group settings" description={group.subtitle}>
             <div className="mb-5 flex items-center justify-between gap-4">
@@ -337,7 +341,7 @@ export default async function GroupDetailPage({
               action={updateGroupAction}
               editLabel="Edit group"
               saveLabel="Save group"
-              helperText="This is the organizer-facing version of the group. Keep settings simple enough that updating them never feels like work."
+                    helperText="Keep the basics light so updating this group never feels like work."
             >
               <input type="hidden" name="groupId" value={group.id} />
               <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
@@ -379,8 +383,7 @@ export default async function GroupDetailPage({
               </ConfirmSubmitButton>
             </form>
           </SectionCard>
-
-          <SectionCard title="Members" description="Group records can include placeholder members before anyone else uses the app.">
+          <SectionCard title="Members" description="Build the crew from people already in your list, even if not everyone uses the app yet.">
             <div className="mb-5 grid gap-3">
               {memberConnections.length > 0 ? (
                 memberConnections.map((member) => (
@@ -434,27 +437,31 @@ export default async function GroupDetailPage({
               <input type="hidden" name="targetType" value="group" />
               <input type="hidden" name="targetId" value={group.id} />
               <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
-              <label className="grid gap-2">
-                <span className="field-label">Type</span>
-                <select className="field-input" name="touchpointType" defaultValue="hangout">
-                  <option value="hangout">Hangout</option>
-                  <option value="check-in">Check-in</option>
-                  <option value="message">Message</option>
-                  <option value="call">Call</option>
-                </select>
-              </label>
-              <label className="grid gap-2">
-                <span className="field-label">When</span>
-                <input className="field-input" name="occurredAt" type="datetime-local" defaultValue={toInputDateTime()} required />
-              </label>
-              <label className="grid gap-2">
-                <span className="field-label">Activity</span>
-                <input className="field-input" name="activityLabel" type="text" placeholder="Dinner, run club, game night" />
-              </label>
-              <label className="grid gap-2">
-                <span className="field-label">Location</span>
-                <input className="field-input" name="locationLabel" type="text" placeholder="Optional freeform location" />
-              </label>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2">
+                  <span className="field-label">Type</span>
+                  <select className="field-input" name="touchpointType" defaultValue="hangout">
+                    <option value="hangout">Hangout</option>
+                    <option value="check-in">Check-in</option>
+                    <option value="message">Message</option>
+                    <option value="call">Call</option>
+                  </select>
+                </label>
+                <label className="grid gap-2">
+                  <span className="field-label">When</span>
+                  <input className="field-input" name="occurredAt" type="datetime-local" defaultValue={toInputDateTime()} required />
+                </label>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2">
+                  <span className="field-label">Activity</span>
+                  <input className="field-input" name="activityLabel" type="text" placeholder="Dinner, run club, game night" />
+                </label>
+                <label className="grid gap-2">
+                  <span className="field-label">Location</span>
+                  <input className="field-input" name="locationLabel" type="text" placeholder="Optional freeform location" />
+                </label>
+              </div>
               <label className="grid gap-2">
                 <span className="field-label">Note</span>
                 <textarea className="field-input min-h-28" name="note" placeholder="Why did this matter, and what should the next plan build on?" />
@@ -509,7 +516,7 @@ export default async function GroupDetailPage({
 
           <SectionCard
             title="Saved plans"
-            description="Keep upcoming crew plans visible without needing a heavier collaboration system yet."
+            description="Keep upcoming crew plans visible in one place until they happen, get canceled, or move to the calendar."
           >
             <HangoutList
               hangouts={plannedHangouts}

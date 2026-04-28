@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useTransition } from "react";
+import { type ComponentProps, useState, useTransition } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export function MagicLinkForm({
@@ -15,7 +15,7 @@ export function MagicLinkForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const handleSubmit: NonNullable<ComponentProps<"form">["onSubmit"]> = (event) => {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
@@ -27,7 +27,7 @@ export function MagicLinkForm({
     }
 
     if (!stackAvailable) {
-      setErrorMessage("Local Supabase is offline. Start Docker Desktop and the local Supabase stack first.");
+      setErrorMessage("Email sign-in is temporarily unavailable. Try again in a moment.");
       return;
     }
 
@@ -53,11 +53,11 @@ export function MagicLinkForm({
         router.refresh();
         return;
       } catch {
-        setErrorMessage("Could not reach local Supabase. Start Docker Desktop and the local Supabase stack, then try again.");
+        setErrorMessage("We couldn’t reach the email sign-in service. Try again in a moment.");
         return;
       }
     });
-  }
+  };
 
   return (
     <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
@@ -79,7 +79,7 @@ export function MagicLinkForm({
       ) : null}
 
       <button className="button-primary mt-2" type="submit" disabled={isPending}>
-        {isPending ? "Sending magic link..." : "Email me the magic link"}
+        {isPending ? "Sending sign-in link..." : "Email me a sign-in link"}
       </button>
     </form>
   );

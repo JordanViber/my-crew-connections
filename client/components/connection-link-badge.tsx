@@ -9,20 +9,23 @@ export function ConnectionLinkBadge({
   linkedUserLabel?: string | null;
   pendingInviteEmail?: string | null;
 }>) {
+  const fallbackLinkedUserLabel = linkState === "linked" && !linkedUserLabel ? "an account" : linkedUserLabel;
+  const normalizedPendingInviteEmail = linkState === "pending" || pendingInviteEmail ? pendingInviteEmail : undefined;
   const state = getConnectionLinkState({
-    linkedUserLabel: linkState === "linked" && !linkedUserLabel ? "a real user" : linkedUserLabel,
-    pendingInviteEmail: linkState === "pending" || pendingInviteEmail ? pendingInviteEmail : undefined,
+    linkedUserLabel: fallbackLinkedUserLabel,
+    pendingInviteEmail: normalizedPendingInviteEmail,
   });
 
-  const classes =
-    state.state === "linked"
-      ? "bg-mint text-[#214c35]"
-      : state.state === "pending"
-        ? "bg-[#fff0df] text-[#8b5b2b]"
-        : "bg-white text-foreground/70";
+  let classes = "bg-white text-foreground/70";
+  let shortLabel = "Not linked";
 
-  const shortLabel =
-    state.state === "linked" ? "Linked user" : state.state === "pending" ? "Invite pending" : "Local only";
+  if (state.state === "linked") {
+    classes = "bg-mint text-[#214c35]";
+    shortLabel = "Connected";
+  } else if (state.state === "pending") {
+    classes = "bg-[#fff0df] text-[#8b5b2b]";
+    shortLabel = "Invite sent";
+  }
 
   return <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${classes}`}>{shortLabel}</span>;
 }

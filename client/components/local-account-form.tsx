@@ -2,10 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { mapLocalPasswordSignInError } from "@/lib/auth-errors";
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
-export function PasswordAuthForm({
+export function LocalAccountForm({
   stackAvailable,
   nextPath,
 }: Readonly<{
@@ -23,7 +21,7 @@ export function PasswordAuthForm({
       setErrorMessage(null);
 
       if (!stackAvailable) {
-        setErrorMessage("Sign-in is temporarily unavailable. Try again in a moment.");
+        setErrorMessage("Local sign-in services are offline. Start the local stack, then try again.");
         return;
       }
 
@@ -33,31 +31,33 @@ export function PasswordAuthForm({
         return;
       }
 
-      const supabase = createBrowserSupabaseClient();
       try {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: normalizedEmail,
-          password,
+        const response = await fetch("/auth/dev-password", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: normalizedEmail, password }),
         });
 
-        if (error) {
-          setErrorMessage(mapLocalPasswordSignInError(error.message));
+        const payload = (await response.json()) as { error?: string };
+
+        if (!response.ok) {
+          setErrorMessage(payload.error ?? "Failed to prepare the local account.");
           return;
         }
 
-        router.replace(nextPath);
+        router.replace(`/auth?prepared=1&next=${encodeURIComponent(nextPath)}`);
         router.refresh();
-        return;
       } catch {
-        setErrorMessage("We couldn’t reach the sign-in service. Try again in a moment.");
-        return;
+        setErrorMessage("Could not reach the local account helper. Check the app server and local services, then try again.");
       }
     });
   }
 
   return (
     <form
-      className="mt-6 grid gap-4"
+      className="mt-4 grid gap-3"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -70,7 +70,7 @@ export function PasswordAuthForm({
           className="field-input"
           type="email"
           name="email"
-          placeholder="Enter your email"
+          placeholder="Enter an email for this device"
           required
           disabled={isPending}
           value={email}
@@ -85,7 +85,7 @@ export function PasswordAuthForm({
           className="field-input"
           type="password"
           name="password"
-          placeholder="Enter your password"
+          placeholder="Choose a password for this device"
           required
           disabled={isPending}
           value={password}
@@ -97,11 +97,9 @@ export function PasswordAuthForm({
         <p className="rounded-2xl bg-[#f8d2ca] px-4 py-3 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
-        <button className="button-primary" type="submit" disabled={isPending}>
-          {isPending ? "Signing in..." : "Sign in"}
-        </button>
-      </div>
+      <button className="button-secondary w-fit" type="submit" disabled={isPending}>
+        {isPending ? "Preparing local account..." : "Create account or reset password"}
+      </button>
     </form>
   );
 }

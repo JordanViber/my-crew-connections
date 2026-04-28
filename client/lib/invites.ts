@@ -21,8 +21,8 @@ export function getConnectionLinkState({
     return {
       state: "linked" as const,
       eyebrow: "Link status",
-      title: "Linked to a real user",
-      body: `This connection is already linked to ${linkedUserLabel}. No extra invite step is needed now.`,
+      title: "Connected to their account",
+      body: `This connection is already tied to ${linkedUserLabel}. No new invite is needed right now.`,
     };
   }
 
@@ -38,7 +38,7 @@ export function getConnectionLinkState({
   return {
     state: "unlinked" as const,
     eyebrow: "Link status",
-    title: "No real-user link started yet",
-    body: "This person is still only a local connection record. Add an email below whenever you want to start the invite flow.",
+    title: "Not linked yet",
+    body: "This person is only in your private list right now. Add an email below whenever you want to invite them in.",
   };
 }

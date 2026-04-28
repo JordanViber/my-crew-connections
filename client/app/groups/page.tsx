@@ -33,7 +33,7 @@ export default async function GroupsPage({
   return (
     <AppShell
       title="Groups and recurring crews"
-      subtitle="Groups work even when only one organizer uses the app. That keeps the MVP solo-first while leaving room for collaboration later."
+      subtitle="Keep dinner crews, clubs, and recurring traditions visible before they drift out of habit."
       email={user.email ?? "Signed in"}
     >
       {feedback ? (
@@ -50,7 +50,7 @@ export default async function GroupsPage({
             id: "active",
             label: "Active",
             content: (
-              <SectionCard title="Active groups" description="Use the detail page to update cadence, members, plans, and group-level touchpoints.">
+              <SectionCard title="Active groups" description="Open a group to adjust cadence, members, plans, and shared history.">
                 <div className="mb-4 flex flex-wrap gap-2">
                   <Link className="button-secondary" href="/groups?tab=create">
                     Create a group
@@ -64,7 +64,7 @@ export default async function GroupsPage({
             id: "create",
             label: "Create",
             content: (
-              <SectionCard title="Create a group" description="Pick a cadence and optionally add existing connections as the first members.">
+              <SectionCard title="Create a group" description="Start with a name, a cadence, and the first few people who make the group real.">
                 <GroupCreateForm connections={data.connections} />
               </SectionCard>
             ),
@@ -73,11 +73,11 @@ export default async function GroupsPage({
       />
 
       <div className="hidden gap-6 xl:grid-cols-[0.9fr_1.1fr] md:grid">
-        <SectionCard title="Create a group" description="Pick a cadence and optionally add existing connections as the first members.">
+        <SectionCard title="Create a group" description="Start with a name, a cadence, and the first few people who make the group real.">
           <GroupCreateForm connections={data.connections} />
         </SectionCard>
 
-        <SectionCard title="Active groups" description="Use the detail page to update cadence, add more members, save plans, and log group-level touchpoints.">
+        <SectionCard title="Active groups" description="Open a group to adjust cadence, members, plans, and shared history.">
           <div className="mb-4 flex flex-wrap gap-2">
             <Link className="button-secondary" href="/groups?tab=create">
               Create a group

@@ -44,7 +44,7 @@ export function HangoutList({
 
           <div className="mt-4 flex flex-wrap gap-2">
             <a className="button-secondary" href={`/plan.ics?hangoutId=${hangout.id}`}>
-              Export ICS
+              Export to calendar
             </a>
 
             {hangout.status === "planned" ? (

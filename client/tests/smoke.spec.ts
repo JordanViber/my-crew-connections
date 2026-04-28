@@ -1,17 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-test("landing page highlights the MVP loop", async ({ page }) => {
+test("landing page highlights the core relationship loop", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: /make staying close feel more natural/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /stay close without carrying the whole social calendar in your head/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /open sign in|open your dashboard/i })).toBeVisible();
 });
 
-test("protected dashboard redirects unauthenticated visitors to dual-path auth", async ({ page }) => {
+test("protected dashboard redirects unauthenticated visitors to the auth page", async ({ page }) => {
   await page.goto("/dashboard");
 
   await expect(page).toHaveURL(/\/auth/);
-  await expect(page.getByRole("heading", { name: /get into the mvp with the fastest path first/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /primary: local password/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /secondary: magic link/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /stay close to the people who matter/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /password sign-in/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /email sign-in link/i })).toBeVisible();
 });
