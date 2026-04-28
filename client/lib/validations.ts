@@ -12,6 +12,9 @@ export const inviteEmailSchema = z.object({
   email: z.email(),
 });
 
+const nameFieldSchema = z.string().trim().min(1).max(50);
+const optionalProfileFieldSchema = z.string().trim().max(120).optional().default("");
+
 const baseCadenceSchema = z.object({
   cadenceValue: z.coerce.number().int().min(1).max(90),
   cadenceUnit: cadenceUnitSchema,
@@ -64,6 +67,35 @@ export const touchpointSchema = z.object({
   note: z.string().trim().max(500).optional().default(""),
   activityLabel: z.string().trim().max(120).optional().default(""),
   locationLabel: z.string().trim().max(120).optional().default(""),
+});
+
+export const accountProfileSchema = z.object({
+  firstName: nameFieldSchema,
+  lastName: nameFieldSchema,
+  phoneNumber: z.string().trim().max(30).optional().default(""),
+  addressLine1: optionalProfileFieldSchema,
+  addressLine2: optionalProfileFieldSchema,
+  city: z.string().trim().max(80).optional().default(""),
+  region: z.string().trim().max(80).optional().default(""),
+  postalCode: z.string().trim().max(20).optional().default(""),
+  country: z.string().trim().max(80).optional().default(""),
+});
+
+export const accountRegistrationSchema = accountProfileSchema.extend({
+  email: z.email(),
+  password: z.string().min(8).max(120),
+});
+
+export const accountEmailSchema = z.object({
+  email: z.email(),
+});
+
+export const accountPasswordSchema = z.object({
+  password: z.string().min(8).max(120),
+  confirmPassword: z.string().min(8).max(120),
+}).refine((value) => value.password === value.confirmPassword, {
+  message: "Passwords must match.",
+  path: ["confirmPassword"],
 });
 
 export function parseCommaSeparatedList(input: string) {

@@ -64,6 +64,21 @@ const feedbackMessages = {
     title: "Connection linked",
     body: "This relationship is now linked to a real app user account.",
   },
+  "profile-saved": {
+    tone: "success",
+    title: "Profile saved",
+    body: "Your account details are updated everywhere this app uses your identity.",
+  },
+  "email-update-sent": {
+    tone: "success",
+    title: "Email update started",
+    body: "If your auth provider requires confirmation, finish the change from the message sent to your new address.",
+  },
+  "password-updated": {
+    tone: "success",
+    title: "Password updated",
+    body: "Your new password is active for the next sign-in.",
+  },
 } as const;
 
 export type FeedbackKey = keyof typeof feedbackMessages;

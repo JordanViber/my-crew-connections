@@ -39,8 +39,20 @@ export default async function Home({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const primaryHref = user ? "/dashboard" : "/auth";
-  const primaryLabel = user ? "Open your dashboard" : "Open sign in";
+  const primaryHref = user ? "/dashboard" : "/auth/create";
+  const primaryLabel = user ? "Open your dashboard" : "Create account";
+  const secondaryHref = user ? "/connections" : "/auth";
+  const secondaryLabel = user ? "Explore the relationship workspace" : "I already have an account";
+  const navLinks = user
+    ? [
+        { href: "/dashboard", label: "Dashboard" },
+        { href: "/connections", label: "People" },
+        { href: "/groups", label: "Groups" },
+      ]
+    : [
+        { href: "/auth/create", label: "Create account" },
+        { href: "/auth", label: "Sign in" },
+      ];
 
   return (
     <main className="shell px-4 py-4 md:px-8 md:py-8">
@@ -56,15 +68,11 @@ export default async function Home({
               </p>
             </div>
             <nav className="flex flex-wrap justify-end gap-2.5">
-              <Link className="button-secondary" href={primaryHref}>
-                {user ? "Dashboard" : "Sign in"}
-              </Link>
-              <Link className="button-secondary" href="/connections">
-                People
-              </Link>
-              <Link className="button-secondary" href="/groups">
-                Groups
-              </Link>
+              {navLinks.map((link) => (
+                <Link key={link.href} className="button-secondary" href={link.href}>
+                  {link.label}
+                </Link>
+              ))}
             </nav>
           </div>
 
@@ -87,8 +95,8 @@ export default async function Home({
               <Link className="button-primary" href={primaryHref}>
                 {primaryLabel}
               </Link>
-              <Link className="button-secondary" href="/connections">
-                Explore the relationship workspace
+              <Link className="button-secondary" href={secondaryHref}>
+                {secondaryLabel}
               </Link>
             </div>
           </div>

@@ -4,7 +4,8 @@ test("landing page highlights the core relationship loop", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: /stay close without carrying the whole social calendar in your head/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /open sign in|open your dashboard/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /create account|open your dashboard/i }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /i already have an account|explore the relationship workspace/i })).toBeVisible();
 });
 
 test("protected dashboard redirects unauthenticated visitors to the auth page", async ({ page }) => {

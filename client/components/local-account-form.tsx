@@ -98,7 +98,7 @@ export function LocalAccountForm({
       ) : null}
 
       <button className="button-secondary w-fit" type="submit" disabled={isPending}>
-        {isPending ? "Preparing local account..." : "Create account or reset password"}
+        {isPending ? "Preparing local account..." : "Prepare local account"}
       </button>
     </form>
   );

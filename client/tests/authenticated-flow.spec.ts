@@ -4,6 +4,18 @@ const email = `e2e-${Date.now()}@example.com`;
 const password = "test-password-123";
 const iphone15Viewport = { width: 393, height: 852 };
 
+async function createAccount(page: Parameters<typeof test>[0]["page"], emailAddress: string, passwordValue: string) {
+  await page.goto("/auth/create");
+  await expect(page.getByRole("heading", { name: /set up the account you will actually want to keep/i })).toBeVisible();
+  await page.getByLabel("First name").fill("Taylor");
+  await page.getByLabel("Last name").fill("Tester");
+  await page.getByLabel("Phone number").fill("555-0101");
+  await page.getByLabel("Email").fill(emailAddress);
+  await page.getByLabel("Password", { exact: true }).fill(passwordValue);
+  await page.getByLabel("Confirm password", { exact: true }).fill(passwordValue);
+  await page.getByRole("button", { name: "Create account" }).click();
+}
+
 async function prepareLocalAccount(page: Parameters<typeof test>[0]["page"], emailAddress: string, passwordValue: string) {
   const localEmailInput = page.getByPlaceholder("Enter an email for this device");
 
@@ -13,7 +25,7 @@ async function prepareLocalAccount(page: Parameters<typeof test>[0]["page"], ema
 
   await localEmailInput.fill(emailAddress);
   await page.getByPlaceholder("Choose a password for this device").fill(passwordValue);
-  await page.getByRole("button", { name: "Create account or reset password" }).click();
+  await page.getByRole("button", { name: "Prepare local account" }).click();
   await expect(page.getByText(/local account is ready/i)).toBeVisible();
 }
 
@@ -23,12 +35,10 @@ async function signInWithPassword(page: Parameters<typeof test>[0]["page"], emai
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
-test("mobile auth and create-person flow works end to end", async ({ page }) => {
+test("mobile create-account and create-person flow works end to end", async ({ page }) => {
   await page.setViewportSize(iphone15Viewport);
-  await page.goto("/auth");
 
-  await prepareLocalAccount(page, email, password);
-  await signInWithPassword(page, email, password);
+  await createAccount(page, email, password);
   await page.waitForURL("**/dashboard");
   await expect(page.getByRole("navigation").getByRole("link", { name: "People" })).toBeVisible();
   await expect(page.getByRole("navigation").getByRole("link", { name: "Groups" })).toBeVisible();
@@ -210,7 +220,7 @@ test("saved group plans can be exported and canceled", async ({ page }) => {
   await expect(page.locator("h3:visible", { hasText: "Dinner with ICS Group" })).toHaveCount(0);
 });
 
-test("dashboard quick log and drawer navigation work on mobile", async ({ page }) => {
+test("dashboard quick log and settings updates work on mobile", async ({ page }) => {
   await page.setViewportSize(iphone15Viewport);
   const dashboardEmail = `dashboard-${Date.now()}@example.com`;
 
@@ -239,13 +249,18 @@ test("dashboard quick log and drawer navigation work on mobile", async ({ page }
   await page.getByRole("button", { name: "History" }).click();
   await expect(page.locator('p:visible', { hasText: /turned a quick catch-up into a real plan/i })).toBeVisible();
 
-  await page.getByRole("button", { name: "Menu" }).click();
-  await expect(page.locator('[aria-label="Quick navigation menu"]')).toBeVisible();
-  await expect(page.getByText(/move around faster/i)).toBeVisible();
-  await expect(page.getByText(dashboardEmail)).toBeVisible();
+  await page.getByRole("navigation").getByRole("link", { name: "Settings" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByRole("heading", { name: /account settings/i })).toBeVisible();
 
-  await page.locator('[aria-label="Quick navigation menu"]').getByRole("link", { name: "Groups" }).click();
-  await expect(page).toHaveURL(/\/groups$/);
+  await page.getByLabel("First name").fill("Dashboard");
+  await page.getByLabel("Last name").fill("Owner");
+  await page.getByLabel("Phone number").fill("555-0110");
+  await page.getByRole("button", { name: "Save profile" }).click();
+
+  await expect(page).toHaveURL(/\/settings\?feedback=profile-saved/);
+  await expect(page.getByText(/profile saved/i)).toBeVisible();
+  await expect(page.getByLabel("Phone number")).toHaveValue("555-0110");
 });
 
 test("archiving a connection removes it from active lists", async ({ page }) => {

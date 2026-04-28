@@ -6,6 +6,9 @@ import { redirect } from "next/navigation";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
+  accountEmailSchema,
+  accountPasswordSchema,
+  accountProfileSchema,
   connectionSchema,
   getString,
   getStringList,
@@ -21,7 +24,7 @@ import {
 } from "@/lib/validations";
 import { buildConnectionInvitePath, normalizeInviteEmail } from "@/lib/invites";
 
-async function getAuthenticatedClient() {
+async function getAuthenticatedSession() {
   const authSupabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -30,6 +33,12 @@ async function getAuthenticatedClient() {
   if (!user) {
     redirect("/auth");
   }
+
+  return { authSupabase, user };
+}
+
+async function getAuthenticatedClient() {
+  const { user } = await getAuthenticatedSession();
 
   const supabase = createServerAdminSupabaseClient();
   return { supabase, user };
@@ -47,6 +56,21 @@ function getFallbackDisplayNameFromEmail(email?: string | null) {
   }
 
   return email.split("@")[0] || "Linked user";
+}
+
+function buildDisplayName(firstName: string, lastName: string, email?: string | null) {
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  if (fullName) {
+    return fullName;
+  }
+
+  return getFallbackDisplayNameFromEmail(email);
+}
+
+function revalidateAccountPaths() {
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
 }
 
 function revalidateRelationshipPaths(targetType: "connection" | "group", targetId: string) {
@@ -92,6 +116,90 @@ export async function signOutAction() {
 
   assertMutation(error, "Failed to sign out");
   redirect("/");
+}
+
+export async function updateProfileAction(formData: FormData) {
+  const { authSupabase, user } = await getAuthenticatedSession();
+  const supabase = createServerAdminSupabaseClient();
+  const payload = accountProfileSchema.parse({
+    firstName: getString(formData, "firstName"),
+    lastName: getString(formData, "lastName"),
+    phoneNumber: getString(formData, "phoneNumber"),
+    addressLine1: getString(formData, "addressLine1"),
+    addressLine2: getString(formData, "addressLine2"),
+    city: getString(formData, "city"),
+    region: getString(formData, "region"),
+    postalCode: getString(formData, "postalCode"),
+    country: getString(formData, "country"),
+  });
+  const displayName = buildDisplayName(payload.firstName, payload.lastName, user.email);
+
+  const { error: profileError } = await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      display_name: displayName,
+      first_name: payload.firstName,
+      last_name: payload.lastName,
+      phone_number: payload.phoneNumber || null,
+      billing_address_line1: payload.addressLine1 || null,
+      billing_address_line2: payload.addressLine2 || null,
+      billing_city: payload.city || null,
+      billing_region: payload.region || null,
+      billing_postal_code: payload.postalCode || null,
+      billing_country: payload.country || null,
+    },
+    { onConflict: "id" },
+  );
+
+  assertMutation(profileError, "Failed to update profile");
+
+  const { error: metadataError } = await authSupabase.auth.updateUser({
+    data: {
+      display_name: displayName,
+      first_name: payload.firstName,
+      last_name: payload.lastName,
+      phone_number: payload.phoneNumber || null,
+      billing_address_line1: payload.addressLine1 || null,
+      billing_address_line2: payload.addressLine2 || null,
+      billing_city: payload.city || null,
+      billing_region: payload.region || null,
+      billing_postal_code: payload.postalCode || null,
+      billing_country: payload.country || null,
+    },
+  });
+
+  assertMutation(metadataError, "Failed to update account metadata");
+  revalidateAccountPaths();
+  redirect(withFeedback("/settings", "profile-saved"));
+}
+
+export async function updateAccountEmailAction(formData: FormData) {
+  const { authSupabase, user } = await getAuthenticatedSession();
+  const payload = accountEmailSchema.parse({
+    email: getString(formData, "email"),
+  });
+
+  if ((user.email ?? "").toLowerCase() === payload.email.toLowerCase()) {
+    redirect("/settings");
+  }
+
+  const { error } = await authSupabase.auth.updateUser({ email: payload.email });
+  assertMutation(error, "Failed to update account email");
+  revalidateAccountPaths();
+  redirect(withFeedback("/settings", "email-update-sent"));
+}
+
+export async function updateAccountPasswordAction(formData: FormData) {
+  const { authSupabase } = await getAuthenticatedSession();
+  const payload = accountPasswordSchema.parse({
+    password: getString(formData, "password"),
+    confirmPassword: getString(formData, "confirmPassword"),
+  });
+
+  const { error } = await authSupabase.auth.updateUser({ password: payload.password });
+  assertMutation(error, "Failed to update password");
+  revalidateAccountPaths();
+  redirect(withFeedback("/settings", "password-updated"));
 }
 
 export async function createConnectionAction(formData: FormData) {

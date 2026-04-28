@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { LocalAccountForm } from "@/components/local-account-form";
@@ -9,7 +10,7 @@ import { getLocalSupabaseStatus } from "@/lib/supabase/local-stack-status";
 export default async function AuthPage({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ error?: string; prepared?: string; sent?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; prepared?: string; sent?: string; created?: string; next?: string }>;
 }>) {
   const params = await searchParams;
   const supabase = await createServerSupabaseClient();
@@ -28,18 +29,26 @@ export default async function AuthPage({
     <main className="shell flex items-center justify-center px-4 py-6 md:px-8">
       <div className="glass-panel grid max-w-5xl gap-8 rounded-4xl p-6 md:grid-cols-[1.2fr_0.9fr] md:p-10">
         <section className="space-y-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent-strong">Welcome back</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent-strong">Sign in</p>
           <h1 className="text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
             Stay close to the people who matter.
           </h1>
           <p className="max-w-xl text-lg leading-8 text-foreground/72">
             Sign in with your password or send yourself an email link when you want a lighter way back into your dashboard.
           </p>
+          <div className="flex flex-wrap gap-3">
+            <Link className="button-primary" href={`/auth/create?next=${encodeURIComponent(nextPath)}`}>
+              Create account
+            </Link>
+            <Link className="button-secondary" href="/">
+              Back to home
+            </Link>
+          </div>
           <div className="grid gap-4 md:grid-cols-3">
             {[
               "Use password sign-in when you want the fastest path back in.",
               "Send a sign-in link when you prefer email over passwords.",
-              "Jump back into people, groups, plans, and recent history in one place.",
+              "Create a real account with profile details from a dedicated sign-up screen instead of the local recovery helper.",
             ].map((step, index) => (
               <div key={step} className="section-card rounded-[1.4rem] p-5 text-sm leading-7 text-foreground/75">
                 <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">Step {index + 1}</p>
@@ -70,6 +79,15 @@ export default async function AuthPage({
               </div>
             ) : null}
 
+            {params.created ? (
+              <div className="mt-5">
+                <FeedbackBanner
+                  title="Account created"
+                  body="Your account is ready. Sign in below with the email and password you just set, or finish email confirmation if your auth setup requires it."
+                />
+              </div>
+            ) : null}
+
             <PasswordAuthForm stackAvailable={stackStatus.available} nextPath={nextPath} />
           </div>
 
@@ -93,11 +111,11 @@ export default async function AuthPage({
 
           <details className="section-card rounded-[1.8rem] p-6 md:p-8">
             <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-accent-strong">
-              Need help signing in on this device?
+              Local recovery tools
             </summary>
             <div className="mt-4 grid gap-4 text-sm leading-7 text-foreground/72">
               <p>
-                If you&apos;re trying the app on your own machine, use this section to create an account for this device or recover after resetting local data.
+                If you&apos;re running the app on your own machine, use this section to recover or reseed a local account after resetting the local database.
               </p>
               <div className="rounded-[1.2rem] border border-border/80 bg-white/65 px-4 py-3">
                 <p className="font-semibold text-foreground">Sign-in service status</p>

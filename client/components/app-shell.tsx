@@ -6,6 +6,7 @@ const navigation = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/connections", label: "People" },
   { href: "/groups", label: "Groups" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export function AppShell({
@@ -27,9 +28,6 @@ export function AppShell({
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-wrap items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-accent-strong md:gap-3 md:text-sm md:tracking-[0.28em]">
                 <span>My Crew Connections</span>
-                <span className="rounded-full border border-accent/15 bg-white/75 px-3 py-1 text-[0.6rem] text-foreground/72 md:text-[0.68rem]">
-                  Private by default
-                </span>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 md:gap-3">
@@ -68,7 +66,7 @@ export function AppShell({
 
         <div className="pb-34 pt-3.5 md:pb-0 md:pt-5">{children}</div>
       </div>
-      <MobileBottomNav title={title} email={email} />
+      <MobileBottomNav />
     </div>
   );
 }
