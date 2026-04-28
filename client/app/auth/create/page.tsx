@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AppleAuthButton } from "@/components/apple-auth-button";
 import { CreateAccountForm } from "@/components/create-account-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { env } from "@/lib/env";
@@ -32,24 +33,28 @@ export default async function CreateAccountPage({
 
   return (
     <main className="shell flex items-center justify-center px-4 py-6 md:px-8">
-      <div className="glass-panel grid max-w-6xl gap-8 rounded-4xl p-6 md:grid-cols-[0.92fr_1.08fr] md:p-10">
-        <section className="grid content-start gap-6">
+      <div className="glass-panel grid max-w-6xl gap-6 rounded-4xl p-6 md:grid-cols-[0.9fr_1.1fr] md:p-10">
+        <section className="grid content-start gap-5">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent-strong">Create account</p>
-            <h1 className="mt-4 text-5xl font-semibold tracking-tight text-foreground md:text-6xl">Set up the account you will actually want to keep.</h1>
+            <h1 className="mt-4 text-5xl font-semibold tracking-tight text-foreground md:text-6xl">Create your account in one step.</h1>
             <p className="mt-4 max-w-xl text-lg leading-8 text-foreground/72">
-              Start with real identity details now so invites, receipts, billing, and future account tools do not depend on your sign-in email alone.
+              Add your name, contact details, secure password, and mailing address from the start.
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <article className="section-card rounded-[1.4rem] p-5 text-sm leading-7 text-foreground/75">
-              <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">Standard identity</p>
-              <p className="mt-3">Collect first name, last name, phone, and sign-in details up front instead of treating the account like a temporary test login.</p>
+          <div className="grid gap-3 md:grid-cols-3">
+            <article className="section-card rounded-[1.35rem] p-4 text-sm leading-6 text-foreground/75">
+              <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">Identity</p>
+              <p className="mt-2">Your name and phone number stay attached to the account.</p>
             </article>
-            <article className="section-card rounded-[1.4rem] p-5 text-sm leading-7 text-foreground/75">
-              <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">Billing later</p>
-              <p className="mt-3">Address is optional today, but there is already a clear place to save it before subscriptions arrive.</p>
+            <article className="section-card rounded-[1.35rem] p-4 text-sm leading-6 text-foreground/75">
+              <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">Security</p>
+              <p className="mt-2">Choose a password now or continue with Apple.</p>
+            </article>
+            <article className="section-card rounded-[1.35rem] p-4 text-sm leading-6 text-foreground/75">
+              <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">Address</p>
+              <p className="mt-2">Type once and let the rest of the fields fill in.</p>
             </article>
           </div>
 
@@ -69,13 +74,19 @@ export default async function CreateAccountPage({
 
           <div className="section-card rounded-[1.8rem] p-6 md:p-8">
             <h2 className="text-3xl font-semibold tracking-tight text-foreground">Create your account</h2>
-            <p className="mt-3 text-sm leading-7 text-foreground/72">
-              This account flow is now separate from sign-in so first-time setup can collect the details a real settings screen expects.
-            </p>
+            <p className="mt-3 text-sm leading-7 text-foreground/72">Continue with Apple for speed, or use email below.</p>
 
-            <div className="mt-6">
-              <CreateAccountForm nextPath={nextPath} stackAvailable={stackStatus.available} preferLocalHelper={preferLocalHelper} />
+            <div className="mt-5">
+              <AppleAuthButton nextPath={nextPath} />
             </div>
+
+            <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-foreground/40">
+              <span className="h-px flex-1 bg-border/80" />
+              <span>Or continue with email</span>
+              <span className="h-px flex-1 bg-border/80" />
+            </div>
+
+            <CreateAccountForm nextPath={nextPath} stackAvailable={stackStatus.available} preferLocalHelper={preferLocalHelper} />
           </div>
         </section>
       </div>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_COUNTRY } from "@/lib/account-fields";
 
 export const cadenceUnitSchema = z.enum(["days", "weeks", "months"]);
 export const targetTypeSchema = z.enum(["connection", "group"]);
@@ -78,7 +79,7 @@ export const accountProfileSchema = z.object({
   city: z.string().trim().max(80).optional().default(""),
   region: z.string().trim().max(80).optional().default(""),
   postalCode: z.string().trim().max(20).optional().default(""),
-  country: z.string().trim().max(80).optional().default(""),
+  country: z.string().trim().max(80).optional().default(DEFAULT_COUNTRY),
 });
 
 export const accountRegistrationSchema = accountProfileSchema.extend({

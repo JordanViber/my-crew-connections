@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { accountRegistrationSchema } from "@/lib/validations";
+import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
 
 type Payload = {
   email?: string;
@@ -37,13 +38,13 @@ export async function POST(request: NextRequest) {
       password: body.password ?? "",
       firstName,
       lastName,
-      phoneNumber: body.phoneNumber ?? "",
+      phoneNumber: normalizePhoneNumberForStorage(body.phoneNumber ?? ""),
       addressLine1: body.addressLine1 ?? "",
       addressLine2: body.addressLine2 ?? "",
       city: body.city ?? "",
       region: body.region ?? "",
       postalCode: body.postalCode ?? "",
-      country: body.country ?? "",
+      country: getDefaultCountry(body.country ?? ""),
     });
     const displayName = buildDisplayName(payload.firstName, payload.lastName, payload.email);
     const userMetadata = {

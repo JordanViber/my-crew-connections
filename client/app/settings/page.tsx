@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
+import { AddressFields } from "@/components/address-fields";
 import { AppShell } from "@/components/app-shell";
 import { FeedbackBanner } from "@/components/feedback-banner";
+import { PhoneNumberInput } from "@/components/phone-number-input";
 import { SectionCard } from "@/components/section-card";
 import { getFeedback } from "@/lib/feedback";
+import { getDefaultCountry } from "@/lib/account-fields";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { updateAccountEmailAction, updateAccountPasswordAction, updateProfileAction } from "@/app/actions";
 
@@ -73,7 +76,7 @@ export default async function SettingsPage({
   return (
     <AppShell
       title="Account settings"
-      subtitle="Manage the account details, sign-in identity, and future billing information tied to your relationship space."
+      subtitle="Manage your profile, security, and mailing details."
       email={user.email ?? "Signed in"}
     >
       {feedback ? (
@@ -98,29 +101,29 @@ export default async function SettingsPage({
                 <div className="h-full rounded-full bg-[linear-gradient(135deg,#ef6b4a_0%,#b94224_100%)]" style={{ width: `${profileCompletion}%` }} />
               </div>
               <p className="mt-3 text-sm leading-6 text-foreground/68">
-                Filling out the core profile fields now keeps billing, receipts, invites, and future account management from turning into cleanup work later.
+                Complete the core profile once so invites, receipts, and account updates all stay consistent.
               </p>
             </div>
 
             <div className="mt-4 grid gap-3 text-sm leading-6 text-foreground/72">
               <div className="rounded-[1.2rem] border border-border/85 bg-white/78 px-4 py-3">
-                <p className="font-semibold text-foreground">Profile identity</p>
-                <p className="mt-2">First name, last name, and phone number should live here instead of being implied from the sign-in email.</p>
+                <p className="font-semibold text-foreground">Profile details</p>
+                <p className="mt-2">Keep your name, phone number, and email details current in one place.</p>
               </div>
               <div className="rounded-[1.2rem] border border-border/85 bg-white/78 px-4 py-3">
-                <p className="font-semibold text-foreground">Billing-ready details</p>
-                <p className="mt-2">Address stays optional today, but capturing it in one place avoids a separate subscription profile later.</p>
+                <p className="font-semibold text-foreground">Mailing address</p>
+                <p className="mt-2">Search once, autofill the basics, and adjust anything that needs a manual touch.</p>
               </div>
             </div>
           </section>
 
           <SectionCard
-            title="Why this screen exists"
-            description="Account management should be a first-class destination, not a hidden corner of sign-in or a dev-only helper."
+            title="Security"
+            description="Use this screen for the account details you want to keep stable over time."
           >
             <div className="grid gap-3 text-sm leading-6 text-foreground/72">
-              <p>Identity, security, and future billing settings now have a stable home in the product navigation.</p>
-              <p>The forms on the right are intentionally separated so profile edits, email changes, and password updates stay understandable and low-risk.</p>
+              <p>Update your email when it changes and rotate your password whenever you want a fresh sign-in.</p>
+              <p>Apple sign-in is available from the auth screen, and additional premium sign-in methods can layer in from here over time.</p>
             </div>
           </SectionCard>
         </div>
@@ -144,42 +147,23 @@ export default async function SettingsPage({
 
               <label className="grid gap-2">
                 <span className="field-label">Phone number</span>
-                <input className="field-input" type="tel" name="phoneNumber" defaultValue={profile?.phone_number ?? ""} autoComplete="tel" placeholder="Optional, but useful for future account and billing support" />
+                <PhoneNumberInput defaultValue={profile?.phone_number ?? ""} name="phoneNumber" placeholder="(415) 555-0132" />
               </label>
 
-              <details className="rounded-[1.2rem] border border-border/85 bg-white/66 px-4 py-4">
-                <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">Add billing-ready address details</summary>
-                <div className="mt-4 grid gap-4">
-                  <label className="grid gap-2">
-                    <span className="field-label">Address line 1</span>
-                    <input className="field-input" type="text" name="addressLine1" defaultValue={profile?.billing_address_line1 ?? ""} autoComplete="address-line1" />
-                  </label>
-                  <label className="grid gap-2">
-                    <span className="field-label">Address line 2</span>
-                    <input className="field-input" type="text" name="addressLine2" defaultValue={profile?.billing_address_line2 ?? ""} autoComplete="address-line2" />
-                  </label>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="grid gap-2">
-                      <span className="field-label">City</span>
-                      <input className="field-input" type="text" name="city" defaultValue={profile?.billing_city ?? ""} autoComplete="address-level2" />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="field-label">State or region</span>
-                      <input className="field-input" type="text" name="region" defaultValue={profile?.billing_region ?? ""} autoComplete="address-level1" />
-                    </label>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="grid gap-2">
-                      <span className="field-label">Postal code</span>
-                      <input className="field-input" type="text" name="postalCode" defaultValue={profile?.billing_postal_code ?? ""} autoComplete="postal-code" />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="field-label">Country</span>
-                      <input className="field-input" type="text" name="country" defaultValue={profile?.billing_country ?? ""} autoComplete="country-name" />
-                    </label>
-                  </div>
+              <div className="rounded-[1.5rem] border border-border/85 bg-white/66 px-4 py-4 md:px-5 md:py-5">
+                <div className="mb-4">
+                  <p className="text-sm font-semibold text-foreground">Mailing address</p>
+                  <p className="mt-1 text-sm leading-6 text-foreground/68">Start with the street address and the rest can fill in automatically.</p>
                 </div>
-              </details>
+                <AddressFields
+                  initialAddressLine1={profile?.billing_address_line1 ?? ""}
+                  initialAddressLine2={profile?.billing_address_line2 ?? ""}
+                  initialCity={profile?.billing_city ?? ""}
+                  initialRegion={profile?.billing_region ?? ""}
+                  initialPostalCode={profile?.billing_postal_code ?? ""}
+                  initialCountry={getDefaultCountry(profile?.billing_country)}
+                />
+              </div>
 
               <button className="button-primary w-fit" type="submit">Save profile</button>
             </form>
@@ -201,7 +185,7 @@ export default async function SettingsPage({
 
           <SectionCard
             title="Password"
-            description="Use a fresh password here instead of relying on the recovery section in sign-in."
+            description="Set a new password whenever you want a cleaner, more secure sign-in."
           >
             <form action={updateAccountPasswordAction} className="grid gap-4 sm:max-w-xl">
               <label className="grid gap-2">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AppleAuthButton } from "@/components/apple-auth-button";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { LocalAccountForm } from "@/components/local-account-form";
 import { MagicLinkForm } from "@/components/magic-link-form";
@@ -27,14 +28,12 @@ export default async function AuthPage({
 
   return (
     <main className="shell flex items-center justify-center px-4 py-6 md:px-8">
-      <div className="glass-panel grid max-w-5xl gap-8 rounded-4xl p-6 md:grid-cols-[1.2fr_0.9fr] md:p-10">
+      <div className="glass-panel grid max-w-5xl gap-6 rounded-4xl p-6 md:grid-cols-[1fr_1fr] md:p-10">
         <section className="space-y-6">
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent-strong">Sign in</p>
-          <h1 className="text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
-            Stay close to the people who matter.
-          </h1>
+          <h1 className="text-5xl font-semibold tracking-tight text-foreground md:text-6xl">Welcome back.</h1>
           <p className="max-w-xl text-lg leading-8 text-foreground/72">
-            Sign in with your password or send yourself an email link when you want a lighter way back into your dashboard.
+            Choose the sign-in path that feels best today, then head straight back into your dashboard.
           </p>
           <div className="flex flex-wrap gap-3">
             <Link className="button-primary" href={`/auth/create?next=${encodeURIComponent(nextPath)}`}>
@@ -44,15 +43,15 @@ export default async function AuthPage({
               Back to home
             </Link>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-3">
             {[
-              "Use password sign-in when you want the fastest path back in.",
-              "Send a sign-in link when you prefer email over passwords.",
-              "Create a real account with profile details from a dedicated sign-up screen instead of the local recovery helper.",
-            ].map((step, index) => (
-              <div key={step} className="section-card rounded-[1.4rem] p-5 text-sm leading-7 text-foreground/75">
-                <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">Step {index + 1}</p>
-                <p className="mt-3">{step}</p>
+              { title: "Apple", body: "Fast, familiar, and easy on supported devices." },
+              { title: "Password", body: "Best when you want the fastest repeat sign-in." },
+              { title: "Email link", body: "Great when you would rather skip the password field." },
+            ].map((option) => (
+              <div key={option.title} className="section-card rounded-[1.35rem] p-4 text-sm leading-6 text-foreground/75">
+                <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">{option.title}</p>
+                <p className="mt-2">{option.body}</p>
               </div>
             ))}
           </div>
@@ -68,6 +67,17 @@ export default async function AuthPage({
           )}
 
           <div className="section-card rounded-[1.8rem] p-6 md:p-8">
+          <div className="section-card rounded-[1.8rem] p-6 md:p-8">
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground">Continue with Apple</h2>
+            <p className="mt-3 text-sm leading-7 text-foreground/72">
+              Use Apple on supported browsers and devices for a faster sign-in.
+            </p>
+
+            <div className="mt-6">
+              <AppleAuthButton nextPath={nextPath} />
+            </div>
+          </div>
+
             <h2 className="text-3xl font-semibold tracking-tight text-foreground">Password sign-in</h2>
             <p className="mt-3 text-sm leading-7 text-foreground/72">
               Use the email and password connected to your account.
@@ -83,7 +93,7 @@ export default async function AuthPage({
               <div className="mt-5">
                 <FeedbackBanner
                   title="Account created"
-                  body="Your account is ready. Sign in below with the email and password you just set, or finish email confirmation if your auth setup requires it."
+                  body="Your account is ready. Sign in below with the email and password you just saved."
                 />
               </div>
             ) : null}

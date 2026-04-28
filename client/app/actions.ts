@@ -22,6 +22,7 @@ import {
   updateConnectionSchema,
   updateGroupSchema,
 } from "@/lib/validations";
+import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
 import { buildConnectionInvitePath, normalizeInviteEmail } from "@/lib/invites";
 
 async function getAuthenticatedSession() {
@@ -124,13 +125,13 @@ export async function updateProfileAction(formData: FormData) {
   const payload = accountProfileSchema.parse({
     firstName: getString(formData, "firstName"),
     lastName: getString(formData, "lastName"),
-    phoneNumber: getString(formData, "phoneNumber"),
+    phoneNumber: normalizePhoneNumberForStorage(getString(formData, "phoneNumber")),
     addressLine1: getString(formData, "addressLine1"),
     addressLine2: getString(formData, "addressLine2"),
     city: getString(formData, "city"),
     region: getString(formData, "region"),
     postalCode: getString(formData, "postalCode"),
-    country: getString(formData, "country"),
+    country: getDefaultCountry(getString(formData, "country")),
   });
   const displayName = buildDisplayName(payload.firstName, payload.lastName, user.email);
 

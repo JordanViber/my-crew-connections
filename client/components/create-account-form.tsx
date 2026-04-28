@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { AddressFields } from "@/components/address-fields";
+import { PhoneNumberInput } from "@/components/phone-number-input";
+import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export function CreateAccountForm({
@@ -15,22 +18,19 @@ export function CreateAccountForm({
   preferLocalHelper: boolean;
 }>) {
   const router = useRouter();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [addressLine1, setAddressLine1] = useState("");
-  const [addressLine2, setAddressLine2] = useState("");
-  const [city, setCity] = useState("");
-  const [region, setRegion] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-  const [country, setCountry] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function submit() {
+  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+
+  function getValue(formData: FormData, key: string) {
+    const value = formData.get(key);
+    return typeof value === "string" ? value.trim() : "";
+  }
+
+  function submit(formData: FormData) {
     startTransition(async () => {
       setErrorMessage(null);
 
@@ -39,9 +39,18 @@ export function CreateAccountForm({
         return;
       }
 
-      const normalizedEmail = email.trim();
+      const firstName = getValue(formData, "firstName");
+      const lastName = getValue(formData, "lastName");
+      const phoneNumber = normalizePhoneNumberForStorage(getValue(formData, "phoneNumber"));
+      const normalizedEmail = getValue(formData, "email");
+      const addressLine1 = getValue(formData, "addressLine1");
+      const addressLine2 = getValue(formData, "addressLine2");
+      const city = getValue(formData, "city");
+      const region = getValue(formData, "region");
+      const postalCode = getValue(formData, "postalCode");
+      const country = getDefaultCountry(getValue(formData, "country"));
 
-      if (!firstName.trim() || !lastName.trim() || !normalizedEmail || !password) {
+      if (!firstName || !lastName || !normalizedEmail || !password) {
         setErrorMessage("Enter your name, email, and password to create an account.");
         return;
       }
@@ -57,17 +66,17 @@ export function CreateAccountForm({
       }
 
       const payload = {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phoneNumber: phoneNumber.trim(),
+        firstName,
+        lastName,
+        phoneNumber,
         email: normalizedEmail,
         password,
-        addressLine1: addressLine1.trim(),
-        addressLine2: addressLine2.trim(),
-        city: city.trim(),
-        region: region.trim(),
-        postalCode: postalCode.trim(),
-        country: country.trim(),
+        addressLine1,
+        addressLine2,
+        city,
+        region,
+        postalCode,
+        country,
       };
 
       if (preferLocalHelper) {
@@ -149,29 +158,29 @@ export function CreateAccountForm({
       className="grid gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        submit();
+        submit(new FormData(event.currentTarget));
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-2">
           <span className="field-label">First name</span>
-          <input className="field-input" type="text" name="firstName" autoComplete="given-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} required disabled={isPending} />
+          <input className="field-input" type="text" name="firstName" autoComplete="given-name" required disabled={isPending} />
         </label>
         <label className="grid gap-2">
           <span className="field-label">Last name</span>
-          <input className="field-input" type="text" name="lastName" autoComplete="family-name" value={lastName} onChange={(event) => setLastName(event.target.value)} required disabled={isPending} />
+          <input className="field-input" type="text" name="lastName" autoComplete="family-name" required disabled={isPending} />
         </label>
       </div>
 
       <label className="grid gap-2">
         <span className="field-label">Phone number</span>
-        <input className="field-input" type="tel" name="phoneNumber" autoComplete="tel" placeholder="Optional today, useful later for billing and support" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} disabled={isPending} />
+        <PhoneNumberInput name="phoneNumber" disabled={isPending} placeholder="(415) 555-0132" />
       </label>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-2 sm:col-span-2">
           <span className="field-label">Email</span>
-          <input className="field-input" type="email" name="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required disabled={isPending} />
+          <input className="field-input" type="email" name="email" autoComplete="email" placeholder="you@example.com" required disabled={isPending} />
         </label>
         <label className="grid gap-2">
           <span className="field-label">Password</span>
@@ -183,39 +192,19 @@ export function CreateAccountForm({
         </label>
       </div>
 
-      <details className="rounded-[1.2rem] border border-border/85 bg-white/66 px-4 py-4">
-        <summary className="cursor-pointer list-none text-sm font-semibold text-foreground">Add billing-ready address details</summary>
-        <div className="mt-4 grid gap-4">
-          <label className="grid gap-2">
-            <span className="field-label">Address line 1</span>
-            <input className="field-input" type="text" name="addressLine1" autoComplete="address-line1" value={addressLine1} onChange={(event) => setAddressLine1(event.target.value)} disabled={isPending} />
-          </label>
-          <label className="grid gap-2">
-            <span className="field-label">Address line 2</span>
-            <input className="field-input" type="text" name="addressLine2" autoComplete="address-line2" value={addressLine2} onChange={(event) => setAddressLine2(event.target.value)} disabled={isPending} />
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2">
-              <span className="field-label">City</span>
-              <input className="field-input" type="text" name="city" autoComplete="address-level2" value={city} onChange={(event) => setCity(event.target.value)} disabled={isPending} />
-            </label>
-            <label className="grid gap-2">
-              <span className="field-label">State or region</span>
-              <input className="field-input" type="text" name="region" autoComplete="address-level1" value={region} onChange={(event) => setRegion(event.target.value)} disabled={isPending} />
-            </label>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2">
-              <span className="field-label">Postal code</span>
-              <input className="field-input" type="text" name="postalCode" autoComplete="postal-code" value={postalCode} onChange={(event) => setPostalCode(event.target.value)} disabled={isPending} />
-            </label>
-            <label className="grid gap-2">
-              <span className="field-label">Country</span>
-              <input className="field-input" type="text" name="country" autoComplete="country-name" value={country} onChange={(event) => setCountry(event.target.value)} disabled={isPending} />
-            </label>
-          </div>
+      {confirmPassword.length > 0 ? (
+        <p className={passwordsMatch ? "rounded-2xl bg-[#d7efe2] px-4 py-3 text-sm font-medium text-[#184a3a]" : "rounded-2xl bg-[rgba(29,36,40,0.06)] px-4 py-3 text-sm font-medium text-foreground/70"}>
+          {passwordsMatch ? "Passwords match." : "Passwords do not match yet."}
+        </p>
+      ) : null}
+
+      <div className="rounded-[1.5rem] border border-border/85 bg-white/66 px-4 py-4 md:px-5 md:py-5">
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-foreground">Mailing address</p>
+          <p className="mt-1 text-sm leading-6 text-foreground/68">Start with your street address and the rest will fill in for you.</p>
         </div>
-      </details>
+        <AddressFields disabled={isPending} initialCountry={getDefaultCountry(undefined)} />
+      </div>
 
       {errorMessage ? (
         <p className="rounded-2xl bg-[#f8d2ca] px-4 py-3 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
