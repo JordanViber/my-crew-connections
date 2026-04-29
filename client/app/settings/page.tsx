@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { BillingPlanSelector } from "@/components/billing-plan-selector";
 import { FeedbackBanner } from "@/components/feedback-banner";
+import { NotificationSettingRow } from "@/components/notification-setting-row";
 import { AccountSettingsEditor, SecuritySettingsEditor } from "@/components/settings-edit-sections";
 import { ThemeSettingRow } from "@/components/theme-setting-row";
 import { createBillingPortalAction } from "@/app/actions";
@@ -257,6 +258,12 @@ export default async function SettingsPage({
         <SettingsGroup title="Appearance">
           <SettingsRow>
             <ThemeSettingRow />
+          </SettingsRow>
+        </SettingsGroup>
+
+        <SettingsGroup title="Notifications">
+          <SettingsRow>
+            <NotificationSettingRow />
           </SettingsRow>
         </SettingsGroup>
 

@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/notifications/relationship-digest",
+      "schedule": "0 14 * * *"
+    }
+  ]
+}

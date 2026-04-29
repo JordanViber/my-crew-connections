@@ -1,6 +1,7 @@
 import { AccountMenu } from "@/components/account-menu";
 import { DesktopNav } from "@/components/desktop-nav";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { PwaInstallBanner } from "@/components/pwa-install-banner";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard" },
@@ -25,6 +26,7 @@ export function AppShell({
 }>) {
   return (
     <div className="shell px-2 py-2 md:px-5 md:py-4">
+      <PwaInstallBanner />
       <div className="glass-panel mx-auto max-w-7xl px-3 py-3 md:px-5 md:py-5">
         <header className="border-b border-border/70 pb-3 md:pb-4">
           <div className="flex flex-col gap-3 md:gap-4">

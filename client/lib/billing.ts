@@ -12,16 +12,16 @@ export type BillingProfile = {
 const defaultBillingConfig = {
   productId: "prod_UNYDgrpXLyEEWO",
   monthlyPriceId: "price_1TRXutKjuEm9woaeA2HsHmkn",
-  yearlyPriceId: "price_1TRXuzKjuEm9woaezoDjLKHc",
+  yearlyPriceId: "price_1TReLpKjuEm9woae6nWqASQP",
   monthlyPaymentLinkUrl: "https://buy.stripe.com/4gM3cw6Lp4C66lD2DjbjW00",
-  yearlyPaymentLinkUrl: "https://buy.stripe.com/8x2cN6d9N0lQ8tL3HnbjW01",
+  yearlyPaymentLinkUrl: "https://buy.stripe.com/8x27sM7Ptd8CdO54LrbjW02",
 };
 
 export const billingPlan = {
   name: "Premium",
   monthlyPrice: "$5",
-  yearlyPrice: "$50",
-  yearlySavings: "Save $10",
+  yearlyPrice: "$55",
+  yearlySavings: "Save $5",
   features: [
     "Unlimited people and groups",
     "Unlimited saved plans and touchpoint history",

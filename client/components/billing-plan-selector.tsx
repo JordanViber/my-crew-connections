@@ -22,7 +22,7 @@ const choices: {
     title: "Yearly",
     price: `${billingPlan.yearlyPrice}/yr`,
     detail: "Same Premium access with annual billing.",
-    savings: "$10 saved each year",
+    savings: "$5 saved each year",
   },
 ];
 
