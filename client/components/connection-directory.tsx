@@ -15,8 +15,8 @@ function SummaryChip({
   value: number;
 }>) {
   return (
-    <div className="rounded-[1.1rem] border border-border/80 bg-white/72 px-3.5 py-3">
-      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-accent-strong">{label}</p>
+    <div className="rounded-lg border border-border/80 bg-white/72 px-3 py-2.5">
+      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-accent-strong">{label}</p>
       <p className="mt-1.5 text-lg font-semibold tracking-tight text-foreground">{value}</p>
     </div>
   );
@@ -38,15 +38,15 @@ function ConnectionSection({
   return (
     <div className="grid gap-4">
       <div>
-        <h3 className="text-xl font-semibold tracking-tight text-foreground">{title}</h3>
+        <h3 className="text-[1.1rem] font-semibold tracking-tight text-foreground">{title}</h3>
         <p className="mt-1 text-sm leading-6 text-foreground/68">{description}</p>
       </div>
       {items.map((connection) => (
-        <article key={connection.id} className="rounded-[1.25rem] border border-border/90 bg-white/82 p-4">
+        <article key={connection.id} className="rounded-lg border border-border/90 bg-white/82 p-3.5">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">{connection.subtitle}</p>
-              <h2 className="mt-2 text-[1.35rem] font-semibold text-foreground">{connection.title}</h2>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-accent-strong">{connection.subtitle}</p>
+              <h2 className="mt-1.5 text-[1.15rem] font-semibold text-foreground">{connection.title}</h2>
               <p className="mt-2 text-sm text-foreground/70">{connection.cadenceLabel}</p>
               <p className="mt-1 text-sm text-foreground/65">Last touchpoint: {connection.lastTouchpointLabel}</p>
               <div className="mt-3">
@@ -105,7 +105,7 @@ export function ConnectionDirectory({
 
   if (connections.length === 0) {
     content = (
-      <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
+      <div className="rounded-lg border border-dashed border-border bg-white/60 p-4">
         <p className="text-sm leading-7 text-foreground/68">
           No people yet. Add someone you care about and the app can start shaping your rhythm around them.
         </p>
@@ -116,7 +116,7 @@ export function ConnectionDirectory({
     );
   } else if (filtered.length === 0) {
     content = (
-      <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
+      <div className="rounded-lg border border-dashed border-border bg-white/60 p-4">
         <p className="text-sm leading-7 text-foreground/68">Nothing matches that search and filter combination yet.</p>
         <p className="mt-2 text-sm leading-6 text-foreground/62">
           Try a broader search or switch between connected, invited, and not-linked views.
@@ -143,7 +143,7 @@ export function ConnectionDirectory({
   return (
     <div className="grid gap-4">
       <div className="grid gap-3">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-2.5 sm:grid-cols-3">
           <SummaryChip label="Visible people" value={filtered.length} />
           <SummaryChip label="Need attention" value={needsAttentionCount} />
           <SummaryChip label="On track" value={filtered.length - needsAttentionCount} />
@@ -158,11 +158,11 @@ export function ConnectionDirectory({
             placeholder="Search by name, notes, activities, tags, or invite email"
           />
         </label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {filterLabels.map((option) => (
             <button
               key={option.id}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
                 filter === option.id
                   ? "bg-[rgba(209,96,61,0.14)] text-accent-strong shadow-[inset_0_0_0_1px_rgba(209,96,61,0.18)]"
                   : "bg-white/72 text-foreground/68"

@@ -34,22 +34,25 @@ export function MobileSectionTabs({
 
   return (
     <div className="grid gap-3 md:hidden">
-      <div className={`-mx-1 overflow-x-auto px-1 pb-1 pt-1 ${sticky ? "sticky top-2 z-20" : ""}`}>
-        <div className="glass-panel flex min-w-max gap-2 rounded-[1.2rem] border border-border/80 p-1.5 shadow-[0_14px_32px_rgba(69,42,24,0.12)]">
+      <div className={`pb-1 ${sticky ? "sticky top-2 z-20" : ""}`}>
+        <div
+          className="glass-panel grid gap-1.5 border border-border/80 p-1.5 shadow-[0_10px_24px_rgba(31,44,49,0.1)]"
+          style={{ gridTemplateColumns: `repeat(${sections.length}, minmax(0, 1fr))` }}
+        >
           {sections.map((section) => {
             const active = section.id === activeSection.id;
 
             return (
               <button
                 key={section.id}
-                className={`relative rounded-full px-3.5 py-2 text-sm font-semibold transition ${active ? "text-accent-strong" : "text-foreground/65"}`}
+                className={`relative rounded-lg px-2.5 py-1.5 text-sm font-semibold transition ${active ? "text-accent-strong" : "text-foreground/65"}`}
                 onClick={() => setActiveSectionId(section.id)}
                 type="button"
               >
                 {active ? (
                   <motion.span
                     layoutId="mobile-section-tab-active"
-                    className="absolute inset-0 rounded-full bg-[rgba(209,96,61,0.14)] shadow-[inset_0_0_0_1px_rgba(209,96,61,0.18)]"
+                    className="absolute inset-0 rounded-lg bg-[rgba(209,96,61,0.12)] shadow-[inset_0_0_0_1px_rgba(209,96,61,0.18)]"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 ) : null}

@@ -10,9 +10,9 @@ export function FeedbackBanner({
   tone?: FeedbackTone;
 }>) {
   return (
-    <div className={`rounded-[1.35rem] px-4 py-4 ${getFeedbackClasses(tone)}`}>
+    <div className={`rounded-lg px-3.5 py-3 ${getFeedbackClasses(tone)}`}>
       <p className="text-sm font-semibold uppercase tracking-[0.18em]">{title}</p>
-      <p className="mt-2 text-sm leading-6">{body}</p>
+      <p className="mt-1.5 text-sm leading-6">{body}</p>
     </div>
   );
 }

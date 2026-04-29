@@ -8,10 +8,10 @@ export function SectionCard({
   children: React.ReactNode;
 }>) {
   return (
-    <section className="section-card rounded-[1.45rem] p-4 md:p-5">
-      <div className="mb-4">
-        <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground md:text-[1.55rem]">{title}</h2>
-        {description ? <p className="mt-2 text-sm leading-6 text-foreground/70">{description}</p> : null}
+    <section className="section-card p-3.5 md:p-4">
+      <div className="mb-3">
+        <h2 className="text-[1.18rem] font-semibold tracking-tight text-foreground md:text-[1.32rem]">{title}</h2>
+        {description ? <p className="mt-1.5 text-sm leading-6 text-foreground/68">{description}</p> : null}
       </div>
       {children}
     </section>

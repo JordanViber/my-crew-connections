@@ -9,7 +9,7 @@ export function GroupCreateForm({
   connections: RelationshipSummary[];
 }>) {
   return (
-    <form action={createGroupAction} className="grid gap-4">
+    <form action={createGroupAction} className="grid gap-3">
       <label className="grid gap-2">
         <span className="field-label">Group name</span>
         <input className="field-input" name="name" type="text" placeholder="Monthly dinner crew" required />
@@ -18,7 +18,7 @@ export function GroupCreateForm({
         <span className="field-label">Description</span>
         <textarea className="field-input min-h-24" name="description" placeholder="What makes this group meaningful or recurring?" />
       </label>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         <label className="grid gap-2">
           <span className="field-label">Cadence value</span>
           <input className="field-input" name="cadenceValue" type="number" min="1" max="90" defaultValue="1" required />
@@ -39,7 +39,7 @@ export function GroupCreateForm({
 
       <GroupMemberPicker connections={connections} />
 
-      <p className="text-sm leading-6 text-foreground/68">
+      <p className="text-sm leading-6 text-foreground/64">
         Creating the group sets the cadence immediately, so it can show up in the dashboard reminder queue as soon as you start using it.
       </p>
       <div className="flex flex-wrap gap-2">

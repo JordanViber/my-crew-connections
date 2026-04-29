@@ -8,7 +8,7 @@ const cadenceOptions = [
 
 export function ConnectionCreateForm() {
   return (
-    <form action={createConnectionAction} className="grid gap-4">
+    <form action={createConnectionAction} className="grid gap-3">
       <label className="grid gap-2">
         <span className="field-label">Name</span>
         <input className="field-input" name="displayName" type="text" placeholder="Jordan, Alexis, dinner crew organizer" required />
@@ -21,7 +21,7 @@ export function ConnectionCreateForm() {
         <span className="field-label">Tags</span>
         <input className="field-input" name="tags" type="text" placeholder="close friend, local, long-distance" />
       </label>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         <label className="grid gap-2">
           <span className="field-label">Cadence value</span>
           <input className="field-input" name="cadenceValue" type="number" min="1" max="90" defaultValue="3" required />
@@ -47,9 +47,9 @@ export function ConnectionCreateForm() {
       </label>
       <label className="grid gap-2">
         <span className="field-label">Private notes</span>
-        <textarea className="field-input min-h-28" name="notes" placeholder="Anything useful to remember later." />
+        <textarea className="field-input min-h-24" name="notes" placeholder="Anything useful to remember later." />
       </label>
-      <p className="text-sm leading-6 text-foreground/68">
+      <p className="text-sm leading-6 text-foreground/64">
         Creating a person immediately adds them to the reminder loop. If you include an email, the invite starts right away so you do not have to come back and do it separately.
       </p>
       <button className="button-primary" type="submit">

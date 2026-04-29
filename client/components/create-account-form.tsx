@@ -155,13 +155,13 @@ export function CreateAccountForm({
 
   return (
     <form
-      className="grid gap-4"
+      className="grid gap-3"
       onSubmit={(event) => {
         event.preventDefault();
         submit(new FormData(event.currentTarget));
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-2">
           <span className="field-label">First name</span>
           <input className="field-input" type="text" name="firstName" autoComplete="given-name" required disabled={isPending} />
@@ -175,9 +175,10 @@ export function CreateAccountForm({
       <label className="grid gap-2">
         <span className="field-label">Phone number</span>
         <PhoneNumberInput name="phoneNumber" disabled={isPending} placeholder="(415) 555-0132" />
+        <span className="text-sm leading-6 text-foreground/60">Optional. You can add or change it later in settings.</span>
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-2 sm:col-span-2">
           <span className="field-label">Email</span>
           <input className="field-input" type="email" name="email" autoComplete="email" placeholder="you@example.com" required disabled={isPending} />
@@ -193,24 +194,24 @@ export function CreateAccountForm({
       </div>
 
       {confirmPassword.length > 0 ? (
-        <p className={passwordsMatch ? "rounded-2xl bg-[#d7efe2] px-4 py-3 text-sm font-medium text-[#184a3a]" : "rounded-2xl bg-[rgba(29,36,40,0.06)] px-4 py-3 text-sm font-medium text-foreground/70"}>
+        <p className={passwordsMatch ? "rounded-lg bg-[#d7efe2] px-3 py-2.5 text-sm font-medium text-[#184a3a]" : "rounded-lg bg-[rgba(29,36,40,0.06)] px-3 py-2.5 text-sm font-medium text-foreground/70"}>
           {passwordsMatch ? "Passwords match." : "Passwords do not match yet."}
         </p>
       ) : null}
 
-      <div className="rounded-[1.5rem] border border-border/85 bg-white/66 px-4 py-4 md:px-5 md:py-5">
-        <div className="mb-4">
+      <div className="rounded-lg border border-border/85 bg-white/66 px-3.5 py-3.5 md:px-4 md:py-4">
+        <div className="mb-3">
           <p className="text-sm font-semibold text-foreground">Mailing address</p>
-          <p className="mt-1 text-sm leading-6 text-foreground/68">Start with your street address and the rest will fill in for you.</p>
+          <p className="mt-1 text-sm leading-6 text-foreground/68">Optional for now. Start with your street address if you want the rest filled in automatically.</p>
         </div>
         <AddressFields disabled={isPending} initialCountry={getDefaultCountry(undefined)} />
       </div>
 
       {errorMessage ? (
-        <p className="rounded-2xl bg-[#f8d2ca] px-4 py-3 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
+        <p className="rounded-lg bg-[#f8d2ca] px-3 py-2.5 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         <button className="button-primary" type="submit" disabled={isPending}>
           {isPending ? "Creating account..." : "Create account"}
         </button>

@@ -72,7 +72,7 @@ export default async function ConnectionsPage({
         ]}
       />
 
-      <div className="hidden gap-6 xl:grid-cols-[0.92fr_1.08fr] md:grid">
+      <div className="hidden gap-5 xl:grid-cols-[0.92fr_1.08fr] md:grid">
         <SectionCard title="Add a person" description="Name, cadence, and a bit of context is enough to get started.">
           <ConnectionCreateForm />
         </SectionCard>

@@ -48,21 +48,21 @@ export function AuthConfirmContent({
   }, [code, nextPath, router]);
 
   return (
-    <main className="shell flex items-center justify-center px-4 py-6 md:px-8">
-      <div className="glass-panel grid max-w-3xl gap-6 rounded-4xl p-6 text-center md:p-10">
-        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent-strong">Signing you in</p>
-        <h1 className="text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
+    <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
+      <div className="glass-panel grid max-w-3xl gap-4 p-5 text-center md:p-7">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">Signing you in</p>
+        <h1 className="text-[2.1rem] font-semibold leading-tight tracking-tight text-foreground md:text-4xl">
           Finishing your magic-link sign-in.
         </h1>
-        <p className="text-base leading-8 text-foreground/72">
+        <p className="text-sm leading-7 text-foreground/72">
           Hold for a moment while the browser completes the session exchange and redirects you into the app.
         </p>
 
         {errorMessage ? (
-          <div className="section-card rounded-3xl p-6 text-left">
+          <div className="section-card p-3.5 text-left">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent-strong">Sign-in failed</p>
-            <p className="mt-3 text-sm leading-7 text-foreground/75">{errorMessage}</p>
-            <div className="mt-5 flex flex-wrap gap-3">
+            <p className="mt-2 text-sm leading-7 text-foreground/75">{errorMessage}</p>
+            <div className="mt-3 flex flex-wrap gap-3">
               <Link className="button-primary" href="/auth">
                 Back to sign in
               </Link>

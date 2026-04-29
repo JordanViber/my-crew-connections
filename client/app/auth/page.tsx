@@ -27,12 +27,12 @@ export default async function AuthPage({
   const stackStatus = await getLocalSupabaseStatus();
 
   return (
-    <main className="shell flex items-center justify-center px-4 py-6 md:px-8">
-      <div className="glass-panel grid max-w-5xl gap-6 rounded-4xl p-6 md:grid-cols-[1fr_1fr] md:p-10">
-        <section className="space-y-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent-strong">Sign in</p>
-          <h1 className="text-5xl font-semibold tracking-tight text-foreground md:text-6xl">Welcome back.</h1>
-          <p className="max-w-xl text-lg leading-8 text-foreground/72">
+    <main className="shell flex items-center justify-center px-3 py-3 md:px-8 md:py-6">
+      <div className="glass-panel grid max-w-4xl gap-4 p-4 md:grid-cols-[0.72fr_1.28fr] md:p-5">
+        <section className="space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">Sign in</p>
+          <h1 className="text-[2.15rem] font-semibold leading-none tracking-tight text-foreground md:text-[2.75rem]">Welcome back.</h1>
+          <p className="max-w-xl text-base leading-7 text-foreground/70">
             Choose the sign-in path that feels best today, then head straight back into your dashboard.
           </p>
           <div className="flex flex-wrap gap-3">
@@ -43,54 +43,54 @@ export default async function AuthPage({
               Back to home
             </Link>
           </div>
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="hidden gap-2 md:grid">
             {[
               { title: "Apple", body: "Fast, familiar, and easy on supported devices." },
               { title: "Password", body: "Best when you want the fastest repeat sign-in." },
               { title: "Email link", body: "Great when you would rather skip the password field." },
             ].map((option) => (
-              <div key={option.title} className="section-card rounded-[1.35rem] p-4 text-sm leading-6 text-foreground/75">
-                <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">{option.title}</p>
-                <p className="mt-2">{option.body}</p>
+              <div key={option.title} className="section-card p-3 text-sm leading-6 text-foreground/75">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">{option.title}</p>
+                <p className="mt-1.5">{option.body}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="grid gap-4">
+        <section className="grid gap-3">
           {stackStatus.available ? null : (
             <FeedbackBanner
               title="Sign-in is currently unavailable"
-              body="The sign-in service couldn’t be reached just now. Please try again in a moment."
+              body="The sign-in service couldn't be reached just now. Please try again in a moment."
               tone="error"
             />
           )}
 
-          <div className="section-card rounded-[1.8rem] p-6 md:p-8">
-          <div className="section-card rounded-[1.8rem] p-6 md:p-8">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">Continue with Apple</h2>
-            <p className="mt-3 text-sm leading-7 text-foreground/72">
+          <div className="section-card p-3.5 md:p-4">
+            <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Continue with Apple</h2>
+            <p className="mt-1.5 text-sm leading-6 text-foreground/68">
               Use Apple on supported browsers and devices for a faster sign-in.
             </p>
 
-            <div className="mt-6">
+            <div className="mt-4">
               <AppleAuthButton nextPath={nextPath} />
             </div>
           </div>
 
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">Password sign-in</h2>
-            <p className="mt-3 text-sm leading-7 text-foreground/72">
+          <div className="section-card p-3.5 md:p-4">
+            <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Password sign-in</h2>
+            <p className="mt-1.5 text-sm leading-6 text-foreground/68">
               Use the email and password connected to your account.
             </p>
 
             {params.error ? (
-              <div className="mt-5">
+              <div className="mt-3">
                 <FeedbackBanner title="Sign-in issue" body={params.error} tone="error" />
               </div>
             ) : null}
 
             {params.created ? (
-              <div className="mt-5">
+              <div className="mt-3">
                 <FeedbackBanner
                   title="Account created"
                   body="Your account is ready. Sign in below with the email and password you just saved."
@@ -101,14 +101,14 @@ export default async function AuthPage({
             <PasswordAuthForm stackAvailable={stackStatus.available} nextPath={nextPath} />
           </div>
 
-          <div className="section-card rounded-[1.8rem] p-6 md:p-8">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">Email sign-in link</h2>
-            <p className="mt-3 text-sm leading-7 text-foreground/72">
+          <div className="section-card p-3.5 md:p-4">
+            <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Email sign-in link</h2>
+            <p className="mt-1.5 text-sm leading-6 text-foreground/68">
               Use this when you want a sign-in link sent straight to your inbox.
             </p>
 
             {params.sent ? (
-              <div className="mt-5">
+              <div className="mt-3">
                 <FeedbackBanner
                   title="Magic link sent"
                   body="Check your inbox, then come back through the confirmation link to finish sign-in."
@@ -119,15 +119,15 @@ export default async function AuthPage({
             <MagicLinkForm stackAvailable={stackStatus.available} nextPath={nextPath} />
           </div>
 
-          <details className="section-card rounded-[1.8rem] p-6 md:p-8">
-            <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-accent-strong">
+          <details className="section-card p-3.5 md:p-4">
+            <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
               Local recovery tools
             </summary>
             <div className="mt-4 grid gap-4 text-sm leading-7 text-foreground/72">
               <p>
                 If you&apos;re running the app on your own machine, use this section to recover or reseed a local account after resetting the local database.
               </p>
-              <div className="rounded-[1.2rem] border border-border/80 bg-white/65 px-4 py-3">
+              <div className="rounded-lg border border-border/80 bg-white/65 px-3.5 py-3">
                 <p className="font-semibold text-foreground">Sign-in service status</p>
                 <p className="mt-1 text-foreground/68">{stackStatus.message}</p>
               </div>

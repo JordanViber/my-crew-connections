@@ -21,9 +21,9 @@ function StatChip({
   value: string;
 }>) {
   return (
-    <div className="rounded-2xl border border-border/80 bg-white/76 px-3 py-3 shadow-[0_10px_24px_rgba(69,42,24,0.06)]">
-      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">{label}</p>
-      <p className="mt-2 text-[1.4rem] font-semibold leading-none tracking-tight text-foreground">{value}</p>
+    <div className="rounded-lg border border-border/80 bg-white/76 px-3 py-2.5 shadow-[0_8px_18px_rgba(31,44,49,0.045)]">
+      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-accent-strong">{label}</p>
+      <p className="mt-1.5 text-[1.28rem] font-semibold leading-none tracking-tight text-foreground">{value}</p>
     </div>
   );
 }
@@ -40,7 +40,7 @@ function MobileRelationshipRail({
   emptyCopy: string;
 }>) {
   return (
-    <section className="section-card rounded-[1.45rem] p-4">
+    <section className="section-card p-3.5">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-foreground">{title}</h2>
@@ -53,17 +53,17 @@ function MobileRelationshipRail({
       ) : (
         <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1">
           {items.map((item) => (
-            <article key={`${item.targetType}:${item.id}`} className="min-w-60 snap-start rounded-[1.2rem] border border-border/85 bg-white/82 p-4">
+            <article key={`${item.targetType}:${item.id}`} className="min-w-60 snap-start rounded-lg border border-border/85 bg-white/82 p-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-accent-strong">{item.targetType}</p>
-                  <h3 className="mt-2 text-[1.2rem] font-semibold text-foreground">{item.title}</h3>
+                  <h3 className="mt-1.5 text-[1.1rem] font-semibold text-foreground">{item.title}</h3>
                   <p className="mt-1 text-sm text-foreground/70">{item.subtitle}</p>
                 </div>
                 <StatusPill health={item.health} />
               </div>
 
-              <div className="mt-4 space-y-2 text-sm text-foreground/68">
+              <div className="mt-3 space-y-2 text-sm text-foreground/68">
                 <p>{item.cadenceLabel}</p>
                 <p>{item.health.summary}</p>
                 {item.targetType === "connection" ? (
@@ -73,7 +73,7 @@ function MobileRelationshipRail({
                 ) : null}
               </div>
 
-              <Link className="button-secondary mt-4 inline-flex" href={`/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`}>
+              <Link className="button-secondary mt-3 inline-flex" href={`/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`}>
                 Open details
               </Link>
             </article>
@@ -116,7 +116,7 @@ function MobileRecentHistory({
   emptyCopy: string;
 }>) {
   return (
-    <section className="section-card rounded-[1.45rem] p-4">
+    <section className="section-card p-3.5">
       <div className="mb-3">
         <h2 className="text-xl font-semibold tracking-tight text-foreground">Recent history</h2>
         <p className="mt-1 text-sm leading-6 text-foreground/68">Quick memory context without burying the main actions.</p>
@@ -127,7 +127,7 @@ function MobileRecentHistory({
       ) : (
         <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1">
           {touchpoints.slice(0, 4).map((touchpoint) => (
-            <article key={touchpoint.id} className="min-w-60 snap-start rounded-[1.2rem] border border-border/85 bg-white/78 p-4">
+            <article key={touchpoint.id} className="min-w-60 snap-start rounded-lg border border-border/85 bg-white/78 p-3.5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
@@ -156,11 +156,11 @@ function NextStepCard({
   ctaLabel: string;
 }>) {
   return (
-    <section className="section-card rounded-[1.45rem] p-4 md:p-5">
-      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-accent-strong">Recommended next step</p>
-      <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground">{title}</h2>
-      <p className="mt-2 text-sm leading-6 text-foreground/68">{description}</p>
-      <Link className="button-secondary mt-4 inline-flex" href={ctaHref}>
+    <section className="section-card p-3.5 md:p-4">
+      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-accent-strong">Recommended next step</p>
+      <h2 className="mt-2 text-[1.15rem] font-semibold tracking-tight text-foreground">{title}</h2>
+      <p className="mt-1.5 text-sm leading-6 text-foreground/68">{description}</p>
+      <Link className="button-secondary mt-3 inline-flex" href={ctaHref}>
         {ctaLabel}
       </Link>
     </section>
@@ -183,11 +183,11 @@ function RelationshipList({
   return (
     <div className="grid gap-4">
       {items.map((item) => (
-        <article key={`${item.targetType}:${item.id}`} className="rounded-[1.2rem] border border-border/90 bg-white/80 p-4">
+        <article key={`${item.targetType}:${item.id}`} className="rounded-lg border border-border/90 bg-white/80 p-3.5">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">{item.targetType}</p>
-              <h3 className="mt-2 text-[1.2rem] font-semibold text-foreground">{item.title}</h3>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-accent-strong">{item.targetType}</p>
+              <h3 className="mt-1.5 text-[1.1rem] font-semibold text-foreground">{item.title}</h3>
               <p className="mt-1 text-sm leading-7 text-foreground/70">{item.subtitle}</p>
               <p className="mt-2 text-sm font-medium text-foreground/70">{item.cadenceLabel}</p>
               {item.targetType === "connection" ? (
@@ -316,7 +316,7 @@ export default async function DashboardPage({
             label: "Focus",
             content: (
               <div className="grid gap-4">
-                <section className="section-card rounded-[1.45rem] p-4">
+                <section className="section-card p-3.5">
                   <div className="grid grid-cols-2 gap-2.5">
                     <StatChip label="Needs now" value={String(needsAttention.length)} />
                     <StatChip label="Plans" value={String(data.upcomingHangouts.length)} />
@@ -352,7 +352,7 @@ export default async function DashboardPage({
                   emptyCopy={needsAttentionEmptyCopy}
                 />
 
-                <section className="section-card rounded-[1.45rem] p-4">
+                <section className="section-card p-3.5">
                   <div className="mb-3">
                     <h2 className="text-xl font-semibold tracking-tight text-foreground">Reminder queue</h2>
                     <p className="mt-1 text-sm leading-6 text-foreground/68">
@@ -372,7 +372,7 @@ export default async function DashboardPage({
             id: "log",
             label: "Log",
             content: hasRelationships ? (
-              <section className="section-card rounded-[1.45rem] p-4">
+              <section className="section-card p-3.5">
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight text-foreground">Quick log</h2>
                   <p className="mt-1 text-sm leading-6 text-foreground/68">Capture the moment without leaving your dashboard.</p>
@@ -436,7 +436,7 @@ export default async function DashboardPage({
                 </form>
               </section>
             ) : (
-              <section className="section-card rounded-[1.45rem] p-4">
+              <section className="section-card p-3.5">
                 <h2 className="text-xl font-semibold tracking-tight text-foreground">First step</h2>
                 <p className="mt-2 text-sm leading-6 text-foreground/68">
                   Add a person or group first, then quick log becomes the easiest way to keep your rhythm grounded in real life.
@@ -457,7 +457,7 @@ export default async function DashboardPage({
             label: "Plans",
             content: (
               <div className="grid gap-4">
-                <section className="section-card rounded-[1.45rem] p-4">
+                <section className="section-card p-3.5">
                   <div className="mb-3">
                     <h2 className="text-xl font-semibold tracking-tight text-foreground">Upcoming plans</h2>
                     <p className="mt-1 text-sm leading-6 text-foreground/68">
@@ -490,7 +490,7 @@ export default async function DashboardPage({
               <div className="grid gap-4">
                 <MobileRecentHistory touchpoints={data.recentTouchpoints} emptyCopy={recentHistoryEmptyCopy} />
                 {data.recentTouchpoints.length === 0 ? (
-                  <section className="section-card rounded-[1.45rem] p-4">
+                  <section className="section-card p-3.5">
                     <h2 className="text-xl font-semibold tracking-tight text-foreground">Start the memory trail</h2>
                     <p className="mt-2 text-sm leading-6 text-foreground/68">
                       Things get more helpful after the first real-world touchpoint because reminders, history, and future plans all become more personal.
@@ -503,8 +503,8 @@ export default async function DashboardPage({
         ]}
       />
 
-      <div className="hidden gap-6 md:grid xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="grid gap-6">
+      <div className="hidden gap-5 md:grid xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="grid gap-5">
           <NextStepCard
             title={nextStep.title}
             description={nextStep.description}
@@ -552,12 +552,12 @@ export default async function DashboardPage({
           </SectionCard>
         </div>
 
-        <div className="grid gap-6">
+        <div className="grid gap-5">
           <SectionCard
             title="Quick log"
             description="Minimal friction beats perfect detail. Log a check-in, call, or hangout straight from the dashboard."
           >
-            <form action={createTouchpointAction} className="grid gap-4">
+            <form action={createTouchpointAction} className="grid gap-3">
               <input type="hidden" name="redirectTo" value="/dashboard" />
               <label className="grid gap-2">
                 <span className="field-label">Target</span>
@@ -615,12 +615,12 @@ export default async function DashboardPage({
             title="Recent history"
             description="Quick memory cues that make the next invite easier."
           >
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               {data.recentTouchpoints.length === 0 ? (
                 <p className="text-sm leading-7 text-foreground/68">{recentHistoryEmptyCopy}</p>
               ) : (
                 data.recentTouchpoints.map((touchpoint) => (
-                  <article key={touchpoint.id} className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                  <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>

@@ -144,7 +144,7 @@ export default async function GroupDetailPage({
                   <div className="mb-5 grid gap-3">
                     {memberConnections.length > 0 ? (
                       memberConnections.map((member) => (
-                        <article key={member.id} className="rounded-[1.2rem] border border-border/85 bg-white/78 p-4">
+                        <article key={member.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-base font-semibold text-foreground">{member.title}</p>
@@ -164,10 +164,10 @@ export default async function GroupDetailPage({
                     )}
                   </div>
 
-                  <form action={addGroupMembersAction} className="grid gap-4">
+                  <form action={addGroupMembersAction} className="grid gap-3">
                     <input type="hidden" name="groupId" value={group.id} />
                     <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
-                    <fieldset className="grid gap-3 rounded-[1.3rem] border border-border/85 bg-white/75 p-4">
+                    <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
                       <legend className="field-label px-2">Add existing connections</legend>
                       {availableConnections.length === 0 ? (
                         <p className="text-sm leading-7 text-foreground/68">No additional connections are available to add right now.</p>
@@ -193,13 +193,13 @@ export default async function GroupDetailPage({
                 >
                   {latestActivity ? (
                     <div className="grid gap-3">
-                      <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                      <div className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                         <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent activity</p>
                         <p className="mt-2 text-base font-medium text-foreground">
                           {latestActivity.activityLabel ?? "No activity saved yet"}
                         </p>
                       </div>
-                      <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                      <div className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                         <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent place</p>
                         <p className="mt-2 text-base font-medium text-foreground">
                           {latestActivity.locationLabel ?? "No place saved yet"}
@@ -301,12 +301,12 @@ export default async function GroupDetailPage({
             label: "History",
             content: (
               <SectionCard title="Recent timeline" description={`Last touchpoint: ${group.lastTouchpointLabel}`}>
-                <div className="grid gap-4">
+                <div className="grid gap-3">
                   {timeline.length === 0 ? (
                     <p className="text-sm leading-7 text-foreground/68">No group touchpoints yet. Log one event and the timeline becomes the memory surface.</p>
                   ) : (
                     timeline.map((touchpoint) => (
-                      <article key={touchpoint.id} className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                      <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
@@ -330,7 +330,7 @@ export default async function GroupDetailPage({
       />
 
       <div className="hidden gap-5 xl:grid-cols-[0.95fr_1.05fr] md:grid">
-        <div className="grid gap-6">
+        <div className="grid gap-5">
           <SectionCard title="Group settings" description={group.subtitle}>
             <div className="mb-5 flex items-center justify-between gap-4">
               <StatusPill health={group.health} />
@@ -387,7 +387,7 @@ export default async function GroupDetailPage({
             <div className="mb-5 grid gap-3">
               {memberConnections.length > 0 ? (
                 memberConnections.map((member) => (
-                  <article key={member.id} className="rounded-[1.2rem] border border-border/85 bg-white/78 p-4">
+                  <article key={member.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-base font-semibold text-foreground">{member.title}</p>
@@ -407,10 +407,10 @@ export default async function GroupDetailPage({
               )}
             </div>
 
-            <form action={addGroupMembersAction} className="grid gap-4">
+            <form action={addGroupMembersAction} className="grid gap-3">
               <input type="hidden" name="groupId" value={group.id} />
               <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
-              <fieldset className="grid gap-3 rounded-[1.3rem] border border-border/85 bg-white/75 p-4">
+              <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
                 <legend className="field-label px-2">Add existing connections</legend>
                 {availableConnections.length === 0 ? (
                   <p className="text-sm leading-7 text-foreground/68">No additional connections are available to add right now.</p>
@@ -431,13 +431,13 @@ export default async function GroupDetailPage({
           </SectionCard>
         </div>
 
-        <div className="grid gap-6">
+        <div className="grid gap-5">
           <SectionCard title="Log a group touchpoint" description="Use this for dinners, hikes, game nights, or any shared check-in worth remembering.">
-            <form action={createTouchpointAction} className="grid gap-4">
+            <form action={createTouchpointAction} className="grid gap-3">
               <input type="hidden" name="targetType" value="group" />
               <input type="hidden" name="targetId" value={group.id} />
               <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="field-label">Type</span>
                   <select className="field-input" name="touchpointType" defaultValue="hangout">
@@ -452,7 +452,7 @@ export default async function GroupDetailPage({
                   <input className="field-input" name="occurredAt" type="datetime-local" defaultValue={toInputDateTime()} required />
                 </label>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="field-label">Activity</span>
                   <input className="field-input" name="activityLabel" type="text" placeholder="Dinner, run club, game night" />
@@ -481,13 +481,13 @@ export default async function GroupDetailPage({
           >
             {latestActivity ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                <div className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                   <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent activity</p>
                   <p className="mt-2 text-base font-medium text-foreground">
                     {latestActivity.activityLabel ?? "No activity saved yet"}
                   </p>
                 </div>
-                <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                <div className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                   <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent place</p>
                   <p className="mt-2 text-base font-medium text-foreground">
                     {latestActivity.locationLabel ?? "No place saved yet"}
@@ -528,12 +528,12 @@ export default async function GroupDetailPage({
           </SectionCard>
 
           <SectionCard title="Recent timeline" description={`Last touchpoint: ${group.lastTouchpointLabel}`}>
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               {timeline.length === 0 ? (
                 <p className="text-sm leading-7 text-foreground/68">No group touchpoints yet. Log one event and the timeline becomes the memory surface.</p>
               ) : (
                 timeline.map((touchpoint) => (
-                  <article key={touchpoint.id} className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                  <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>

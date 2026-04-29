@@ -31,7 +31,7 @@ export function GroupMemberPicker({
   }, [connections, search]);
 
   return (
-    <fieldset className="grid gap-3 rounded-[1.3rem] border border-border/85 bg-white/75 p-4">
+    <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
       <legend className="field-label px-2">Add existing people</legend>
       {connections.length === 0 ? (
         <p className="text-sm leading-7 text-foreground/65">Add people first if you want to seed a group with members now.</p>
@@ -51,7 +51,7 @@ export function GroupMemberPicker({
             />
           </label>
           {filteredConnections.length === 0 ? (
-            <div className="rounded-[1.15rem] border border-dashed border-border/85 bg-white/58 p-4 text-sm leading-6 text-foreground/65">
+            <div className="rounded-lg border border-dashed border-border/85 bg-white/58 p-3.5 text-sm leading-6 text-foreground/65">
               No people match that search yet.
             </div>
           ) : (
@@ -59,7 +59,7 @@ export function GroupMemberPicker({
               {filteredConnections.map((connection) => (
                 <label
                   key={connection.id}
-                  className="flex items-start gap-3 rounded-[1.15rem] border border-border/80 bg-white/76 p-3 text-sm text-foreground/78"
+                  className="flex items-start gap-3 rounded-lg border border-border/80 bg-white/76 p-3 text-sm text-foreground/78"
                 >
                   <input className="mt-1 h-4 w-4 shrink-0" type="checkbox" name="connectionIds" value={connection.id} />
                   <div className="min-w-0 flex-1">

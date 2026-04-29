@@ -6,7 +6,7 @@ const iphone15Viewport = { width: 393, height: 852 };
 
 async function createAccount(page: Parameters<typeof test>[0]["page"], emailAddress: string, passwordValue: string) {
   await page.goto("/auth/create");
-  await expect(page.getByRole("heading", { name: /create your account in one step/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create your account.", exact: true })).toBeVisible();
   await page.getByLabel("First name").fill("Taylor");
   await page.getByLabel("Last name").fill("Tester");
   await page.getByLabel("Phone number").fill("555-0101");

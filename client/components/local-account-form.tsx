@@ -57,7 +57,7 @@ export function LocalAccountForm({
 
   return (
     <form
-      className="mt-4 grid gap-3"
+      className="mt-3 grid gap-3"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -94,7 +94,7 @@ export function LocalAccountForm({
       </label>
 
       {errorMessage ? (
-        <p className="rounded-2xl bg-[#f8d2ca] px-4 py-3 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
+        <p className="rounded-lg bg-[#f8d2ca] px-3 py-2.5 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
       ) : null}
 
       <button className="button-secondary w-fit" type="submit" disabled={isPending}>

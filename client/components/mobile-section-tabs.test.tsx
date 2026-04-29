@@ -4,23 +4,27 @@ import { MobileSectionTabs } from "@/components/mobile-section-tabs";
 
 function MockMotionDiv({
   children,
-  initial: _initial,
-  animate: _animate,
-  exit: _exit,
-  transition: _transition,
-  layoutId: _layoutId,
   ...props
 }: Readonly<Record<string, unknown> & { children?: ReactNode }>) {
-  return <div {...props}>{children}</div>;
+  const divProps = { ...props };
+  delete divProps.initial;
+  delete divProps.animate;
+  delete divProps.exit;
+  delete divProps.transition;
+  delete divProps.layoutId;
+
+  return <div {...divProps}>{children}</div>;
 }
 
 function MockMotionSpan({
   children,
-  transition: _transition,
-  layoutId: _layoutId,
   ...props
 }: Readonly<Record<string, unknown> & { children?: ReactNode }>) {
-  return <span {...props}>{children}</span>;
+  const spanProps = { ...props };
+  delete spanProps.transition;
+  delete spanProps.layoutId;
+
+  return <span {...spanProps}>{children}</span>;
 }
 
 vi.mock("motion/react", () => ({

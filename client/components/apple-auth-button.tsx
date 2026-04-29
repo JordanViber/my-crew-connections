@@ -44,7 +44,7 @@ export function AppleAuthButton({
   return (
     <div className="grid gap-3">
       <button
-        className="inline-flex min-h-12 items-center justify-center gap-3 rounded-full border border-border/85 bg-white px-5 text-sm font-semibold text-foreground transition hover:-translate-y-0.5 hover:border-foreground/18 hover:bg-white/96 disabled:cursor-default disabled:opacity-70"
+        className="inline-flex min-h-10 w-fit items-center justify-center gap-2 rounded-lg border border-border/85 bg-white px-3.5 text-sm font-semibold text-foreground transition hover:-translate-y-0.5 hover:border-foreground/18 hover:bg-white/96 disabled:cursor-default disabled:opacity-70"
         disabled={isPending}
         onClick={signInWithApple}
         type="button"
@@ -54,7 +54,7 @@ export function AppleAuthButton({
       </button>
 
       {errorMessage ? (
-        <p className="rounded-2xl bg-[#f8d2ca] px-4 py-3 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
+        <p className="rounded-lg bg-[#f8d2ca] px-3 py-2.5 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
       ) : null}
     </div>
   );

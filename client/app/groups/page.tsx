@@ -72,7 +72,7 @@ export default async function GroupsPage({
         ]}
       />
 
-      <div className="hidden gap-6 xl:grid-cols-[0.9fr_1.1fr] md:grid">
+      <div className="hidden gap-5 xl:grid-cols-[0.9fr_1.1fr] md:grid">
         <SectionCard title="Create a group" description="Start with a name, a cadence, and the first few people who make the group real.">
           <GroupCreateForm connections={data.connections} />
         </SectionCard>

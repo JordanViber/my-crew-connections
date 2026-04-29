@@ -32,38 +32,38 @@ export default async function CreateAccountPage({
   const preferLocalHelper = isLocalSupabaseHost(env.supabaseUrl);
 
   return (
-    <main className="shell flex items-center justify-center px-4 py-6 md:px-8">
-      <div className="glass-panel grid max-w-6xl gap-6 rounded-4xl p-6 md:grid-cols-[0.9fr_1.1fr] md:p-10">
-        <section className="grid content-start gap-5">
+    <main className="shell flex items-center justify-center px-3 py-3 md:px-8 md:py-6">
+      <div className="glass-panel grid max-w-5xl gap-4 p-4 md:grid-cols-[0.72fr_1.28fr] md:p-5">
+        <section className="grid content-start gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent-strong">Create account</p>
-            <h1 className="mt-4 text-5xl font-semibold tracking-tight text-foreground md:text-6xl">Create your account in one step.</h1>
-            <p className="mt-4 max-w-xl text-lg leading-8 text-foreground/72">
-              Add your name, contact details, secure password, and mailing address from the start.
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">Create account</p>
+            <h1 className="mt-3 text-[2.15rem] font-semibold leading-none tracking-tight text-foreground md:text-[2.75rem]">Create your account.</h1>
+            <p className="mt-3 max-w-xl text-base leading-7 text-foreground/70">
+              Start with your name, email, and password. Phone and mailing details can be finished now or later in settings.
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <article className="section-card rounded-[1.35rem] p-4 text-sm leading-6 text-foreground/75">
-              <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">Identity</p>
-              <p className="mt-2">Your name and phone number stay attached to the account.</p>
+          <div className="hidden gap-2 md:grid">
+            <article className="section-card p-3 text-sm leading-6 text-foreground/75">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">Identity</p>
+              <p className="mt-1.5">Your name anchors invites, reminders, and profile details.</p>
             </article>
-            <article className="section-card rounded-[1.35rem] p-4 text-sm leading-6 text-foreground/75">
-              <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">Security</p>
-              <p className="mt-2">Choose a password now or continue with Apple.</p>
+            <article className="section-card p-3 text-sm leading-6 text-foreground/75">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">Security</p>
+              <p className="mt-1.5">Choose a password now or continue with Apple.</p>
             </article>
-            <article className="section-card rounded-[1.35rem] p-4 text-sm leading-6 text-foreground/75">
-              <p className="font-semibold uppercase tracking-[0.2em] text-accent-strong">Address</p>
-              <p className="mt-2">Type once and let the rest of the fields fill in.</p>
+            <article className="section-card p-3 text-sm leading-6 text-foreground/75">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">Contact</p>
+              <p className="mt-1.5">Add phone or mailing details only if they are useful now.</p>
             </article>
           </div>
 
-          <div className="rounded-[1.6rem] border border-border/85 bg-white/68 px-5 py-4 text-sm leading-7 text-foreground/72">
+          <div className="rounded-lg border border-border/85 bg-white/72 px-3.5 py-3 text-sm leading-6 text-foreground/70">
             Already have an account? <Link className="font-semibold text-accent-strong" href="/auth">Go to sign in</Link>.
           </div>
         </section>
 
-        <section className="grid gap-4">
+        <section className="grid gap-3">
           {stackStatus.available ? null : (
             <FeedbackBanner
               title="Account creation is currently unavailable"
@@ -72,15 +72,15 @@ export default async function CreateAccountPage({
             />
           )}
 
-          <div className="section-card rounded-[1.8rem] p-6 md:p-8">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">Create your account</h2>
-            <p className="mt-3 text-sm leading-7 text-foreground/72">Continue with Apple for speed, or use email below.</p>
+          <div className="section-card p-3.5 md:p-4">
+            <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Create your account</h2>
+            <p className="mt-1.5 text-sm leading-6 text-foreground/68">Continue with Apple for speed, or use email below.</p>
 
-            <div className="mt-5">
+            <div className="mt-4">
               <AppleAuthButton nextPath={nextPath} />
             </div>
 
-            <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-foreground/40">
+            <div className="my-4 flex items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-foreground/40">
               <span className="h-px flex-1 bg-border/80" />
               <span>Or continue with email</span>
               <span className="h-px flex-1 bg-border/80" />

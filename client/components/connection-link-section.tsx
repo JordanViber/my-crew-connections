@@ -32,8 +32,8 @@ export function ConnectionLinkSection({
   }
 
   return (
-    <div className="grid gap-4">
-      <div className={["rounded-[1.3rem] border p-4", cardClasses].join(" ")}>
+    <div className="grid gap-3">
+      <div className={["rounded-lg border p-3.5", cardClasses].join(" ")}>
         <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">{linkState.eyebrow}</p>
         <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{linkState.title}</h3>
         <p className="mt-2 text-sm leading-6 text-foreground/72">{linkState.body}</p>
@@ -42,7 +42,7 @@ export function ConnectionLinkSection({
       {activeInvite ? <InviteLinkPanel inviteUrl={activeInvite.inviteUrl} /> : null}
 
       {showInviteForm ? (
-        <form action={createConnectionInviteAction} className="grid gap-4">
+        <form action={createConnectionInviteAction} className="grid gap-3">
           <input type="hidden" name="connectionId" value={connectionId} />
           <input type="hidden" name="redirectTo" value={redirectTo} />
           <label className="grid gap-2">

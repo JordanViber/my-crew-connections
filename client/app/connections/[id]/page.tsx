@@ -216,13 +216,13 @@ export default async function ConnectionDetailPage({
                 >
                   {latestActivity ? (
                     <div className="grid gap-3">
-                      <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                      <div className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                         <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent activity</p>
                         <p className="mt-2 text-base font-medium text-foreground">
                           {latestActivity.activityLabel ?? "No activity saved yet"}
                         </p>
                       </div>
-                      <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                      <div className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                         <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent place</p>
                         <p className="mt-2 text-base font-medium text-foreground">
                           {latestActivity.locationLabel ?? "No place saved yet"}
@@ -336,12 +336,12 @@ export default async function ConnectionDetailPage({
             label: "History",
             content: (
               <SectionCard title="Recent timeline" description={`Last touchpoint: ${connection.lastTouchpointLabel}`}>
-                <div className="grid gap-4">
+                <div className="grid gap-3">
                   {timeline.length === 0 ? (
                     <p className="text-sm leading-7 text-foreground/68">No timeline entries yet. Log a first touchpoint to make this view useful.</p>
                   ) : (
                     timeline.map((touchpoint) => (
-                      <article key={touchpoint.id} className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                      <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
@@ -428,13 +428,13 @@ export default async function ConnectionDetailPage({
           </form>
         </SectionCard>
 
-        <div className="grid gap-6">
+        <div className="grid gap-5">
           <SectionCard title="Log a touchpoint" description="Keep it quick. Even a two-minute update is enough to keep the dashboard honest.">
-            <form action={createTouchpointAction} className="grid gap-4">
+            <form action={createTouchpointAction} className="grid gap-3">
               <input type="hidden" name="targetType" value="connection" />
               <input type="hidden" name="targetId" value={connection.id} />
               <input type="hidden" name="redirectTo" value={`/connections/${connection.id}`} />
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="field-label">Type</span>
                   <select className="field-input" name="touchpointType" defaultValue="hangout">
@@ -449,7 +449,7 @@ export default async function ConnectionDetailPage({
                   <input className="field-input" name="occurredAt" type="datetime-local" defaultValue={toInputDateTime()} required />
                 </label>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="field-label">Activity</span>
                   <input className="field-input" name="activityLabel" type="text" placeholder="Walk, dinner, coffee, check-in" />
@@ -478,13 +478,13 @@ export default async function ConnectionDetailPage({
           >
             {latestActivity ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                <div className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                   <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent activity</p>
                   <p className="mt-2 text-base font-medium text-foreground">
                     {latestActivity.activityLabel ?? "No activity saved yet"}
                   </p>
                 </div>
-                <div className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                <div className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                   <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">Recent place</p>
                   <p className="mt-2 text-base font-medium text-foreground">
                     {latestActivity.locationLabel ?? "No place saved yet"}
@@ -537,12 +537,12 @@ export default async function ConnectionDetailPage({
           </SectionCard>
 
           <SectionCard title="Recent timeline" description={`Last touchpoint: ${connection.lastTouchpointLabel}`}>
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               {timeline.length === 0 ? (
                 <p className="text-sm leading-7 text-foreground/68">No timeline entries yet. Log a first touchpoint to make this view useful.</p>
               ) : (
                 timeline.map((touchpoint) => (
-                  <article key={touchpoint.id} className="rounded-[1.3rem] border border-border/85 bg-white/78 p-4">
+                  <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>

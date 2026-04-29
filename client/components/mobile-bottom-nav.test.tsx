@@ -8,11 +8,13 @@ const { pathnameMock } = vi.hoisted(() => ({
 
 function MockMotionSpan({
   children,
-  transition: _transition,
-  layoutId: _layoutId,
   ...props
 }: Readonly<Record<string, unknown> & { children?: ReactNode }>) {
-  return <span {...props}>{children}</span>;
+  const spanProps = { ...props };
+  delete spanProps.transition;
+  delete spanProps.layoutId;
+
+  return <span {...spanProps}>{children}</span>;
 }
 
 vi.mock("next/navigation", () => ({

@@ -49,7 +49,7 @@ export function PasswordAuthForm({
         router.refresh();
         return;
       } catch {
-        setErrorMessage("We couldn’t reach the sign-in service. Try again in a moment.");
+        setErrorMessage("We couldn't reach the sign-in service. Try again in a moment.");
         return;
       }
     });
@@ -57,7 +57,7 @@ export function PasswordAuthForm({
 
   return (
     <form
-      className="mt-6 grid gap-4"
+      className="mt-4 grid gap-3"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -94,10 +94,10 @@ export function PasswordAuthForm({
       </label>
 
       {errorMessage ? (
-        <p className="rounded-2xl bg-[#f8d2ca] px-4 py-3 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
+        <p className="rounded-lg bg-[#f8d2ca] px-3 py-2.5 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
       ) : null}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2">
         <button className="button-primary" type="submit" disabled={isPending}>
           {isPending ? "Signing in..." : "Sign in"}
         </button>

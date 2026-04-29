@@ -53,14 +53,14 @@ export function MagicLinkForm({
         router.refresh();
         return;
       } catch {
-        setErrorMessage("We couldn’t reach the email sign-in service. Try again in a moment.");
+        setErrorMessage("We couldn't reach the email sign-in service. Try again in a moment.");
         return;
       }
     });
   };
 
   return (
-    <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
+    <form className="mt-4 grid gap-3" onSubmit={handleSubmit}>
       <label className="grid gap-2">
         <span className="field-label">Email</span>
         <input
@@ -75,10 +75,10 @@ export function MagicLinkForm({
       </label>
 
       {errorMessage ? (
-        <p className="rounded-2xl bg-[#f8d2ca] px-4 py-3 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
+        <p className="rounded-lg bg-[#f8d2ca] px-3 py-2.5 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
       ) : null}
 
-      <button className="button-primary mt-2" type="submit" disabled={isPending}>
+      <button className="button-primary w-fit" type="submit" disabled={isPending}>
         {isPending ? "Sending sign-in link..." : "Email me a sign-in link"}
       </button>
     </form>

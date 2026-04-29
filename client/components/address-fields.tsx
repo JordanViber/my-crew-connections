@@ -116,7 +116,7 @@ export function AddressFields({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       <label className="grid gap-2">
         <span className="field-label">Street address</span>
         <div className="relative">
@@ -136,7 +136,7 @@ export function AddressFields({
           />
 
           {suggestions.length ? (
-            <div className="absolute inset-x-0 top-[calc(100%+0.4rem)] z-20 overflow-hidden rounded-2xl border border-border/90 bg-[rgba(255,255,255,0.98)] shadow-[0_18px_36px_rgba(29,36,40,0.12)] backdrop-blur-xl">
+            <div className="absolute inset-x-0 top-[calc(100%+0.4rem)] z-20 overflow-hidden rounded-lg border border-border/90 bg-[rgba(255,255,255,0.98)] shadow-[0_18px_36px_rgba(29,36,40,0.12)] backdrop-blur-xl">
               {suggestions.map((suggestion, index) => (
                 <button
                   key={`${suggestion.label}-${index}`}
@@ -168,7 +168,7 @@ export function AddressFields({
         />
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-2">
           <span className="field-label">City</span>
           <input
@@ -195,7 +195,7 @@ export function AddressFields({
         </label>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-2">
           <span className="field-label">Postal code</span>
           <input

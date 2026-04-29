@@ -47,16 +47,16 @@ export default async function InviteClaimPage({
     const nextPath = `/invite/${token}`;
 
     return (
-      <main className="shell flex items-center justify-center px-4 py-6 md:px-8">
-        <div className="glass-panel grid max-w-3xl gap-6 rounded-4xl p-6 md:p-10">
-          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent-strong">Connection invite</p>
-          <h1 className="text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
+      <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
+        <div className="glass-panel grid max-w-3xl gap-4 p-5 md:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">Connection invite</p>
+          <h1 className="text-[2.1rem] font-semibold leading-tight tracking-tight text-foreground md:text-4xl">
             {connection.display_name} wants to connect in My Crew Connections.
           </h1>
-          <p className="text-base leading-8 text-foreground/72">
+          <p className="text-sm leading-7 text-foreground/72">
             Sign in or create your account with <strong>{invite.invited_email}</strong>, then come right back here to claim the connection.
           </p>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Link className="button-primary w-full sm:w-auto" href={`/auth?next=${encodeURIComponent(nextPath)}`}>
               Sign in to claim
             </Link>
@@ -70,13 +70,13 @@ export default async function InviteClaimPage({
   }
 
   return (
-    <main className="shell flex items-center justify-center px-4 py-6 md:px-8">
-      <div className="glass-panel grid max-w-3xl gap-6 rounded-4xl p-6 md:p-10">
-        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-accent-strong">Connection invite</p>
-        <h1 className="text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
+    <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
+      <div className="glass-panel grid max-w-3xl gap-4 p-5 md:p-7">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">Connection invite</p>
+        <h1 className="text-[2.1rem] font-semibold leading-tight tracking-tight text-foreground md:text-4xl">
           Claim your connection with {connection.display_name}.
         </h1>
-        <p className="text-base leading-8 text-foreground/72">
+        <p className="text-sm leading-7 text-foreground/72">
           Signed in as <strong>{user.email}</strong>. To claim this connection, your signed-in email should match <strong>{invite.invited_email}</strong>.
         </p>
 
@@ -97,7 +97,7 @@ export default async function InviteClaimPage({
             title="Claim this connection"
             description="Once claimed, the owner can treat this relationship as linked to your real account."
           >
-            <form action={claimConnectionInviteAction} className="grid gap-4">
+            <form action={claimConnectionInviteAction} className="grid gap-3">
               <input type="hidden" name="token" value={token} />
               <button className="button-primary w-full sm:w-auto" type="submit">
                 Claim connection

@@ -14,8 +14,8 @@ function SummaryChip({
   value: number;
 }>) {
   return (
-    <div className="rounded-[1.1rem] border border-border/80 bg-white/72 px-3.5 py-3">
-      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-accent-strong">{label}</p>
+    <div className="rounded-lg border border-border/80 bg-white/72 px-3 py-2.5">
+      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-accent-strong">{label}</p>
       <p className="mt-1.5 text-lg font-semibold tracking-tight text-foreground">{value}</p>
     </div>
   );
@@ -37,15 +37,15 @@ function GroupSection({
   return (
     <div className="grid gap-4">
       <div>
-        <h3 className="text-xl font-semibold tracking-tight text-foreground">{title}</h3>
+        <h3 className="text-[1.1rem] font-semibold tracking-tight text-foreground">{title}</h3>
         <p className="mt-1 text-sm leading-6 text-foreground/68">{description}</p>
       </div>
       {items.map((group) => (
-        <article key={group.id} className="rounded-[1.25rem] border border-border/90 bg-white/82 p-4">
+        <article key={group.id} className="rounded-lg border border-border/90 bg-white/82 p-3.5">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">{group.memberNames.length} members</p>
-              <h2 className="mt-2 text-[1.35rem] font-semibold text-foreground">{group.title}</h2>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-accent-strong">{group.memberNames.length} members</p>
+              <h2 className="mt-1.5 text-[1.15rem] font-semibold text-foreground">{group.title}</h2>
               <p className="mt-2 text-sm leading-7 text-foreground/72">{group.subtitle}</p>
               <p className="mt-2 text-sm text-foreground/70">{group.cadenceLabel}</p>
               <p className="mt-2 text-sm text-foreground/65">{group.memberNames.length > 0 ? group.memberNames.join(", ") : "No members added yet"}</p>
@@ -88,7 +88,7 @@ export function GroupDirectory({
 
   if (groups.length === 0) {
     content = (
-      <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
+      <div className="rounded-lg border border-dashed border-border bg-white/60 p-4">
         <p className="text-sm leading-7 text-foreground/68">
           No groups yet. Add a recurring crew and the app can help keep the rhythm visible.
         </p>
@@ -99,7 +99,7 @@ export function GroupDirectory({
     );
   } else if (filtered.length === 0) {
     content = (
-      <div className="rounded-[1.4rem] border border-dashed border-border bg-white/60 p-5">
+      <div className="rounded-lg border border-dashed border-border bg-white/60 p-4">
         <p className="text-sm leading-7 text-foreground/68">Nothing matches that group search and filter combination yet.</p>
         <p className="mt-2 text-sm leading-6 text-foreground/62">Try a broader search or switch between all, attention, and on-track views.</p>
       </div>
@@ -124,7 +124,7 @@ export function GroupDirectory({
   return (
     <div className="grid gap-4">
       <div className="grid gap-3">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-2.5 sm:grid-cols-3">
           <SummaryChip label="Visible groups" value={filtered.length} />
           <SummaryChip label="Need attention" value={needsAttentionCount} />
           <SummaryChip label="On track" value={filtered.length - needsAttentionCount} />
@@ -139,11 +139,11 @@ export function GroupDirectory({
             placeholder="Search by name, description, or member names"
           />
         </label>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {filterLabels.map((option) => (
             <button
               key={option.id}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
                 filter === option.id
                   ? "bg-[rgba(209,96,61,0.14)] text-accent-strong shadow-[inset_0_0_0_1px_rgba(209,96,61,0.18)]"
                   : "bg-white/72 text-foreground/68"

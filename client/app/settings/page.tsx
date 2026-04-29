@@ -85,14 +85,14 @@ export default async function SettingsPage({
         </div>
       ) : null}
 
-      <div className="grid gap-4 md:gap-6 xl:grid-cols-[0.82fr_1.18fr]">
+      <div className="grid gap-4 xl:grid-cols-[0.82fr_1.18fr]">
         <div className="grid gap-4">
-          <section className="section-card rounded-[1.45rem] p-4 md:p-5">
+          <section className="section-card p-3.5 md:p-4">
             <p className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-accent-strong">Account snapshot</p>
-            <h2 className="mt-3 text-[1.45rem] font-semibold tracking-tight text-foreground">{displayName}</h2>
+            <h2 className="mt-2 text-[1.3rem] font-semibold tracking-tight text-foreground">{displayName}</h2>
             <p className="mt-2 text-sm leading-6 text-foreground/68">{user.email ?? "No email on file"}</p>
 
-            <div className="mt-4 rounded-[1.2rem] border border-border/85 bg-white/82 px-4 py-4">
+            <div className="mt-3 rounded-lg border border-border/85 bg-white/82 px-3.5 py-3.5">
               <div className="flex items-center justify-between gap-4">
                 <p className="text-sm font-semibold text-foreground">Profile completeness</p>
                 <p className="text-sm font-semibold text-accent-strong">{profileCompletion}%</p>
@@ -101,16 +101,16 @@ export default async function SettingsPage({
                 <div className="h-full rounded-full bg-[linear-gradient(135deg,#ef6b4a_0%,#b94224_100%)]" style={{ width: `${profileCompletion}%` }} />
               </div>
               <p className="mt-3 text-sm leading-6 text-foreground/68">
-                Complete the core profile once so invites, receipts, and account updates all stay consistent.
+                Complete the core profile once so invites and account updates stay consistent.
               </p>
             </div>
 
-            <div className="mt-4 grid gap-3 text-sm leading-6 text-foreground/72">
-              <div className="rounded-[1.2rem] border border-border/85 bg-white/78 px-4 py-3">
+            <div className="mt-3 grid gap-3 text-sm leading-6 text-foreground/72">
+              <div className="rounded-lg border border-border/85 bg-white/78 px-3.5 py-3">
                 <p className="font-semibold text-foreground">Profile details</p>
                 <p className="mt-2">Keep your name, phone number, and email details current in one place.</p>
               </div>
-              <div className="rounded-[1.2rem] border border-border/85 bg-white/78 px-4 py-3">
+              <div className="rounded-lg border border-border/85 bg-white/78 px-3.5 py-3">
                 <p className="font-semibold text-foreground">Mailing address</p>
                 <p className="mt-2">Search once, autofill the basics, and adjust anything that needs a manual touch.</p>
               </div>
@@ -123,7 +123,7 @@ export default async function SettingsPage({
           >
             <div className="grid gap-3 text-sm leading-6 text-foreground/72">
               <p>Update your email when it changes and rotate your password whenever you want a fresh sign-in.</p>
-              <p>Apple sign-in is available from the auth screen, and additional premium sign-in methods can layer in from here over time.</p>
+              <p>Apple sign-in is available from the auth screen when configured; email and password stay editable here.</p>
             </div>
           </SectionCard>
         </div>
@@ -133,8 +133,8 @@ export default async function SettingsPage({
             title="Profile identity"
             description="Use your real name and contact details here so every future account surface starts from the same source of truth."
           >
-            <form action={updateProfileAction} className="grid gap-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+            <form action={updateProfileAction} className="grid gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="field-label">First name</span>
                   <input className="field-input" type="text" name="firstName" defaultValue={profile?.first_name ?? ""} autoComplete="given-name" required />
@@ -150,8 +150,8 @@ export default async function SettingsPage({
                 <PhoneNumberInput defaultValue={profile?.phone_number ?? ""} name="phoneNumber" placeholder="(415) 555-0132" />
               </label>
 
-              <div className="rounded-[1.5rem] border border-border/85 bg-white/66 px-4 py-4 md:px-5 md:py-5">
-                <div className="mb-4">
+              <div className="rounded-lg border border-border/85 bg-white/66 px-3.5 py-3.5">
+                <div className="mb-3">
                   <p className="text-sm font-semibold text-foreground">Mailing address</p>
                   <p className="mt-1 text-sm leading-6 text-foreground/68">Start with the street address and the rest can fill in automatically.</p>
                 </div>
@@ -173,7 +173,7 @@ export default async function SettingsPage({
             title="Sign-in email"
             description="Change the address tied to this account without leaving the product."
           >
-            <form action={updateAccountEmailAction} className="grid gap-4">
+            <form action={updateAccountEmailAction} className="grid gap-3">
               <label className="grid gap-2">
                 <span className="field-label">Email</span>
                 <input className="field-input" type="email" name="email" defaultValue={user.email ?? ""} autoComplete="email" required />
@@ -187,7 +187,7 @@ export default async function SettingsPage({
             title="Password"
             description="Set a new password whenever you want a cleaner, more secure sign-in."
           >
-            <form action={updateAccountPasswordAction} className="grid gap-4 sm:max-w-xl">
+            <form action={updateAccountPasswordAction} className="grid gap-3 sm:max-w-xl">
               <label className="grid gap-2">
                 <span className="field-label">New password</span>
                 <input className="field-input" type="password" name="password" autoComplete="new-password" minLength={8} required />
