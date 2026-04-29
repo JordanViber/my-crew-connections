@@ -130,6 +130,7 @@ async function getActiveRelationshipCount(
 async function assertCanCreateRelationship(
   supabase: ReturnType<typeof createServerAdminSupabaseClient>,
   userId: string,
+  email: string | null | undefined,
   kind: "connection" | "group",
 ) {
   const [profile, count] = await Promise.all([
@@ -137,8 +138,8 @@ async function assertCanCreateRelationship(
     getActiveRelationshipCount(supabase, kind === "connection" ? "connections" : "groups", userId),
   ]);
   const allowed = kind === "connection"
-    ? canCreateConnection(profile, count)
-    : canCreateGroup(profile, count);
+    ? canCreateConnection(profile, count, email)
+    : canCreateGroup(profile, count, email);
 
   if (!allowed) {
     redirect(withFeedback("/settings#billing", kind === "connection" ? "connection-limit-reached" : "group-limit-reached"));
@@ -421,7 +422,7 @@ export async function createBillingPortalAction() {
 
 export async function createConnectionAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
-  await assertCanCreateRelationship(supabase, user.id, "connection");
+  await assertCanCreateRelationship(supabase, user.id, user.email, "connection");
 
   const payload = connectionSchema.parse({
     displayName: getString(formData, "displayName"),
@@ -527,7 +528,7 @@ export async function updateConnectionAction(formData: FormData) {
 
 export async function createGroupAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
-  await assertCanCreateRelationship(supabase, user.id, "group");
+  await assertCanCreateRelationship(supabase, user.id, user.email, "group");
 
   const payload = groupSchema.parse({
     name: getString(formData, "name"),

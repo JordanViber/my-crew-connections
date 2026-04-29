@@ -1,19 +1,12 @@
 import { redirect } from "next/navigation";
-import { AddressFields } from "@/components/address-fields";
 import { AppShell } from "@/components/app-shell";
+import { BillingPlanSelector } from "@/components/billing-plan-selector";
 import { FeedbackBanner } from "@/components/feedback-banner";
-import { PhoneNumberInput } from "@/components/phone-number-input";
+import { AccountSettingsEditor, SecuritySettingsEditor } from "@/components/settings-edit-sections";
 import { ThemeSettingRow } from "@/components/theme-setting-row";
-import {
-  createBillingCheckoutAction,
-  createBillingPortalAction,
-  updateAccountEmailAction,
-  updateAccountPasswordAction,
-  updateProfileAction,
-} from "@/app/actions";
+import { createBillingPortalAction } from "@/app/actions";
 import { billingPlan, getBillingRenewalLabel, getBillingStatusLabel, isPremiumStatus } from "@/lib/billing";
-import { getDefaultCountry } from "@/lib/account-fields";
-import { freeTierFeatures, premiumTierFeatures } from "@/lib/entitlements";
+import { freeTierFeatures, hasPremiumAccess, isSuperUserEmail, premiumTierFeatures } from "@/lib/entitlements";
 import { getFeedback } from "@/lib/feedback";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -88,47 +81,23 @@ function StatusBadge({ label, active }: Readonly<{ label: string; active: boolea
   );
 }
 
-function BillingChoice({
-  interval,
-  price,
-  detail,
-}: Readonly<{
-  interval: "monthly" | "yearly";
-  price: string;
-  detail: string;
-}>) {
-  return (
-    <form action={createBillingCheckoutAction} className="rounded-lg border border-border bg-surface-muted p-3">
-      <input name="interval" type="hidden" value={interval} />
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-semibold text-foreground">{interval === "monthly" ? "Monthly" : "Yearly"}</p>
-          <p className="mt-1 text-sm text-foreground/58">{detail}</p>
-        </div>
-        <p className="text-lg font-semibold text-foreground">{price}</p>
-      </div>
-      <button className="button-secondary mt-3 w-full" type="submit">
-        Choose {interval === "monthly" ? "monthly" : "yearly"}
-      </button>
-    </form>
-  );
-}
-
 function PlanFeatureColumn({
   title,
   price,
   features,
-  featured = false,
+  current = false,
+  emphasized = false,
 }: Readonly<{
   title: string;
   price: string;
   features: string[];
-  featured?: boolean;
+  current?: boolean;
+  emphasized?: boolean;
 }>) {
   return (
     <div
       className={`rounded-lg border p-3.5 ${
-        featured
+        emphasized
           ? "border-accent/40 bg-[linear-gradient(135deg,var(--surface-strong)_0%,rgba(216,239,231,0.68)_55%,rgba(248,210,202,0.66)_100%)]"
           : "border-border bg-surface-muted"
       }`}
@@ -138,16 +107,19 @@ function PlanFeatureColumn({
           <p className="font-semibold text-foreground">{title}</p>
           <p className="mt-1 text-sm text-foreground/58">{price}</p>
         </div>
-        {featured ? (
-          <span className="rounded-full bg-foreground px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-background">
-            Best value
+        {current ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-background">
+            <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" viewBox="0 0 24 24">
+              <path d="m5 12 4 4L19 6" />
+            </svg>
+            Current
           </span>
         ) : null}
       </div>
       <div className="mt-3 grid gap-2">
         {features.map((feature) => (
           <div key={feature} className="flex items-center gap-2 text-sm font-medium text-foreground/76">
-            <span className={`h-1.5 w-1.5 rounded-full ${featured ? "bg-accent" : "bg-foreground/32"}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${emphasized ? "bg-accent" : "bg-foreground/32"}`} />
             <span>{feature}</span>
           </div>
         ))}
@@ -197,9 +169,11 @@ export default async function SettingsPage({
     : null;
   const feedback = getFeedback(params.feedback);
   const displayName = getDisplayName(typedProfile, user.email);
-  const billingStatus = getBillingStatusLabel(typedProfile);
+  const isSuperUser = isSuperUserEmail(user.email);
+  const billingStatus = isSuperUser ? "Full access" : getBillingStatusLabel(typedProfile);
   const renewalLabel = getBillingRenewalLabel(typedProfile);
-  const hasPremium = isPremiumStatus(typedProfile?.stripe_subscription_status);
+  const hasPaidPremium = isPremiumStatus(typedProfile?.stripe_subscription_status);
+  const hasPremium = hasPremiumAccess(typedProfile, user.email);
   const canManageBilling = Boolean(process.env.STRIPE_SECRET_KEY && typedProfile?.stripe_customer_id);
 
   return (
@@ -228,66 +202,27 @@ export default async function SettingsPage({
             </div>
           </SettingsRow>
           <SettingsRow>
-            <form action={updateProfileAction} className="grid gap-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="grid gap-2">
-                  <span className="field-label">First name</span>
-                  <input className="field-input" type="text" name="firstName" defaultValue={typedProfile?.first_name ?? ""} autoComplete="given-name" required />
-                </label>
-                <label className="grid gap-2">
-                  <span className="field-label">Last name</span>
-                  <input className="field-input" type="text" name="lastName" defaultValue={typedProfile?.last_name ?? ""} autoComplete="family-name" required />
-                </label>
-              </div>
-
-              <label className="grid gap-2">
-                <span className="field-label">Phone number</span>
-                <PhoneNumberInput defaultValue={typedProfile?.phone_number ?? ""} name="phoneNumber" placeholder="(415) 555-0132" />
-              </label>
-
-              <div className="rounded-lg border border-border/85 bg-surface-muted px-3.5 py-3.5">
-                <AddressFields
-                  initialAddressLine1={typedProfile?.billing_address_line1 ?? ""}
-                  initialAddressLine2={typedProfile?.billing_address_line2 ?? ""}
-                  initialCity={typedProfile?.billing_city ?? ""}
-                  initialRegion={typedProfile?.billing_region ?? ""}
-                  initialPostalCode={typedProfile?.billing_postal_code ?? ""}
-                  initialCountry={getDefaultCountry(typedProfile?.billing_country)}
-                />
-              </div>
-
-              <button className="button-primary w-fit" type="submit">Save profile</button>
-            </form>
+            <AccountSettingsEditor profile={typedProfile} displayName={displayName} />
           </SettingsRow>
         </SettingsGroup>
 
         <SettingsGroup id="billing" title="Billing">
           <SettingsRow>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-semibold text-foreground">{hasPremium ? `${billingPlan.name} plan` : "Free plan"}</p>
-                <p className="mt-1 text-sm text-foreground/58">
-                  {renewalLabel ? `${typedProfile?.stripe_cancel_at_period_end ? "Ends" : "Renews"} ${renewalLabel}` : "Upgrade when you are ready."}
-                </p>
-              </div>
-              <StatusBadge active={hasPremium} label={billingStatus} />
-            </div>
-          </SettingsRow>
-          <SettingsRow>
             <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
               <div>
-                <p className="font-semibold text-foreground">Unlock the full relationship system</p>
+                <p className="font-semibold text-foreground">Choose the plan for your circle</p>
                 <p className="mt-1 text-sm leading-6 text-foreground/62">
-                  Free is meant to prove the rhythm with one person and one group. Premium removes the ceiling so the app can hold your whole circle.
+                  Free keeps one person and one group moving. Premium removes the ceiling when you want the app to hold your whole circle.
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <PlanFeatureColumn title="Free" price="Start small" features={freeTierFeatures} />
+                <PlanFeatureColumn title="Free" price="Start small" features={freeTierFeatures} current={!hasPremium} />
                 <PlanFeatureColumn
                   title={billingPlan.name}
                   price={`${billingPlan.monthlyPrice}/mo or ${billingPlan.yearlyPrice}/yr`}
                   features={premiumTierFeatures}
-                  featured
+                  current={hasPremium}
+                  emphasized
                 />
               </div>
             </div>
@@ -295,27 +230,27 @@ export default async function SettingsPage({
           <SettingsRow>
             {hasPremium ? (
               <div className="rounded-lg border border-border bg-surface-muted p-3.5">
-                <p className="font-semibold text-foreground">Premium is active</p>
+                <p className="font-semibold text-foreground">{isSuperUser ? "Full access enabled" : "Premium is active"}</p>
                 <p className="mt-1 text-sm leading-6 text-foreground/62">
-                  Use the Stripe customer portal to update payment details, download invoices, or change your billing cadence.
+                  {isSuperUser
+                    ? "This account has super-user access, so subscription limits do not apply."
+                    : renewalLabel
+                      ? `${typedProfile?.stripe_cancel_at_period_end ? "Access ends" : "Renews"} ${renewalLabel}.`
+                      : "All Premium features are unlocked for this account."}
                 </p>
               </div>
             ) : (
-              <div className="grid gap-3 md:grid-cols-2">
-                <BillingChoice interval="monthly" price={`${billingPlan.monthlyPrice}/mo`} detail="Flexible monthly billing." />
-                <BillingChoice interval="yearly" price={`${billingPlan.yearlyPrice}/yr`} detail={`${billingPlan.yearlySavings} with annual billing.`} />
-              </div>
+              <BillingPlanSelector />
             )}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <form action={createBillingPortalAction}>
-                <button className="button-secondary" type="submit" disabled={!canManageBilling}>
-                  Manage billing
-                </button>
-              </form>
-              {!canManageBilling ? (
-                <p className="text-sm text-foreground/58">Management appears here after Stripe Checkout creates a customer for this account.</p>
-              ) : null}
-            </div>
+            {canManageBilling && hasPaidPremium ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <form action={createBillingPortalAction}>
+                  <button className="button-secondary" type="submit">
+                    Manage billing
+                  </button>
+                </form>
+              </div>
+            ) : null}
           </SettingsRow>
         </SettingsGroup>
 
@@ -327,26 +262,7 @@ export default async function SettingsPage({
 
         <SettingsGroup title="Security">
           <SettingsRow>
-            <form action={updateAccountEmailAction} className="grid gap-3">
-              <label className="grid gap-2">
-                <span className="field-label">Email</span>
-                <input className="field-input" type="email" name="email" defaultValue={user.email ?? ""} autoComplete="email" required />
-              </label>
-              <button className="button-secondary w-fit" type="submit">Update email</button>
-            </form>
-          </SettingsRow>
-          <SettingsRow>
-            <form action={updateAccountPasswordAction} className="grid gap-3 sm:max-w-xl">
-              <label className="grid gap-2">
-                <span className="field-label">New password</span>
-                <input className="field-input" type="password" name="password" autoComplete="new-password" minLength={8} required />
-              </label>
-              <label className="grid gap-2">
-                <span className="field-label">Confirm password</span>
-                <input className="field-input" type="password" name="confirmPassword" autoComplete="new-password" minLength={8} required />
-              </label>
-              <button className="button-secondary w-fit" type="submit">Update password</button>
-            </form>
+            <SecuritySettingsEditor email={user.email ?? ""} />
           </SettingsRow>
         </SettingsGroup>
       </div>

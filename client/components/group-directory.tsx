@@ -139,11 +139,11 @@ export function GroupDirectory({
             placeholder="Search by name, description, or member names"
           />
         </label>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
           {filterLabels.map((option) => (
             <button
               key={option.id}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+              className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[0.82rem] font-semibold ${
                 filter === option.id
                   ? "bg-[rgba(209,96,61,0.14)] text-accent-strong shadow-[inset_0_0_0_1px_rgba(209,96,61,0.18)]"
                   : "bg-white/72 text-foreground/68"

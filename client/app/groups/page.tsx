@@ -37,8 +37,8 @@ export default async function GroupsPage({
     .eq("id", user.id)
     .maybeSingle();
   const feedback = getFeedback(params.feedback);
-  const hasPremium = hasPremiumAccess(billingProfile);
-  const canAddGroup = canCreateGroup(billingProfile, data.groups.length);
+  const hasPremium = hasPremiumAccess(billingProfile, user.email);
+  const canAddGroup = canCreateGroup(billingProfile, data.groups.length, user.email);
   const groupUsageLabel = getFreeTierUsageLabel("group", data.groups.length);
   const addGroupHref = canAddGroup ? "/groups?tab=create" : "/settings#billing";
   const addGroupLabel = canAddGroup ? "Create a group" : "Upgrade to add more";

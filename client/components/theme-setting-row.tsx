@@ -49,11 +49,13 @@ export function ThemeSettingRow() {
       <button
         aria-label="Toggle dark mode"
         aria-pressed={isDark}
-        className={`relative h-7 w-12 rounded-full border border-border transition ${isDark ? "bg-accent" : "bg-surface-muted"}`}
+        className={`relative h-7 w-12 rounded-full border transition shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)] ${
+          isDark ? "border-accent bg-accent" : "border-border-strong bg-[rgba(23,33,38,0.14)]"
+        }`}
         onClick={() => applyTheme(isDark ? "light" : "dark")}
         type="button"
       >
-        <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition ${isDark ? "left-6" : "left-1"}`} />
+        <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-[0_2px_6px_rgba(23,33,38,0.22)] transition ${isDark ? "left-6" : "left-1"}`} />
       </button>
     </div>
   );

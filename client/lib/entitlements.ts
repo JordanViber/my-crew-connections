@@ -7,6 +7,11 @@ export const freeTierLimits = {
 
 export type SubscriptionStatusProfile = Pick<BillingProfile, "stripe_subscription_status"> | null | undefined;
 
+const superUserEmails = new Set([
+  "jordankdog44@yahoo.com",
+  "jaynaykeller@yahoo.com",
+]);
+
 export const freeTierFeatures = [
   "1 person",
   "1 group",
@@ -20,16 +25,20 @@ export const premiumTierFeatures = [
   "Priority access to new relationship tools",
 ];
 
-export function hasPremiumAccess(profile?: SubscriptionStatusProfile) {
-  return isPremiumStatus(profile?.stripe_subscription_status);
+export function isSuperUserEmail(email?: string | null) {
+  return Boolean(email && superUserEmails.has(email.trim().toLowerCase()));
 }
 
-export function canCreateConnection(profile: SubscriptionStatusProfile, connectionCount: number) {
-  return hasPremiumAccess(profile) || connectionCount < freeTierLimits.connections;
+export function hasPremiumAccess(profile?: SubscriptionStatusProfile, email?: string | null) {
+  return isPremiumStatus(profile?.stripe_subscription_status) || isSuperUserEmail(email);
 }
 
-export function canCreateGroup(profile: SubscriptionStatusProfile, groupCount: number) {
-  return hasPremiumAccess(profile) || groupCount < freeTierLimits.groups;
+export function canCreateConnection(profile: SubscriptionStatusProfile, connectionCount: number, email?: string | null) {
+  return hasPremiumAccess(profile, email) || connectionCount < freeTierLimits.connections;
+}
+
+export function canCreateGroup(profile: SubscriptionStatusProfile, groupCount: number, email?: string | null) {
+  return hasPremiumAccess(profile, email) || groupCount < freeTierLimits.groups;
 }
 
 export function getFreeTierUsageLabel(kind: "connection" | "group", count: number) {

@@ -303,9 +303,9 @@ export default async function DashboardPage({
   const reminderQueueEmptyCopy = getReminderQueueEmptyCopy(data.relationships.length);
   const firstRelationship = data.relationships[0];
   const nextStep = getNextStepCard(hasRelationships, data.recentTouchpoints.length, needsAttention, firstRelationship);
-  const hasPremium = hasPremiumAccess(billingProfile);
-  const canAddConnection = canCreateConnection(billingProfile, data.connections.length);
-  const canAddGroup = canCreateGroup(billingProfile, data.groups.length);
+  const hasPremium = hasPremiumAccess(billingProfile, user.email);
+  const canAddConnection = canCreateConnection(billingProfile, data.connections.length, user.email);
+  const canAddGroup = canCreateGroup(billingProfile, data.groups.length, user.email);
   const showUpgradePrompt = !hasPremium && (!canAddConnection || !canAddGroup);
   const upgradeUsageLabel = [
     !canAddConnection ? getFreeTierUsageLabel("connection", data.connections.length) : null,

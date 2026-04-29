@@ -31,13 +31,14 @@ export function AccountMenu({
         aria-label="Open account menu"
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-surface-muted p-1.5 pr-2.5 text-sm font-semibold text-foreground transition hover:border-accent/25 hover:bg-surface-strong"
+        className="inline-flex h-10 max-w-[12rem] items-center gap-2 rounded-full border border-border bg-surface-muted p-1.5 pr-2.5 text-sm font-semibold text-foreground transition hover:border-accent/25 hover:bg-surface-strong"
         onClick={() => setIsOpen((value) => !value)}
         type="button"
       >
         <span className="grid h-7 w-7 place-items-center rounded-full bg-accent-soft text-[0.82rem] text-accent-strong">
           {initial}
         </span>
+        <span className="max-w-[7.5rem] truncate">{firstName || displayName || "Account"}</span>
         <svg aria-hidden="true" className="h-3.5 w-3.5 text-foreground/58" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
           <path d="m6 9 6 6 6-6" />
         </svg>
@@ -45,7 +46,7 @@ export function AccountMenu({
 
       {isOpen ? (
         <div
-          className="absolute right-0 top-[calc(100%+0.55rem)] z-50 w-64 overflow-hidden rounded-lg border border-border bg-surface-strong p-1.5 text-sm shadow-[0_18px_42px_rgba(0,0,0,0.16)]"
+          className="absolute left-0 top-[calc(100%+0.55rem)] z-50 w-[min(16rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-surface-strong p-1.5 text-sm shadow-[0_18px_42px_rgba(0,0,0,0.16)] sm:left-auto sm:right-0"
           role="menu"
         >
           <div className="border-b border-border/70 px-3 py-2.5">

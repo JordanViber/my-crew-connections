@@ -37,8 +37,8 @@ export default async function ConnectionsPage({
     .eq("id", user.id)
     .maybeSingle();
   const feedback = getFeedback(params.feedback);
-  const hasPremium = hasPremiumAccess(billingProfile);
-  const canAddConnection = canCreateConnection(billingProfile, data.connections.length);
+  const hasPremium = hasPremiumAccess(billingProfile, user.email);
+  const canAddConnection = canCreateConnection(billingProfile, data.connections.length, user.email);
   const connectionUsageLabel = getFreeTierUsageLabel("connection", data.connections.length);
   const addPersonHref = canAddConnection ? "/connections?tab=create" : "/settings#billing";
   const addPersonLabel = canAddConnection ? "Add a person" : "Upgrade to add more";
