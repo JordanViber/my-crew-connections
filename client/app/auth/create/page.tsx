@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppleAuthButton } from "@/components/apple-auth-button";
 import { CreateAccountForm } from "@/components/create-account-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { env } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getLocalSupabaseStatus } from "@/lib/supabase/local-stack-status";
@@ -36,7 +37,10 @@ export default async function CreateAccountPage({
       <div className="glass-panel grid max-w-5xl gap-4 p-4 md:grid-cols-[0.72fr_1.28fr] md:p-5">
         <section className="grid content-start gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">Create account</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">Create account</p>
+              <ThemeToggle />
+            </div>
             <h1 className="mt-3 text-[2.15rem] font-semibold leading-none tracking-tight text-foreground md:text-[2.75rem]">Create your account.</h1>
             <p className="mt-3 max-w-xl text-base leading-7 text-foreground/70">
               Start with your name, email, and password. Phone and mailing details can be finished now or later in settings.
@@ -58,7 +62,7 @@ export default async function CreateAccountPage({
             </article>
           </div>
 
-          <div className="rounded-lg border border-border/85 bg-white/72 px-3.5 py-3 text-sm leading-6 text-foreground/70">
+          <div className="rounded-lg border border-border/85 bg-surface-muted px-3.5 py-3 text-sm leading-6 text-foreground/70">
             Already have an account? <Link className="font-semibold text-accent-strong" href="/auth">Go to sign in</Link>.
           </div>
         </section>

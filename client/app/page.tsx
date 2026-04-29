@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const featureCards = [
@@ -58,7 +59,7 @@ export default async function Home({
     <main className="shell px-3 py-3 md:px-6 md:py-6">
       <div className="glass-panel mx-auto grid max-w-6xl overflow-hidden lg:min-h-[calc(100vh-1.5rem)] lg:grid-cols-[1.04fr_0.96fr]">
         <section className="flex flex-col justify-between gap-6 px-4 py-5 md:px-7 md:py-7 lg:px-10 lg:py-10">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-4">
             <div className="space-y-1.5">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent-strong">
                 My Crew Connections
@@ -68,11 +69,12 @@ export default async function Home({
               </p>
             </div>
 
-            <nav className="flex flex-wrap justify-end gap-2">
+            <nav className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <ThemeToggle className="justify-self-start" />
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
-                  className="button-secondary"
+                  className="button-secondary button-compact"
                   href={link.href}
                 >
                   {link.label}
@@ -82,7 +84,7 @@ export default async function Home({
           </div>
 
           <div className="grid gap-5 lg:max-w-2xl">
-            <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-accent/15 bg-white/76 px-3 py-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-foreground/62">
+            <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-accent/15 bg-surface-muted px-3 py-1.5 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-foreground/62">
               Calm reminders. Real follow-through.
             </div>
 

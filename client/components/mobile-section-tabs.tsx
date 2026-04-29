@@ -52,7 +52,7 @@ export function MobileSectionTabs({
                 {active ? (
                   <motion.span
                     layoutId="mobile-section-tab-active"
-                    className="absolute inset-0 rounded-lg bg-[rgba(209,96,61,0.12)] shadow-[inset_0_0_0_1px_rgba(209,96,61,0.18)]"
+                    className="absolute inset-0 rounded-lg bg-accent-soft shadow-[inset_0_0_0_1px_rgba(209,96,61,0.18)]"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 ) : null}

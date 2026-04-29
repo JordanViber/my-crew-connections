@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { signOutAction } from "@/app/actions";
+import { DesktopNav } from "@/components/desktop-nav";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard" },
@@ -31,7 +32,8 @@ export function AppShell({
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-                <div className="inline-flex max-w-full items-center rounded-lg border border-border/85 bg-white/72 px-2.5 py-1.5 text-[0.78rem] text-foreground/68 md:text-sm">
+                <ThemeToggle />
+                <div className="inline-flex max-w-full items-center rounded-lg border border-border/85 bg-surface-muted px-2.5 py-1.5 text-[0.78rem] text-foreground/68 md:text-sm">
                   <span className="min-w-0 truncate">{email}</span>
                 </div>
                 <form action={signOutAction}>
@@ -48,13 +50,7 @@ export function AppShell({
                 <p className="mt-1.5 max-w-2xl text-[0.92rem] leading-6 text-foreground/68 md:text-[0.95rem]">{subtitle}</p>
               </div>
 
-              <nav className="hidden text-sm font-medium text-foreground/70 md:flex md:flex-wrap md:gap-2 md:px-0">
-                {navigation.map((item) => (
-                  <Link key={item.href} className="button-secondary shrink-0" href={item.href}>
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
+              <DesktopNav items={navigation} />
             </div>
           </div>
         </header>
