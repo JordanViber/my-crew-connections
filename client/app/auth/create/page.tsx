@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { AppleAuthButton } from "@/components/apple-auth-button";
 import { CreateAccountForm } from "@/components/create-account-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { env } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getLocalSupabaseStatus } from "@/lib/supabase/local-stack-status";
@@ -39,7 +38,6 @@ export default async function CreateAccountPage({
           <div>
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">Create account</p>
-              <ThemeToggle />
             </div>
             <h1 className="mt-3 text-[2.15rem] font-semibold leading-none tracking-tight text-foreground md:text-[2.75rem]">Create your account.</h1>
             <p className="mt-3 max-w-xl text-base leading-7 text-foreground/70">

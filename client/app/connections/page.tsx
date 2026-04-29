@@ -10,6 +10,7 @@ import { getFeedback } from "@/lib/feedback";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getUserDisplayName, getUserFirstName } from "@/lib/user-display";
 
 export default async function ConnectionsPage({
   searchParams,
@@ -35,6 +36,8 @@ export default async function ConnectionsPage({
       title="People you want to keep close"
       subtitle="Keep the people you care about in one calm list, with just enough detail to make the next reach-out easier."
       email={user.email ?? "Signed in"}
+      firstName={getUserFirstName(user)}
+      displayName={getUserDisplayName(user)}
     >
       {feedback ? (
         <div className="mb-4">

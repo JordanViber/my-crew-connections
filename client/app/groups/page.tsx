@@ -10,6 +10,7 @@ import { getFeedback } from "@/lib/feedback";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getUserDisplayName, getUserFirstName } from "@/lib/user-display";
 
 export default async function GroupsPage({
   searchParams,
@@ -35,6 +36,8 @@ export default async function GroupsPage({
       title="Groups and recurring crews"
       subtitle="Keep dinner crews, clubs, and recurring traditions visible before they drift out of habit."
       email={user.email ?? "Signed in"}
+      firstName={getUserFirstName(user)}
+      displayName={getUserDisplayName(user)}
     >
       {feedback ? (
         <div className="mb-4">

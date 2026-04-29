@@ -99,6 +99,14 @@ export const accountPasswordSchema = z.object({
   path: ["confirmPassword"],
 });
 
+export const billingIntervalSchema = z.enum(["monthly", "yearly"]);
+
+export const appFeedbackSchema = z.object({
+  category: z.enum(["general", "bug", "billing", "idea"]),
+  message: z.string().trim().min(1).max(2000),
+  pagePath: z.string().trim().max(300).optional().default(""),
+});
+
 export function parseCommaSeparatedList(input: string) {
   return input
     .split(",")

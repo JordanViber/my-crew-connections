@@ -79,6 +79,36 @@ const feedbackMessages = {
     title: "Password updated",
     body: "Your new password is active for the next sign-in.",
   },
+  "feedback-sent": {
+    tone: "success",
+    title: "Feedback sent",
+    body: "Thanks. Your note is saved and ready to review.",
+  },
+  "feedback-unavailable": {
+    tone: "error",
+    title: "Feedback could not be saved",
+    body: "Try again in a bit.",
+  },
+  "billing-started": {
+    tone: "success",
+    title: "Billing started",
+    body: "Stripe is processing your subscription. The billing status will update after checkout completes.",
+  },
+  "billing-canceled": {
+    tone: "success",
+    title: "Checkout canceled",
+    body: "No changes were made. You can choose monthly or yearly again anytime.",
+  },
+  "billing-unavailable": {
+    tone: "error",
+    title: "Billing unavailable",
+    body: "Stripe billing is not configured for this environment yet.",
+  },
+  "billing-portal-unavailable": {
+    tone: "error",
+    title: "Billing portal unavailable",
+    body: "The customer portal is not ready for this account yet.",
+  },
 } as const;
 
 export type FeedbackKey = keyof typeof feedbackMessages;

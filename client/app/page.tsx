@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const featureCards = [
@@ -69,8 +68,7 @@ export default async function Home({
               </p>
             </div>
 
-            <nav className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <ThemeToggle className="justify-self-start" />
+            <nav className="flex flex-wrap gap-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}

@@ -5,10 +5,14 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getAppUrl, getPaymentLinkForInterval, getPriceIdForInterval, type BillingInterval } from "@/lib/billing";
+import { getStripeClient } from "@/lib/stripe";
 import {
   accountEmailSchema,
   accountPasswordSchema,
   accountProfileSchema,
+  appFeedbackSchema,
+  billingIntervalSchema,
   connectionSchema,
   getString,
   getStringList,
@@ -85,8 +89,9 @@ function revalidateHangoutPaths(targetType: "connection" | "group", targetId: st
 }
 
 function withFeedback(path: string, feedback: string) {
-  const separator = path.includes("?") ? "&" : "?";
-  return `${path}${separator}feedback=${feedback}`;
+  const [basePath, hash] = path.split("#", 2);
+  const separator = basePath.includes("?") ? "&" : "?";
+  return `${basePath}${separator}feedback=${feedback}${hash ? `#${hash}` : ""}`;
 }
 
 async function resolveRedirectTarget(formData: FormData, fallbackPath: string, feedback: string) {
@@ -201,6 +206,166 @@ export async function updateAccountPasswordAction(formData: FormData) {
   assertMutation(error, "Failed to update password");
   revalidateAccountPaths();
   redirect(withFeedback("/settings", "password-updated"));
+}
+
+export async function submitFeedbackAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const requestHeaders = await headers();
+  const payload = appFeedbackSchema.parse({
+    category: getString(formData, "category"),
+    message: getString(formData, "message"),
+    pagePath: getString(formData, "redirectTo"),
+  });
+
+  const { error } = await supabase.from("app_feedback").insert({
+    user_id: user.id,
+    category: payload.category,
+    message: payload.message,
+    page_path: payload.pagePath || null,
+    user_email: user.email ?? null,
+    user_agent: requestHeaders.get("user-agent"),
+  });
+
+  if (error) {
+    redirect(withFeedback(payload.pagePath || "/dashboard", "feedback-unavailable"));
+  }
+
+  redirect(withFeedback(payload.pagePath || "/dashboard", "feedback-sent"));
+}
+
+async function getOrCreateStripeCustomer(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  user: Awaited<ReturnType<typeof getAuthenticatedSession>>["user"],
+) {
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("display_name, first_name, last_name, stripe_customer_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  assertMutation(error, "Failed to load billing profile");
+
+  if (profile?.stripe_customer_id) {
+    return profile.stripe_customer_id;
+  }
+
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    return null;
+  }
+
+  const name = profile?.display_name
+    || `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim()
+    || user.email
+    || undefined;
+  const customer = await stripe.customers.create({
+    email: user.email ?? undefined,
+    name,
+    metadata: {
+      supabase_user_id: user.id,
+    },
+  });
+
+  const { error: updateError } = await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      stripe_customer_id: customer.id,
+    },
+    { onConflict: "id" },
+  );
+
+  assertMutation(updateError, "Failed to save billing customer");
+  return customer.id;
+}
+
+export async function createBillingCheckoutAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const interval = billingIntervalSchema.parse(getString(formData, "interval")) as BillingInterval;
+  const priceId = getPriceIdForInterval(interval);
+  const stripe = getStripeClient();
+
+  if (!priceId) {
+    redirect(withFeedback("/settings#billing", "billing-unavailable"));
+  }
+
+  if (!stripe) {
+    const paymentLink = getPaymentLinkForInterval(interval, user.email, user.id);
+
+    if (paymentLink) {
+      redirect(paymentLink);
+    }
+
+    redirect(withFeedback("/settings#billing", "billing-unavailable"));
+  }
+
+  const customerId = await getOrCreateStripeCustomer(supabase, user);
+
+  if (!customerId) {
+    redirect(withFeedback("/settings#billing", "billing-unavailable"));
+  }
+
+  const appUrl = getAppUrl();
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: customerId,
+    client_reference_id: user.id,
+    line_items: [{ price: priceId, quantity: 1 }],
+    allow_promotion_codes: true,
+    success_url: `${appUrl}/settings?feedback=billing-started&session_id={CHECKOUT_SESSION_ID}#billing`,
+    cancel_url: `${appUrl}/settings?feedback=billing-canceled#billing`,
+    metadata: {
+      supabase_user_id: user.id,
+      billing_interval: interval,
+    },
+    subscription_data: {
+      metadata: {
+        supabase_user_id: user.id,
+        billing_interval: interval,
+      },
+    },
+  });
+
+  if (!session.url) {
+    redirect(withFeedback("/settings#billing", "billing-unavailable"));
+  }
+
+  redirect(session.url);
+}
+
+export async function createBillingPortalAction() {
+  const { supabase, user } = await getAuthenticatedClient();
+  const stripe = getStripeClient();
+
+  if (!stripe) {
+    redirect(withFeedback("/settings#billing", "billing-portal-unavailable"));
+  }
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("stripe_customer_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  assertMutation(error, "Failed to load billing profile");
+
+  if (!profile?.stripe_customer_id) {
+    redirect(withFeedback("/settings#billing", "billing-portal-unavailable"));
+  }
+
+  let portalUrl: string;
+
+  try {
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: profile.stripe_customer_id,
+      return_url: `${getAppUrl()}/settings#billing`,
+    });
+    portalUrl = portalSession.url;
+  } catch {
+    redirect(withFeedback("/settings#billing", "billing-portal-unavailable"));
+  }
+
+  redirect(portalUrl);
 }
 
 export async function createConnectionAction(formData: FormData) {

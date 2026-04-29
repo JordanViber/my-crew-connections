@@ -23,6 +23,7 @@ import { buildConnectionInviteUrl } from "@/lib/invites";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getUserDisplayName, getUserFirstName } from "@/lib/user-display";
 
 function toInputDateTime() {
   const now = new Date();
@@ -132,6 +133,8 @@ export default async function ConnectionDetailPage({
       title={connection.title}
       subtitle="Keep cadence, notes, invites, and plans easy to update in one place."
       email={user.email ?? "Signed in"}
+      firstName={getUserFirstName(user)}
+      displayName={getUserDisplayName(user)}
     >
       {feedback ? (
         <div className="mb-4">

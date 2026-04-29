@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 
-const { pathnameMock } = vi.hoisted(() => ({
+const { pathnameMock, prefetchMock } = vi.hoisted(() => ({
   pathnameMock: vi.fn(),
+  prefetchMock: vi.fn(),
 }));
 
 function MockMotionSpan({
@@ -19,6 +20,9 @@ function MockMotionSpan({
 
 vi.mock("next/navigation", () => ({
   usePathname: pathnameMock,
+  useRouter: () => ({
+    prefetch: prefetchMock,
+  }),
 }));
 
 vi.mock("motion/react", () => ({
@@ -30,9 +34,10 @@ vi.mock("motion/react", () => ({
 describe("MobileBottomNav", () => {
   beforeEach(() => {
     pathnameMock.mockReset();
+    prefetchMock.mockReset();
   });
 
-  it("renders direct navigation links including settings without a menu button", () => {
+  it("renders direct primary navigation links without a menu button", () => {
     pathnameMock.mockReturnValue("/dashboard");
 
     render(<MobileBottomNav />);
@@ -40,7 +45,6 @@ describe("MobileBottomNav", () => {
     expect(screen.getByRole("link", { name: "Dashboard" })).toBeVisible();
     expect(screen.getByRole("link", { name: "People" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Groups" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Settings" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Menu" })).not.toBeInTheDocument();
   });
 

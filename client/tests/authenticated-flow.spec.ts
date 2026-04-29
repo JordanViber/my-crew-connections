@@ -249,9 +249,10 @@ test("dashboard quick log and settings updates work on mobile", async ({ page })
   await page.getByRole("button", { name: "History" }).click();
   await expect(page.locator('p:visible', { hasText: /turned a quick catch-up into a real plan/i })).toBeVisible();
 
-  await page.getByRole("navigation").getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Open account menu" }).click();
+  await page.getByRole("menuitem", { name: "Settings" }).click();
   await expect(page).toHaveURL(/\/settings$/);
-  await expect(page.getByRole("heading", { name: /account settings/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
 
   await page.getByLabel("First name").fill("Dashboard");
   await page.getByLabel("Last name").fill("Owner");

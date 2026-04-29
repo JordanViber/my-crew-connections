@@ -5,7 +5,6 @@ import { FeedbackBanner } from "@/components/feedback-banner";
 import { LocalAccountForm } from "@/components/local-account-form";
 import { MagicLinkForm } from "@/components/magic-link-form";
 import { PasswordAuthForm } from "@/components/password-auth-form";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getLocalSupabaseStatus } from "@/lib/supabase/local-stack-status";
 
@@ -37,7 +36,6 @@ export default async function AuthPage({
             Choose the sign-in path that feels best today, then head straight back into your dashboard.
           </p>
           <div className="flex flex-wrap gap-3">
-            <ThemeToggle />
             <Link className="button-primary" href={`/auth/create?next=${encodeURIComponent(nextPath)}`}>
               Create account
             </Link>

@@ -1,24 +1,26 @@
-import { signOutAction } from "@/app/actions";
+import { AccountMenu } from "@/components/account-menu";
 import { DesktopNav } from "@/components/desktop-nav";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/connections", label: "People" },
   { href: "/groups", label: "Groups" },
-  { href: "/settings", label: "Settings" },
 ];
 
 export function AppShell({
   title,
   subtitle,
   email,
+  firstName,
+  displayName,
   children,
 }: Readonly<{
   title: string;
   subtitle: string;
   email: string;
+  firstName?: string | null;
+  displayName?: string | null;
   children: React.ReactNode;
 }>) {
   return (
@@ -32,15 +34,7 @@ export function AppShell({
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-                <ThemeToggle />
-                <div className="inline-flex max-w-full items-center rounded-lg border border-border/85 bg-surface-muted px-2.5 py-1.5 text-[0.78rem] text-foreground/68 md:text-sm">
-                  <span className="min-w-0 truncate">{email}</span>
-                </div>
-                <form action={signOutAction}>
-                  <button className="button-secondary text-sm" type="submit">
-                    Sign out
-                  </button>
-                </form>
+                <AccountMenu displayName={displayName} email={email} firstName={firstName} />
               </div>
             </div>
 

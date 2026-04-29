@@ -3,11 +3,18 @@ import { AddressFields } from "@/components/address-fields";
 import { AppShell } from "@/components/app-shell";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { PhoneNumberInput } from "@/components/phone-number-input";
-import { SectionCard } from "@/components/section-card";
-import { getFeedback } from "@/lib/feedback";
+import { ThemeSettingRow } from "@/components/theme-setting-row";
+import {
+  createBillingCheckoutAction,
+  createBillingPortalAction,
+  updateAccountEmailAction,
+  updateAccountPasswordAction,
+  updateProfileAction,
+} from "@/app/actions";
+import { billingPlan, getBillingRenewalLabel, getBillingStatusLabel, isPremiumStatus } from "@/lib/billing";
 import { getDefaultCountry } from "@/lib/account-fields";
+import { getFeedback } from "@/lib/feedback";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { updateAccountEmailAction, updateAccountPasswordAction, updateProfileAction } from "@/app/actions";
 
 type ProfileRecord = {
   display_name: string | null;
@@ -20,25 +27,95 @@ type ProfileRecord = {
   billing_region: string | null;
   billing_postal_code: string | null;
   billing_country: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  stripe_subscription_status: string | null;
+  stripe_price_id: string | null;
+  stripe_current_period_end: string | null;
+  stripe_cancel_at_period_end: boolean | null;
 };
 
-function hasValue(value?: string | null) {
-  return Boolean(value && value.trim().length > 0);
+type BillingFields = Pick<
+  ProfileRecord,
+  | "stripe_customer_id"
+  | "stripe_subscription_id"
+  | "stripe_subscription_status"
+  | "stripe_price_id"
+  | "stripe_current_period_end"
+  | "stripe_cancel_at_period_end"
+>;
+
+const baseProfileSelect = "display_name, first_name, last_name, phone_number, billing_address_line1, billing_address_line2, billing_city, billing_region, billing_postal_code, billing_country";
+const billingProfileSelect = "stripe_customer_id, stripe_subscription_id, stripe_subscription_status, stripe_price_id, stripe_current_period_end, stripe_cancel_at_period_end";
+const emptyBillingFields: BillingFields = {
+  stripe_customer_id: null,
+  stripe_subscription_id: null,
+  stripe_subscription_status: null,
+  stripe_price_id: null,
+  stripe_current_period_end: null,
+  stripe_cancel_at_period_end: null,
+};
+
+function SettingsGroup({
+  id,
+  title,
+  children,
+}: Readonly<{
+  id?: string;
+  title: string;
+  children: React.ReactNode;
+}>) {
+  return (
+    <section id={id} className="scroll-mt-6 overflow-hidden rounded-lg border border-border bg-surface-strong shadow-[var(--shadow-tight)]">
+      <div className="border-b border-border/75 px-4 py-3">
+        <h2 className="text-[0.82rem] font-semibold uppercase tracking-[0.18em] text-foreground/58">{title}</h2>
+      </div>
+      <div className="divide-y divide-border/70">{children}</div>
+    </section>
+  );
 }
 
-function getProfileCompletion(profile: ProfileRecord | null, email?: string | null) {
-  const total = 7;
-  const complete = [
-    profile?.first_name,
-    profile?.last_name,
-    email,
-    profile?.phone_number,
-    profile?.billing_address_line1,
-    profile?.billing_city,
-    profile?.billing_country,
-  ].filter(hasValue).length;
+function SettingsRow({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <div className="px-4 py-4">{children}</div>;
+}
 
-  return Math.round((complete / total) * 100);
+function StatusBadge({ label, active }: Readonly<{ label: string; active: boolean }>) {
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${active ? "bg-mint text-[#174632]" : "bg-surface-muted text-foreground/64"}`}>
+      {label}
+    </span>
+  );
+}
+
+function BillingChoice({
+  interval,
+  price,
+  detail,
+}: Readonly<{
+  interval: "monthly" | "yearly";
+  price: string;
+  detail: string;
+}>) {
+  return (
+    <form action={createBillingCheckoutAction} className="rounded-lg border border-border bg-surface-muted p-3">
+      <input name="interval" type="hidden" value={interval} />
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold text-foreground">{interval === "monthly" ? "Monthly" : "Yearly"}</p>
+          <p className="mt-1 text-sm text-foreground/58">{detail}</p>
+        </div>
+        <p className="text-lg font-semibold text-foreground">{price}</p>
+      </div>
+      <button className="button-secondary mt-3 w-full" type="submit">
+        Choose {interval === "monthly" ? "monthly" : "yearly"}
+      </button>
+    </form>
+  );
+}
+
+function getDisplayName(profile: ProfileRecord | null, email?: string | null) {
+  return profile?.display_name
+    ?? (`${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || email?.split("@")[0] || "Your account");
 }
 
 export default async function SettingsPage({
@@ -56,11 +133,9 @@ export default async function SettingsPage({
     redirect("/auth?next=/settings");
   }
 
-  const { data: profile, error } = await supabase
+  const { data: baseProfile, error } = await supabase
     .from("profiles")
-    .select(
-      "display_name, first_name, last_name, phone_number, billing_address_line1, billing_address_line2, billing_city, billing_region, billing_postal_code, billing_country",
-    )
+    .select(baseProfileSelect)
     .eq("id", user.id)
     .maybeSingle();
 
@@ -68,16 +143,29 @@ export default async function SettingsPage({
     throw new Error(`Failed to load profile: ${error.message}`);
   }
 
+  const { data: billingProfile } = await supabase
+    .from("profiles")
+    .select(billingProfileSelect)
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const typedProfile = baseProfile
+    ? { ...baseProfile, ...emptyBillingFields, ...(billingProfile ?? {}) } as ProfileRecord
+    : null;
   const feedback = getFeedback(params.feedback);
-  const displayName = profile?.display_name
-    ?? (`${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || user.email?.split("@")[0] || "Your account");
-  const profileCompletion = getProfileCompletion(profile, user.email);
+  const displayName = getDisplayName(typedProfile, user.email);
+  const billingStatus = getBillingStatusLabel(typedProfile);
+  const renewalLabel = getBillingRenewalLabel(typedProfile);
+  const hasPremium = isPremiumStatus(typedProfile?.stripe_subscription_status);
+  const canManageBilling = Boolean(process.env.STRIPE_SECRET_KEY && typedProfile?.stripe_customer_id);
 
   return (
     <AppShell
-      title="Account settings"
-      subtitle="Manage your profile, security, and mailing details."
+      title="Settings"
+      subtitle="Manage account, billing, appearance, and sign-in preferences."
       email={user.email ?? "Signed in"}
+      firstName={typedProfile?.first_name}
+      displayName={displayName}
     >
       {feedback ? (
         <div className="mb-4">
@@ -85,108 +173,98 @@ export default async function SettingsPage({
         </div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[0.82fr_1.18fr]">
-        <div className="grid gap-4">
-          <section className="section-card p-3.5 md:p-4">
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-accent-strong">Account snapshot</p>
-            <h2 className="mt-2 text-[1.3rem] font-semibold tracking-tight text-foreground">{displayName}</h2>
-            <p className="mt-2 text-sm leading-6 text-foreground/68">{user.email ?? "No email on file"}</p>
-
-            <div className="mt-3 rounded-lg border border-border/85 bg-white/82 px-3.5 py-3.5">
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-sm font-semibold text-foreground">Profile completeness</p>
-                <p className="text-sm font-semibold text-accent-strong">{profileCompletion}%</p>
+      <div className="mx-auto grid max-w-5xl gap-4">
+        <SettingsGroup title="Account">
+          <SettingsRow>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-foreground">{displayName}</p>
+                <p className="text-sm text-foreground/58">{user.email}</p>
               </div>
-              <div className="mt-3 h-2 rounded-full bg-[rgba(29,36,40,0.08)]">
-                <div className="h-full rounded-full bg-[linear-gradient(135deg,#ef6b4a_0%,#b94224_100%)]" style={{ width: `${profileCompletion}%` }} />
-              </div>
-              <p className="mt-3 text-sm leading-6 text-foreground/68">
-                Complete the core profile once so invites and account updates stay consistent.
-              </p>
+              <StatusBadge active={hasPremium} label={billingStatus} />
             </div>
-
-            <div className="mt-3 grid gap-3 text-sm leading-6 text-foreground/72">
-              <div className="rounded-lg border border-border/85 bg-white/78 px-3.5 py-3">
-                <p className="font-semibold text-foreground">Profile details</p>
-                <p className="mt-2">Keep your name, phone number, and email details current in one place.</p>
-              </div>
-              <div className="rounded-lg border border-border/85 bg-white/78 px-3.5 py-3">
-                <p className="font-semibold text-foreground">Mailing address</p>
-                <p className="mt-2">Search once, autofill the basics, and adjust anything that needs a manual touch.</p>
-              </div>
-            </div>
-          </section>
-
-          <SectionCard
-            title="Security"
-            description="Use this screen for the account details you want to keep stable over time."
-          >
-            <div className="grid gap-3 text-sm leading-6 text-foreground/72">
-              <p>Update your email when it changes and rotate your password whenever you want a fresh sign-in.</p>
-              <p>Apple sign-in is available from the auth screen when configured; email and password stay editable here.</p>
-            </div>
-          </SectionCard>
-        </div>
-
-        <div className="grid gap-4">
-          <SectionCard
-            title="Profile identity"
-            description="Use your real name and contact details here so every future account surface starts from the same source of truth."
-          >
+          </SettingsRow>
+          <SettingsRow>
             <form action={updateProfileAction} className="grid gap-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="grid gap-2">
                   <span className="field-label">First name</span>
-                  <input className="field-input" type="text" name="firstName" defaultValue={profile?.first_name ?? ""} autoComplete="given-name" required />
+                  <input className="field-input" type="text" name="firstName" defaultValue={typedProfile?.first_name ?? ""} autoComplete="given-name" required />
                 </label>
                 <label className="grid gap-2">
                   <span className="field-label">Last name</span>
-                  <input className="field-input" type="text" name="lastName" defaultValue={profile?.last_name ?? ""} autoComplete="family-name" required />
+                  <input className="field-input" type="text" name="lastName" defaultValue={typedProfile?.last_name ?? ""} autoComplete="family-name" required />
                 </label>
               </div>
 
               <label className="grid gap-2">
                 <span className="field-label">Phone number</span>
-                <PhoneNumberInput defaultValue={profile?.phone_number ?? ""} name="phoneNumber" placeholder="(415) 555-0132" />
+                <PhoneNumberInput defaultValue={typedProfile?.phone_number ?? ""} name="phoneNumber" placeholder="(415) 555-0132" />
               </label>
 
-              <div className="rounded-lg border border-border/85 bg-white/66 px-3.5 py-3.5">
-                <div className="mb-3">
-                  <p className="text-sm font-semibold text-foreground">Mailing address</p>
-                  <p className="mt-1 text-sm leading-6 text-foreground/68">Start with the street address and the rest can fill in automatically.</p>
-                </div>
+              <div className="rounded-lg border border-border/85 bg-surface-muted px-3.5 py-3.5">
                 <AddressFields
-                  initialAddressLine1={profile?.billing_address_line1 ?? ""}
-                  initialAddressLine2={profile?.billing_address_line2 ?? ""}
-                  initialCity={profile?.billing_city ?? ""}
-                  initialRegion={profile?.billing_region ?? ""}
-                  initialPostalCode={profile?.billing_postal_code ?? ""}
-                  initialCountry={getDefaultCountry(profile?.billing_country)}
+                  initialAddressLine1={typedProfile?.billing_address_line1 ?? ""}
+                  initialAddressLine2={typedProfile?.billing_address_line2 ?? ""}
+                  initialCity={typedProfile?.billing_city ?? ""}
+                  initialRegion={typedProfile?.billing_region ?? ""}
+                  initialPostalCode={typedProfile?.billing_postal_code ?? ""}
+                  initialCountry={getDefaultCountry(typedProfile?.billing_country)}
                 />
               </div>
 
               <button className="button-primary w-fit" type="submit">Save profile</button>
             </form>
-          </SectionCard>
+          </SettingsRow>
+        </SettingsGroup>
 
-          <SectionCard
-            title="Sign-in email"
-            description="Change the address tied to this account without leaving the product."
-          >
+        <SettingsGroup id="billing" title="Billing">
+          <SettingsRow>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-foreground">{hasPremium ? `${billingPlan.name} plan` : "Free plan"}</p>
+                <p className="mt-1 text-sm text-foreground/58">
+                  {renewalLabel ? `${typedProfile?.stripe_cancel_at_period_end ? "Ends" : "Renews"} ${renewalLabel}` : "Upgrade when you are ready."}
+                </p>
+              </div>
+              <StatusBadge active={hasPremium} label={billingStatus} />
+            </div>
+          </SettingsRow>
+          <SettingsRow>
+            <div className="grid gap-3 md:grid-cols-2">
+              <BillingChoice interval="monthly" price={`${billingPlan.monthlyPrice}/mo`} detail="Flexible monthly billing." />
+              <BillingChoice interval="yearly" price={`${billingPlan.yearlyPrice}/yr`} detail={`${billingPlan.yearlySavings} with annual billing.`} />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <form action={createBillingPortalAction}>
+                <button className="button-secondary" type="submit" disabled={!canManageBilling}>
+                  Manage billing
+                </button>
+              </form>
+              {!canManageBilling ? (
+                <p className="text-sm text-foreground/58">Management appears here after Stripe Checkout creates a customer for this account.</p>
+              ) : null}
+            </div>
+          </SettingsRow>
+        </SettingsGroup>
+
+        <SettingsGroup title="Appearance">
+          <SettingsRow>
+            <ThemeSettingRow />
+          </SettingsRow>
+        </SettingsGroup>
+
+        <SettingsGroup title="Security">
+          <SettingsRow>
             <form action={updateAccountEmailAction} className="grid gap-3">
               <label className="grid gap-2">
                 <span className="field-label">Email</span>
                 <input className="field-input" type="email" name="email" defaultValue={user.email ?? ""} autoComplete="email" required />
               </label>
-              <p className="text-sm leading-6 text-foreground/68">If confirmation is required, complete the change from the message sent to your new address.</p>
               <button className="button-secondary w-fit" type="submit">Update email</button>
             </form>
-          </SectionCard>
-
-          <SectionCard
-            title="Password"
-            description="Set a new password whenever you want a cleaner, more secure sign-in."
-          >
+          </SettingsRow>
+          <SettingsRow>
             <form action={updateAccountPasswordAction} className="grid gap-3 sm:max-w-xl">
               <label className="grid gap-2">
                 <span className="field-label">New password</span>
@@ -198,8 +276,8 @@ export default async function SettingsPage({
               </label>
               <button className="button-secondary w-fit" type="submit">Update password</button>
             </form>
-          </SectionCard>
-        </div>
+          </SettingsRow>
+        </SettingsGroup>
       </div>
     </AppShell>
   );

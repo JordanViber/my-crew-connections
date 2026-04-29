@@ -32,6 +32,7 @@ export function AddressFields({
   const [isLoading, setIsLoading] = useState(false);
   const [hasTypedSearch, setHasTypedSearch] = useState(false);
   const [hasSearchResults, setHasSearchResults] = useState(true);
+  const [suppressSuggestions, setSuppressSuggestions] = useState(false);
 
   useEffect(() => {
     setAddressLine1(initialAddressLine1);
@@ -43,7 +44,7 @@ export function AddressFields({
   }, [initialAddressLine1, initialAddressLine2, initialCity, initialCountry, initialPostalCode, initialRegion]);
 
   useEffect(() => {
-    if (!hasTypedSearch || disabled) {
+    if (!hasTypedSearch || suppressSuggestions || disabled) {
       return undefined;
     }
 
@@ -90,7 +91,7 @@ export function AddressFields({
       controller.abort();
       globalThis.clearTimeout(timeoutId);
     };
-  }, [addressLine1, country, disabled, hasTypedSearch]);
+  }, [addressLine1, country, disabled, hasTypedSearch, suppressSuggestions]);
 
   const helperText = useMemo(() => {
     if (isLoading) {
@@ -112,6 +113,14 @@ export function AddressFields({
     setCountry(getDefaultCountry(suggestion.country));
     setSuggestions([]);
     setHasTypedSearch(false);
+    setSuppressSuggestions(false);
+    setHasSearchResults(true);
+  }
+
+  function suppressAutofillSuggestions() {
+    setSuppressSuggestions(true);
+    setSuggestions([]);
+    setIsLoading(false);
     setHasSearchResults(true);
   }
 
@@ -127,8 +136,18 @@ export function AddressFields({
             disabled={disabled}
             name="addressLine1"
             onChange={(event) => {
-              setHasTypedSearch(true);
-              setAddressLine1(event.target.value);
+              const nextValue = event.target.value;
+              const nativeEvent = event.nativeEvent;
+              const inputType = "inputType" in nativeEvent ? nativeEvent.inputType : "";
+              const likelyAutofillOrPaste = inputType !== "insertText" || Math.abs(nextValue.length - addressLine1.length) > 8;
+
+              setAddressLine1(nextValue);
+              setHasTypedSearch(!likelyAutofillOrPaste);
+              setSuppressSuggestions(likelyAutofillOrPaste);
+
+              if (likelyAutofillOrPaste) {
+                setSuggestions([]);
+              }
             }}
             placeholder="Start typing your street address"
             type="text"
@@ -161,7 +180,10 @@ export function AddressFields({
           className="field-input"
           disabled={disabled}
           name="addressLine2"
-          onChange={(event) => setAddressLine2(event.target.value)}
+          onChange={(event) => {
+            setAddressLine2(event.target.value);
+            suppressAutofillSuggestions();
+          }}
           placeholder="Apt 4B"
           type="text"
           value={addressLine2}
@@ -176,7 +198,10 @@ export function AddressFields({
             className="field-input"
             disabled={disabled}
             name="city"
-            onChange={(event) => setCity(event.target.value)}
+            onChange={(event) => {
+              setCity(event.target.value);
+              suppressAutofillSuggestions();
+            }}
             type="text"
             value={city}
           />
@@ -188,7 +213,10 @@ export function AddressFields({
             className="field-input"
             disabled={disabled}
             name="region"
-            onChange={(event) => setRegion(event.target.value)}
+            onChange={(event) => {
+              setRegion(event.target.value);
+              suppressAutofillSuggestions();
+            }}
             type="text"
             value={region}
           />
@@ -203,7 +231,10 @@ export function AddressFields({
             className="field-input"
             disabled={disabled}
             name="postalCode"
-            onChange={(event) => setPostalCode(event.target.value)}
+            onChange={(event) => {
+              setPostalCode(event.target.value);
+              suppressAutofillSuggestions();
+            }}
             type="text"
             value={postalCode}
           />
@@ -215,7 +246,10 @@ export function AddressFields({
             className="field-input"
             disabled={disabled}
             name="country"
-            onChange={(event) => setCountry(event.target.value)}
+            onChange={(event) => {
+              setCountry(event.target.value);
+              suppressAutofillSuggestions();
+            }}
             value={country}
           >
             {COUNTRY_OPTIONS.map((option) => (
