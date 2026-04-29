@@ -5,9 +5,15 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
-import { getLocalSupabaseStatus } from "@/lib/supabase/local-stack-status";
+import { getLocalSupabaseStatus, isLocalSupabaseUrl } from "@/lib/supabase/local-stack-status";
 
 describe("local stack status", () => {
+  it("identifies local Supabase URLs", () => {
+    expect(isLocalSupabaseUrl("http://127.0.0.1:54321")).toBe(true);
+    expect(isLocalSupabaseUrl("http://localhost:54321")).toBe(true);
+    expect(isLocalSupabaseUrl("https://example.supabase.co")).toBe(false);
+  });
+
   it("returns available when the Supabase health endpoint responds ok", async () => {
     const originalFetch = global.fetch;
     global.fetch = vi.fn().mockResolvedValue({ ok: true }) as typeof fetch;
