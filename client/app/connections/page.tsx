@@ -6,6 +6,8 @@ import { ConnectionDirectory } from "@/components/connection-directory";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
 import { SectionCard } from "@/components/section-card";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
+import { canCreateConnection, getFreeTierUsageLabel, hasPremiumAccess } from "@/lib/entitlements";
 import { getFeedback } from "@/lib/feedback";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -29,7 +31,17 @@ export default async function ConnectionsPage({
 
   const supabase = createServerAdminSupabaseClient();
   const data = await getDashboardData(supabase, user.id);
+  const { data: billingProfile } = await supabase
+    .from("profiles")
+    .select("stripe_subscription_status")
+    .eq("id", user.id)
+    .maybeSingle();
   const feedback = getFeedback(params.feedback);
+  const hasPremium = hasPremiumAccess(billingProfile);
+  const canAddConnection = canCreateConnection(billingProfile, data.connections.length);
+  const connectionUsageLabel = getFreeTierUsageLabel("connection", data.connections.length);
+  const addPersonHref = canAddConnection ? "/connections?tab=create" : "/settings#billing";
+  const addPersonLabel = canAddConnection ? "Add a person" : "Upgrade to add more";
 
   return (
     <AppShell
@@ -54,10 +66,15 @@ export default async function ConnectionsPage({
             label: "Active",
             content: (
               <SectionCard title="Current people" description="Search, filter, and open a person to update cadence, notes, plans, or recent touchpoints.">
-                <div className="mb-4 flex flex-wrap gap-2">
-                  <Link className="button-secondary" href="/connections?tab=create">
-                    Add a person
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <Link className={canAddConnection ? "button-secondary" : "button-primary"} href={addPersonHref}>
+                    {addPersonLabel}
                   </Link>
+                  {!hasPremium ? (
+                    <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold text-foreground/64">
+                      {connectionUsageLabel}
+                    </span>
+                  ) : null}
                 </div>
                 <ConnectionDirectory connections={data.connections} />
               </SectionCard>
@@ -66,25 +83,44 @@ export default async function ConnectionsPage({
           {
             id: "create",
             label: "Create",
-            content: (
+            content: canAddConnection ? (
               <SectionCard title="Add a person" description="Name, cadence, and a bit of context is enough to get started.">
                 <ConnectionCreateForm />
               </SectionCard>
+            ) : (
+              <UpgradePrompt
+                title="Your free person slot is full"
+                body="Your first person stays right where they are. Premium opens the rest of your relationship map so every important person can have a cadence, notes, plans, and history."
+                usageLabel={connectionUsageLabel}
+              />
             ),
           },
         ]}
       />
 
       <div className="hidden gap-5 xl:grid-cols-[0.92fr_1.08fr] md:grid">
-        <SectionCard title="Add a person" description="Name, cadence, and a bit of context is enough to get started.">
-          <ConnectionCreateForm />
-        </SectionCard>
+        {canAddConnection ? (
+          <SectionCard title="Add a person" description="Name, cadence, and a bit of context is enough to get started.">
+            <ConnectionCreateForm />
+          </SectionCard>
+        ) : (
+          <UpgradePrompt
+            title="Add unlimited people with Premium"
+            body="Free keeps one relationship moving. Premium lets you build the full list, keep separate cadences, and make every next reach-out easier."
+            usageLabel={connectionUsageLabel}
+          />
+        )}
 
         <SectionCard title="Current people" description="Search, filter, and open a person to update cadence, notes, plans, or recent touchpoints.">
-          <div className="mb-4 flex flex-wrap gap-2">
-            <Link className="button-secondary" href="/connections?tab=create">
-              Add a person
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <Link className={canAddConnection ? "button-secondary" : "button-primary"} href={addPersonHref}>
+              {addPersonLabel}
             </Link>
+            {!hasPremium ? (
+              <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold text-foreground/64">
+                {connectionUsageLabel}
+              </span>
+            ) : null}
           </div>
           <ConnectionDirectory connections={data.connections} />
         </SectionCard>

@@ -22,7 +22,12 @@ export const billingPlan = {
   monthlyPrice: "$5",
   yearlyPrice: "$50",
   yearlySavings: "Save $10",
-  features: ["Unlimited people", "Unlimited groups", "Saved plans", "Priority feature access"],
+  features: [
+    "Unlimited people and groups",
+    "Unlimited saved plans and touchpoint history",
+    "Premium reminder controls as they roll out",
+    "Priority access to new relationship tools",
+  ],
 };
 
 export function getBillingConfig() {

@@ -7,7 +7,9 @@ import { HangoutList } from "@/components/hangout-list";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 import { cancelHangoutAction, completeHangoutAction, createTouchpointAction } from "@/app/actions";
+import { canCreateConnection, canCreateGroup, getFreeTierUsageLabel, hasPremiumAccess } from "@/lib/entitlements";
 import { getFeedback } from "@/lib/feedback";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -288,6 +290,11 @@ export default async function DashboardPage({
 
   const supabase = createServerAdminSupabaseClient();
   const data = await getDashboardData(supabase, user.id);
+  const { data: billingProfile } = await supabase
+    .from("profiles")
+    .select("stripe_subscription_status")
+    .eq("id", user.id)
+    .maybeSingle();
   const needsAttention = [...data.overdue, ...data.dueSoon];
   const feedback = getFeedback(params.feedback);
   const hasRelationships = data.relationships.length > 0;
@@ -296,6 +303,14 @@ export default async function DashboardPage({
   const reminderQueueEmptyCopy = getReminderQueueEmptyCopy(data.relationships.length);
   const firstRelationship = data.relationships[0];
   const nextStep = getNextStepCard(hasRelationships, data.recentTouchpoints.length, needsAttention, firstRelationship);
+  const hasPremium = hasPremiumAccess(billingProfile);
+  const canAddConnection = canCreateConnection(billingProfile, data.connections.length);
+  const canAddGroup = canCreateGroup(billingProfile, data.groups.length);
+  const showUpgradePrompt = !hasPremium && (!canAddConnection || !canAddGroup);
+  const upgradeUsageLabel = [
+    !canAddConnection ? getFreeTierUsageLabel("connection", data.connections.length) : null,
+    !canAddGroup ? getFreeTierUsageLabel("group", data.groups.length) : null,
+  ].filter(Boolean).join(" / ");
 
   return (
     <AppShell
@@ -347,6 +362,14 @@ export default async function DashboardPage({
                   ctaHref={nextStep.ctaHref}
                   ctaLabel={nextStep.ctaLabel}
                 />
+                {showUpgradePrompt ? (
+                  <UpgradePrompt
+                    compact
+                    title="Premium is ready when your circle grows"
+                    body="You have proved the rhythm. Upgrade when you want every person and recurring crew to have its own cadence, plans, and memory trail."
+                    usageLabel={upgradeUsageLabel}
+                  />
+                ) : null}
 
                 <MobileRelationshipRail
                   title="Needs attention"
@@ -514,6 +537,14 @@ export default async function DashboardPage({
             ctaHref={nextStep.ctaHref}
             ctaLabel={nextStep.ctaLabel}
           />
+          {showUpgradePrompt ? (
+            <UpgradePrompt
+              compact
+              title="Premium is ready when your circle grows"
+              body="You have proved the rhythm. Upgrade when you want every person and recurring crew to have its own cadence, plans, and memory trail."
+              usageLabel={upgradeUsageLabel}
+            />
+          ) : null}
 
           <SectionCard
             title="Reminder queue"

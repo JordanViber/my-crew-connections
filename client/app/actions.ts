@@ -28,6 +28,7 @@ import {
 } from "@/lib/validations";
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
 import { buildConnectionInvitePath, normalizeInviteEmail } from "@/lib/invites";
+import { canCreateConnection, canCreateGroup } from "@/lib/entitlements";
 
 async function getAuthenticatedSession() {
   const authSupabase = await createServerSupabaseClient();
@@ -92,6 +93,56 @@ function withFeedback(path: string, feedback: string) {
   const [basePath, hash] = path.split("#", 2);
   const separator = basePath.includes("?") ? "&" : "?";
   return `${basePath}${separator}feedback=${feedback}${hash ? `#${hash}` : ""}`;
+}
+
+async function getBillingStatusProfile(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("stripe_subscription_status")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    return null;
+  }
+
+  return data;
+}
+
+async function getActiveRelationshipCount(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  table: "connections" | "groups",
+  userId: string,
+) {
+  const { count, error } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq("owner_user_id", userId)
+    .is("archived_at", null);
+
+  assertMutation(error, `Failed to count ${table}`);
+  return count ?? 0;
+}
+
+async function assertCanCreateRelationship(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  userId: string,
+  kind: "connection" | "group",
+) {
+  const [profile, count] = await Promise.all([
+    getBillingStatusProfile(supabase, userId),
+    getActiveRelationshipCount(supabase, kind === "connection" ? "connections" : "groups", userId),
+  ]);
+  const allowed = kind === "connection"
+    ? canCreateConnection(profile, count)
+    : canCreateGroup(profile, count);
+
+  if (!allowed) {
+    redirect(withFeedback("/settings#billing", kind === "connection" ? "connection-limit-reached" : "group-limit-reached"));
+  }
 }
 
 async function resolveRedirectTarget(formData: FormData, fallbackPath: string, feedback: string) {
@@ -370,6 +421,8 @@ export async function createBillingPortalAction() {
 
 export async function createConnectionAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
+  await assertCanCreateRelationship(supabase, user.id, "connection");
+
   const payload = connectionSchema.parse({
     displayName: getString(formData, "displayName"),
     inviteEmail: getString(formData, "inviteEmail"),
@@ -474,6 +527,8 @@ export async function updateConnectionAction(formData: FormData) {
 
 export async function createGroupAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
+  await assertCanCreateRelationship(supabase, user.id, "group");
+
   const payload = groupSchema.parse({
     name: getString(formData, "name"),
     description: getString(formData, "description"),

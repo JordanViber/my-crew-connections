@@ -6,6 +6,8 @@ import { GroupCreateForm } from "@/components/group-create-form";
 import { GroupDirectory } from "@/components/group-directory";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
 import { SectionCard } from "@/components/section-card";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
+import { canCreateGroup, getFreeTierUsageLabel, hasPremiumAccess } from "@/lib/entitlements";
 import { getFeedback } from "@/lib/feedback";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -29,7 +31,17 @@ export default async function GroupsPage({
 
   const supabase = createServerAdminSupabaseClient();
   const data = await getDashboardData(supabase, user.id);
+  const { data: billingProfile } = await supabase
+    .from("profiles")
+    .select("stripe_subscription_status")
+    .eq("id", user.id)
+    .maybeSingle();
   const feedback = getFeedback(params.feedback);
+  const hasPremium = hasPremiumAccess(billingProfile);
+  const canAddGroup = canCreateGroup(billingProfile, data.groups.length);
+  const groupUsageLabel = getFreeTierUsageLabel("group", data.groups.length);
+  const addGroupHref = canAddGroup ? "/groups?tab=create" : "/settings#billing";
+  const addGroupLabel = canAddGroup ? "Create a group" : "Upgrade to add more";
 
   return (
     <AppShell
@@ -54,10 +66,15 @@ export default async function GroupsPage({
             label: "Active",
             content: (
               <SectionCard title="Active groups" description="Open a group to adjust cadence, members, plans, and shared history.">
-                <div className="mb-4 flex flex-wrap gap-2">
-                  <Link className="button-secondary" href="/groups?tab=create">
-                    Create a group
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <Link className={canAddGroup ? "button-secondary" : "button-primary"} href={addGroupHref}>
+                    {addGroupLabel}
                   </Link>
+                  {!hasPremium ? (
+                    <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold text-foreground/64">
+                      {groupUsageLabel}
+                    </span>
+                  ) : null}
                 </div>
                 <GroupDirectory groups={data.groups} />
               </SectionCard>
@@ -66,25 +83,44 @@ export default async function GroupsPage({
           {
             id: "create",
             label: "Create",
-            content: (
+            content: canAddGroup ? (
               <SectionCard title="Create a group" description="Start with a name, a cadence, and the first few people who make the group real.">
                 <GroupCreateForm connections={data.connections} />
               </SectionCard>
+            ) : (
+              <UpgradePrompt
+                title="Your free group slot is full"
+                body="Keep your first crew on track for free. Premium unlocks every dinner crew, club, and recurring tradition with separate cadences, plans, and shared history."
+                usageLabel={groupUsageLabel}
+              />
             ),
           },
         ]}
       />
 
       <div className="hidden gap-5 xl:grid-cols-[0.9fr_1.1fr] md:grid">
-        <SectionCard title="Create a group" description="Start with a name, a cadence, and the first few people who make the group real.">
-          <GroupCreateForm connections={data.connections} />
-        </SectionCard>
+        {canAddGroup ? (
+          <SectionCard title="Create a group" description="Start with a name, a cadence, and the first few people who make the group real.">
+            <GroupCreateForm connections={data.connections} />
+          </SectionCard>
+        ) : (
+          <UpgradePrompt
+            title="Create unlimited groups with Premium"
+            body="Free gives you one crew to start. Premium lets every recurring group have its own rhythm, plans, members, and memory trail."
+            usageLabel={groupUsageLabel}
+          />
+        )}
 
         <SectionCard title="Active groups" description="Open a group to adjust cadence, members, plans, and shared history.">
-          <div className="mb-4 flex flex-wrap gap-2">
-            <Link className="button-secondary" href="/groups?tab=create">
-              Create a group
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <Link className={canAddGroup ? "button-secondary" : "button-primary"} href={addGroupHref}>
+              {addGroupLabel}
             </Link>
+            {!hasPremium ? (
+              <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold text-foreground/64">
+                {groupUsageLabel}
+              </span>
+            ) : null}
           </div>
           <GroupDirectory groups={data.groups} />
         </SectionCard>

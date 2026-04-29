@@ -13,6 +13,7 @@ import {
 } from "@/app/actions";
 import { billingPlan, getBillingRenewalLabel, getBillingStatusLabel, isPremiumStatus } from "@/lib/billing";
 import { getDefaultCountry } from "@/lib/account-fields";
+import { freeTierFeatures, premiumTierFeatures } from "@/lib/entitlements";
 import { getFeedback } from "@/lib/feedback";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -110,6 +111,48 @@ function BillingChoice({
         Choose {interval === "monthly" ? "monthly" : "yearly"}
       </button>
     </form>
+  );
+}
+
+function PlanFeatureColumn({
+  title,
+  price,
+  features,
+  featured = false,
+}: Readonly<{
+  title: string;
+  price: string;
+  features: string[];
+  featured?: boolean;
+}>) {
+  return (
+    <div
+      className={`rounded-lg border p-3.5 ${
+        featured
+          ? "border-accent/40 bg-[linear-gradient(135deg,var(--surface-strong)_0%,rgba(216,239,231,0.68)_55%,rgba(248,210,202,0.66)_100%)]"
+          : "border-border bg-surface-muted"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold text-foreground">{title}</p>
+          <p className="mt-1 text-sm text-foreground/58">{price}</p>
+        </div>
+        {featured ? (
+          <span className="rounded-full bg-foreground px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-background">
+            Best value
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-3 grid gap-2">
+        {features.map((feature) => (
+          <div key={feature} className="flex items-center gap-2 text-sm font-medium text-foreground/76">
+            <span className={`h-1.5 w-1.5 rounded-full ${featured ? "bg-accent" : "bg-foreground/32"}`} />
+            <span>{feature}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -231,10 +274,38 @@ export default async function SettingsPage({
             </div>
           </SettingsRow>
           <SettingsRow>
-            <div className="grid gap-3 md:grid-cols-2">
-              <BillingChoice interval="monthly" price={`${billingPlan.monthlyPrice}/mo`} detail="Flexible monthly billing." />
-              <BillingChoice interval="yearly" price={`${billingPlan.yearlyPrice}/yr`} detail={`${billingPlan.yearlySavings} with annual billing.`} />
+            <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+              <div>
+                <p className="font-semibold text-foreground">Unlock the full relationship system</p>
+                <p className="mt-1 text-sm leading-6 text-foreground/62">
+                  Free is meant to prove the rhythm with one person and one group. Premium removes the ceiling so the app can hold your whole circle.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <PlanFeatureColumn title="Free" price="Start small" features={freeTierFeatures} />
+                <PlanFeatureColumn
+                  title={billingPlan.name}
+                  price={`${billingPlan.monthlyPrice}/mo or ${billingPlan.yearlyPrice}/yr`}
+                  features={premiumTierFeatures}
+                  featured
+                />
+              </div>
             </div>
+          </SettingsRow>
+          <SettingsRow>
+            {hasPremium ? (
+              <div className="rounded-lg border border-border bg-surface-muted p-3.5">
+                <p className="font-semibold text-foreground">Premium is active</p>
+                <p className="mt-1 text-sm leading-6 text-foreground/62">
+                  Use the Stripe customer portal to update payment details, download invoices, or change your billing cadence.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                <BillingChoice interval="monthly" price={`${billingPlan.monthlyPrice}/mo`} detail="Flexible monthly billing." />
+                <BillingChoice interval="yearly" price={`${billingPlan.yearlyPrice}/yr`} detail={`${billingPlan.yearlySavings} with annual billing.`} />
+              </div>
+            )}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <form action={createBillingPortalAction}>
                 <button className="button-secondary" type="submit" disabled={!canManageBilling}>

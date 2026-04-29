@@ -109,6 +109,16 @@ const feedbackMessages = {
     title: "Billing portal unavailable",
     body: "The customer portal is not ready for this account yet.",
   },
+  "connection-limit-reached": {
+    tone: "error",
+    title: "Free person slot used",
+    body: "Upgrade to Premium to add unlimited people, groups, plans, and relationship history.",
+  },
+  "group-limit-reached": {
+    tone: "error",
+    title: "Free group slot used",
+    body: "Upgrade to Premium to create unlimited groups and keep every recurring crew on track.",
+  },
 } as const;
 
 export type FeedbackKey = keyof typeof feedbackMessages;
