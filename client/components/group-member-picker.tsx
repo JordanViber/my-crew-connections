@@ -2,6 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { ConnectionLinkBadge } from "@/components/connection-link-badge";
+import {
+  countGroupMemberStatuses,
+  sortConnectionsForGroupMembers,
+  summarizeGroupMemberStatuses,
+} from "@/lib/group-members";
 import type { RelationshipSummary } from "@/lib/mvp-data";
 
 export function GroupMemberPicker({
@@ -29,6 +34,11 @@ export function GroupMemberPicker({
       return haystacks.some((value) => value.toLowerCase().includes(normalizedSearch));
     });
   }, [connections, search]);
+  const orderedConnections = useMemo(() => sortConnectionsForGroupMembers(filteredConnections), [filteredConnections]);
+  const statusSummary = useMemo(
+    () => summarizeGroupMemberStatuses(countGroupMemberStatuses(orderedConnections.map((connection) => connection.linkState))),
+    [orderedConnections],
+  );
 
   return (
     <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
@@ -50,13 +60,14 @@ export function GroupMemberPicker({
               placeholder="Search by name, tags, notes, or invite email"
             />
           </label>
-          {filteredConnections.length === 0 ? (
+          {orderedConnections.length > 0 ? <p className="text-xs leading-5 text-foreground/56">{statusSummary}</p> : null}
+          {orderedConnections.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/85 bg-white/58 p-3.5 text-sm leading-6 text-foreground/65">
               No people match that search yet.
             </div>
           ) : (
             <div className="grid gap-3">
-              {filteredConnections.map((connection) => (
+              {orderedConnections.map((connection) => (
                 <label
                   key={connection.id}
                   className="flex items-start gap-3 rounded-lg border border-border/80 bg-white/76 p-3 text-sm text-foreground/78"

@@ -6,6 +6,7 @@ import { LocalAccountForm } from "@/components/local-account-form";
 import { MagicLinkForm } from "@/components/magic-link-form";
 import { PasswordAuthForm } from "@/components/password-auth-form";
 import { PhoneOtpForm } from "@/components/phone-otp-form";
+import { appleAuthEnabled, phoneAuthEnabled } from "@/lib/auth-features";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getLocalSupabaseStatus } from "@/lib/supabase/local-stack-status";
 
@@ -68,10 +69,10 @@ export default async function AuthPage({
           </div>
           <div className="hidden gap-2 md:grid">
             {[
-              { title: "Apple", body: "Fast on supported devices." },
-              { title: "Password", body: "Use email or phone with your password." },
-              { title: "Phone code", body: "Use a verified phone number to sign in by text." },
+              ...(appleAuthEnabled ? [{ title: "Apple", body: "Fast on supported devices." }] : []),
+              { title: "Password", body: phoneAuthEnabled ? "Use email or phone with your password." : "Use your email with your password." },
               { title: "Email link", body: "Skip typing the password." },
+              ...(phoneAuthEnabled ? [{ title: "Phone code", body: "Use a verified phone number to sign in by text." }] : []),
             ].map((option) => (
               <div key={option.title} className="section-card p-3 text-sm leading-6 text-foreground/75">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">{option.title}</p>
@@ -90,21 +91,23 @@ export default async function AuthPage({
             />
           )}
 
-          <div className="section-card p-3.5 md:p-4">
-            <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Continue with Apple</h2>
-            <p className="mt-1.5 text-sm leading-6 text-foreground/68">
-              Use Apple on supported browsers and devices for a faster sign-in.
-            </p>
+          {appleAuthEnabled ? (
+            <div className="section-card p-3.5 md:p-4">
+              <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Continue with Apple</h2>
+              <p className="mt-1.5 text-sm leading-6 text-foreground/68">
+                Use Apple on supported browsers and devices for a faster sign-in.
+              </p>
 
-            <div className="mt-4">
-              <AppleAuthButton nextPath={nextPath} />
+              <div className="mt-4">
+                <AppleAuthButton nextPath={nextPath} />
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className="section-card p-3.5 md:p-4">
             <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Password sign-in</h2>
             <p className="mt-1.5 text-sm leading-6 text-foreground/68">
-              Use the email or phone number connected to your account.
+              {phoneAuthEnabled ? "Use the email or phone number connected to your account." : "Use the email connected to your account."}
             </p>
 
             {params.error ? (
@@ -125,14 +128,16 @@ export default async function AuthPage({
             <PasswordAuthForm stackAvailable={stackStatus.available} nextPath={nextPath} />
           </div>
 
-          <div className="section-card p-3.5 md:p-4">
-            <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Phone sign-in code</h2>
-            <p className="mt-1.5 text-sm leading-6 text-foreground/68">
-              Use this after you verify a phone number in settings. We only send codes to phone numbers already attached to your account.
-            </p>
+          {phoneAuthEnabled ? (
+            <div className="section-card p-3.5 md:p-4">
+              <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Phone sign-in code</h2>
+              <p className="mt-1.5 text-sm leading-6 text-foreground/68">
+                Use this after you verify a phone number in settings. We only send codes to phone numbers already attached to your account.
+              </p>
 
-            <PhoneOtpForm stackAvailable={stackStatus.available} nextPath={nextPath} />
-          </div>
+              <PhoneOtpForm stackAvailable={stackStatus.available} nextPath={nextPath} />
+            </div>
+          ) : null}
 
           <div className="section-card p-3.5 md:p-4">
             <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Email sign-in link</h2>

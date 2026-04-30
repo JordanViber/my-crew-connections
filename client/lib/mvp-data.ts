@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { countGroupMemberStatuses, type GroupMemberStatusCounts } from "@/lib/group-members";
 import { formatHangoutWindow, getHangoutWindowBucket, type HangoutStatus } from "@/lib/hangouts";
 import {
   formatCadence,
@@ -95,6 +96,7 @@ export type RelationshipSummary = {
   touchpointCount: number;
   memberNames: string[];
   memberConnectionIds: string[];
+  memberStatusCounts?: GroupMemberStatusCounts;
 };
 
 export type HangoutSummary = {
@@ -348,6 +350,8 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     };
   });
 
+  const connectionSummaryMap = new Map(connectionSummaries.map((connection) => [connection.id, connection]));
+
   const groupSummaries: RelationshipSummary[] = groups.map((group) => {
     const key = `group:${group.id}`;
     const cadenceRule = cadenceMap.get(key);
@@ -368,6 +372,9 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
 
     const memberNames = groupMemberMap.get(group.id) ?? [];
     const memberConnectionIds = groupMemberIdsMap.get(group.id) ?? [];
+    const memberStatusCounts = countGroupMemberStatuses(
+      memberConnectionIds.map((connectionId) => connectionSummaryMap.get(connectionId)?.linkState),
+    );
 
     return {
       id: group.id,
@@ -393,6 +400,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       touchpointCount: touchpointCounts.get(key) ?? 0,
       memberNames,
       memberConnectionIds,
+      memberStatusCounts,
     };
   });
 

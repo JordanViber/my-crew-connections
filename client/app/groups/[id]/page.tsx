@@ -20,6 +20,7 @@ import {
   updateGroupAction,
 } from "@/app/actions";
 import { getFeedback } from "@/lib/feedback";
+import { countGroupMemberStatuses, sortConnectionsForGroupMembers, summarizeGroupMemberStatuses } from "@/lib/group-members";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -63,10 +64,17 @@ export default async function GroupDetailPage({
   const plannedHangouts = data.hangouts.filter(
     (hangout) => hangout.targetType === "group" && hangout.targetId === group.id && hangout.status === "planned",
   );
-  const memberConnections = data.connections.filter((connection) => group.memberConnectionIds.includes(connection.id));
-  const availableConnections = data.connections.filter((connection) => !group.memberConnectionIds.includes(connection.id));
+  const memberConnections = sortConnectionsForGroupMembers(
+    data.connections.filter((connection) => group.memberConnectionIds.includes(connection.id)),
+  );
+  const availableConnections = sortConnectionsForGroupMembers(
+    data.connections.filter((connection) => !group.memberConnectionIds.includes(connection.id)),
+  );
   const feedback = getFeedback(query.feedback);
   const latestActivity = timeline.find((touchpoint) => touchpoint.activityLabel || touchpoint.locationLabel);
+  const memberStatusSummary = summarizeGroupMemberStatuses(
+    countGroupMemberStatuses(memberConnections.map((member) => member.linkState)),
+  );
 
   return (
     <AppShell
@@ -145,6 +153,9 @@ export default async function GroupDetailPage({
 
                 <SectionCard title="Members" description="Add people from your existing list to build out the crew over time.">
                   <div className="mb-5 grid gap-3">
+                    {memberConnections.length > 0 ? (
+                      <p className="text-sm leading-6 text-foreground/68">{memberStatusSummary}</p>
+                    ) : null}
                     {memberConnections.length > 0 ? (
                       memberConnections.map((member) => (
                         <article key={member.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
@@ -388,6 +399,9 @@ export default async function GroupDetailPage({
           </SectionCard>
           <SectionCard title="Members" description="Build the crew from people already in your list, even if not everyone uses the app yet.">
             <div className="mb-5 grid gap-3">
+              {memberConnections.length > 0 ? (
+                <p className="text-sm leading-6 text-foreground/68">{memberStatusSummary}</p>
+              ) : null}
               {memberConnections.length > 0 ? (
                 memberConnections.map((member) => (
                   <article key={member.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppleAuthButton } from "@/components/apple-auth-button";
 import { CreateAccountForm } from "@/components/create-account-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
+import { appleAuthEnabled } from "@/lib/auth-features";
 import { env } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getLocalSupabaseStatus } from "@/lib/supabase/local-stack-status";
@@ -58,7 +59,7 @@ export default async function CreateAccountPage({
             </article>
             <article className="section-card p-3 text-sm leading-6 text-foreground/75">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">Security</p>
-              <p className="mt-1.5">Use Apple or email and password.</p>
+              <p className="mt-1.5">{appleAuthEnabled ? "Use Apple or email and password." : "Use email and password."}</p>
             </article>
             <article className="section-card p-3 text-sm leading-6 text-foreground/75">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">Contact</p>
@@ -81,15 +82,19 @@ export default async function CreateAccountPage({
           )}
 
           <div className="section-card p-3.5 md:p-4">
-            <div className="mt-4">
-              <AppleAuthButton nextPath={nextPath} />
-            </div>
+            {appleAuthEnabled ? (
+              <>
+                <div className="mt-4">
+                  <AppleAuthButton nextPath={nextPath} />
+                </div>
 
-            <div className="my-4 flex items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-foreground/40">
-              <span className="h-px flex-1 bg-border/80" />
-              <span>Or continue with email</span>
-              <span className="h-px flex-1 bg-border/80" />
-            </div>
+                <div className="my-4 flex items-center gap-3 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-foreground/40">
+                  <span className="h-px flex-1 bg-border/80" />
+                  <span>Or continue with email</span>
+                  <span className="h-px flex-1 bg-border/80" />
+                </div>
+              </>
+            ) : null}
 
             <CreateAccountForm
               nextPath={nextPath}

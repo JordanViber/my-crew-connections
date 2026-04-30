@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { StatusPill } from "@/components/status-pill";
+import { summarizeGroupMemberStatuses } from "@/lib/group-members";
 import { filterGroups, type GroupDirectoryFilter } from "@/lib/group-directory";
 import type { RelationshipSummary } from "@/lib/mvp-data";
 
@@ -48,6 +49,9 @@ function GroupSection({
               <h2 className="mt-1.5 text-[1.15rem] font-semibold text-foreground">{group.title}</h2>
               <p className="mt-2 text-sm leading-7 text-foreground/72">{group.subtitle}</p>
               <p className="mt-2 text-sm text-foreground/70">{group.cadenceLabel}</p>
+              {group.memberStatusCounts ? (
+                <p className="mt-2 text-sm text-foreground/65">{summarizeGroupMemberStatuses(group.memberStatusCounts)}</p>
+              ) : null}
               <p className="mt-2 text-sm text-foreground/65">{group.memberNames.length > 0 ? group.memberNames.join(", ") : "No members added yet"}</p>
               {group.nextHangoutLabel ? (
                 <p className="mt-1 text-sm text-foreground/65">Next plan: {group.nextHangoutLabel}</p>

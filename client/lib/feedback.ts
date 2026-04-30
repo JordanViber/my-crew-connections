@@ -19,6 +19,16 @@ const feedbackMessages = {
     title: "Connection updated",
     body: "Your cadence and profile changes are saved.",
   },
+  "connection-email-already-linked": {
+    tone: "error",
+    title: "Email already linked",
+    body: "That email is already linked to another person in your list. Open the existing person instead of creating a duplicate link.",
+  },
+  "connection-email-invite-pending": {
+    tone: "error",
+    title: "Invite already pending",
+    body: "That email already has a pending invite on another person in your list. Reuse or refresh the existing invite instead of sending another one.",
+  },
   "group-created": {
     tone: "success",
     title: "Group created",

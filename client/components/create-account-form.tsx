@@ -203,7 +203,7 @@ export function CreateAccountForm({
         <PhoneNumberInput name="phoneNumber" disabled={isPending} placeholder="Optional" />
       </label>
       <p className="text-sm leading-6 text-foreground/62">
-        Add a phone number now if you want it saved to your profile. You can verify it for text-message sign-in from settings after the account is created.
+        Add a phone number now if you want it saved to your profile. SMS sign-in is hidden in this environment, so this only stores the number on your account for now.
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">

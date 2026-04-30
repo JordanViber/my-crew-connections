@@ -6,6 +6,7 @@ import { AddressFields } from "@/components/address-fields";
 import { PhoneNumberInput } from "@/components/phone-number-input";
 import { updateAccountEmailAction, updateAccountPasswordAction, updateProfileAction } from "@/app/actions";
 import { formatPhoneNumberForDisplay, getDefaultCountry, normalizePhoneNumberForAuth } from "@/lib/account-fields";
+import { phoneAuthEnabled } from "@/lib/auth-features";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export type EditableProfile = {
@@ -201,11 +202,13 @@ export function SecuritySettingsEditor({
         ) : null}
       </div>
 
-      <PhoneSignInSettingsRow
-        authPhoneConfirmedAt={authPhoneConfirmedAt}
-        authPhoneNumber={authPhoneNumber}
-        profilePhoneNumber={profilePhoneNumber}
-      />
+      {phoneAuthEnabled ? (
+        <PhoneSignInSettingsRow
+          authPhoneConfirmedAt={authPhoneConfirmedAt}
+          authPhoneNumber={authPhoneNumber}
+          profilePhoneNumber={profilePhoneNumber}
+        />
+      ) : null}
 
       <div className="grid gap-3 py-4 first:pt-0 last:pb-0">
         <div className="flex items-start justify-between gap-4">

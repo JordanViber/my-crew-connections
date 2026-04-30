@@ -27,9 +27,15 @@ import {
   updateGroupSchema,
 } from "@/lib/validations";
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
+import { findAuthUserByEmail } from "@/lib/auth-users";
 import { notifyConnectionInvite } from "@/lib/connection-invites";
 import { buildConnectionInvitePath, normalizeInviteEmail } from "@/lib/invites";
 import { canCreateConnection, canCreateGroup } from "@/lib/entitlements";
+
+type ConnectionEmailConflict = {
+  kind: "linked" | "pending";
+  connectionId: string;
+};
 
 async function getAuthenticatedSession() {
   const authSupabase = await createServerSupabaseClient();
@@ -73,6 +79,84 @@ function buildDisplayName(firstName: string, lastName: string, email?: string | 
   }
 
   return getFallbackDisplayNameFromEmail(email);
+}
+
+async function findConnectionEmailConflict(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  ownerUserId: string,
+  email: string,
+  excludeConnectionId?: string,
+) {
+  const normalizedEmail = normalizeInviteEmail(email);
+  const recipient = await findAuthUserByEmail(supabase, normalizedEmail);
+
+  if (recipient) {
+    const { data: linkedConnection, error: linkedConnectionError } = await supabase
+      .from("connections")
+      .select("id")
+      .eq("owner_user_id", ownerUserId)
+      .eq("linked_user_id", recipient.id)
+      .is("archived_at", null)
+      .maybeSingle();
+
+    assertMutation(linkedConnectionError, "Failed to check existing linked connection");
+
+    if (linkedConnection && linkedConnection.id !== excludeConnectionId) {
+      return {
+        kind: "linked",
+        connectionId: linkedConnection.id,
+      } satisfies ConnectionEmailConflict;
+    }
+  }
+
+  const { data: pendingInvites, error: pendingInviteError } = await supabase
+    .from("connection_invites")
+    .select("connection_id")
+    .eq("owner_user_id", ownerUserId)
+    .eq("invited_email", normalizedEmail)
+    .is("claimed_at", null)
+    .is("revoked_at", null)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  assertMutation(pendingInviteError, "Failed to check existing pending invites");
+
+  const existingInvite = (pendingInvites ?? []).find((invite) => invite.connection_id !== excludeConnectionId);
+
+  if (existingInvite) {
+    return {
+      kind: "pending",
+      connectionId: existingInvite.connection_id,
+    } satisfies ConnectionEmailConflict;
+  }
+
+  return null;
+}
+
+function getConnectionEmailConflictFeedbackKey(conflict: ConnectionEmailConflict) {
+  return conflict.kind === "linked"
+    ? "connection-email-already-linked"
+    : "connection-email-invite-pending";
+}
+
+async function assertCanCreateReciprocalConnectionForInvite(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  userId: string,
+  email: string | null | undefined,
+  fallbackPath: string,
+) {
+  const [profile, count] = await Promise.all([
+    getBillingStatusProfile(supabase, userId),
+    getActiveRelationshipCount(supabase, "connections", userId),
+  ]);
+
+  if (!canCreateConnection(profile, count, email)) {
+    redirect(
+      `${fallbackPath}?error=${encodeURIComponent(
+        "You've already used your free person slot. Upgrade or archive an existing person before accepting another invite.",
+      )}`,
+    );
+  }
 }
 
 function revalidateAccountPaths() {
@@ -445,6 +529,14 @@ export async function createConnectionAction(formData: FormData) {
     reminderLeadDays: getString(formData, "reminderLeadDays"),
   });
 
+  if (payload.inviteEmail) {
+    const conflict = await findConnectionEmailConflict(supabase, user.id, payload.inviteEmail);
+
+    if (conflict) {
+      redirect(withFeedback(`/connections/${conflict.connectionId}`, getConnectionEmailConflictFeedbackKey(conflict)));
+    }
+  }
+
   const { data: connection, error: connectionError } = await supabase
     .from("connections")
     .insert({
@@ -740,6 +832,11 @@ export async function createConnectionInviteAction(formData: FormData) {
     email: getString(formData, "email"),
   });
   const normalizedEmail = normalizeInviteEmail(payload.email);
+  const conflict = await findConnectionEmailConflict(supabase, user.id, normalizedEmail, connectionId);
+
+  if (conflict) {
+    redirect(withFeedback(`/connections/${conflict.connectionId}`, getConnectionEmailConflictFeedbackKey(conflict)));
+  }
 
   const { error: revokeError } = await supabase
     .from("connection_invites")
@@ -849,15 +946,6 @@ export async function claimConnectionInviteAction(formData: FormData) {
   const reciprocalDisplayName = ownerProfile?.display_name?.trim()
     || getFallbackDisplayNameFromEmail(ownerUserResult.data.user?.email);
 
-  const { error: updateConnectionError } = await supabase
-    .from("connections")
-    .update({
-      linked_user_id: user.id,
-    })
-    .eq("id", invite.connection_id);
-
-  assertMutation(updateConnectionError, "Failed to link connection");
-
   const { data: reciprocalConnection, error: reciprocalConnectionError } = await supabase
     .from("connections")
     .select("id")
@@ -871,6 +959,8 @@ export async function claimConnectionInviteAction(formData: FormData) {
   let reciprocalConnectionId = reciprocalConnection?.id;
 
   if (!reciprocalConnectionId) {
+    await assertCanCreateReciprocalConnectionForInvite(supabase, user.id, user.email, fallbackPath);
+
     const { data: createdReciprocalConnection, error: createReciprocalConnectionError } = await supabase
       .from("connections")
       .insert({
@@ -912,6 +1002,15 @@ export async function claimConnectionInviteAction(formData: FormData) {
   );
 
   assertMutation(reciprocalCadenceError, "Failed to create reciprocal cadence");
+
+  const { error: updateConnectionError } = await supabase
+    .from("connections")
+    .update({
+      linked_user_id: user.id,
+    })
+    .eq("id", invite.connection_id);
+
+  assertMutation(updateConnectionError, "Failed to link connection");
 
   const { error: claimError } = await supabase
     .from("connection_invites")
