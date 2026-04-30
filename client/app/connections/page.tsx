@@ -4,10 +4,12 @@ import { AppShell } from "@/components/app-shell";
 import { ConnectionCreateForm } from "@/components/connection-create-form";
 import { ConnectionDirectory } from "@/components/connection-directory";
 import { FeedbackBanner } from "@/components/feedback-banner";
+import { IncomingConnectionInvites } from "@/components/incoming-connection-invites";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
 import { SectionCard } from "@/components/section-card";
 import { UpgradePrompt } from "@/components/upgrade-prompt";
 import { canCreateConnection, getFreeTierUsageLabel, hasPremiumAccess } from "@/lib/entitlements";
+import { getIncomingConnectionInvites } from "@/lib/connection-invites";
 import { getFeedback } from "@/lib/feedback";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -31,6 +33,7 @@ export default async function ConnectionsPage({
 
   const supabase = createServerAdminSupabaseClient();
   const data = await getDashboardData(supabase, user.id);
+  const incomingInvites = await getIncomingConnectionInvites(supabase, user.email);
   const { data: billingProfile } = await supabase
     .from("profiles")
     .select("stripe_subscription_status")
@@ -56,6 +59,10 @@ export default async function ConnectionsPage({
           <FeedbackBanner title={feedback.title} body={feedback.body} tone={feedback.tone} />
         </div>
       ) : null}
+
+      <div className="mb-4">
+        <IncomingConnectionInvites invites={incomingInvites} />
+      </div>
 
       <MobileSectionTabs
         initialSectionId={params.tab === "create" ? "create" : "active"}

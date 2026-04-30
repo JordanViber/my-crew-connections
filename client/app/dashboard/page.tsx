@@ -4,12 +4,14 @@ import { AppShell } from "@/components/app-shell";
 import { ConnectionLinkBadge } from "@/components/connection-link-badge";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { HangoutList } from "@/components/hangout-list";
+import { IncomingConnectionInvites } from "@/components/incoming-connection-invites";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { UpgradePrompt } from "@/components/upgrade-prompt";
 import { cancelHangoutAction, completeHangoutAction, createTouchpointAction } from "@/app/actions";
 import { canCreateConnection, canCreateGroup, getFreeTierUsageLabel, hasPremiumAccess } from "@/lib/entitlements";
+import { getIncomingConnectionInvites } from "@/lib/connection-invites";
 import { getFeedback } from "@/lib/feedback";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -290,6 +292,7 @@ export default async function DashboardPage({
 
   const supabase = createServerAdminSupabaseClient();
   const data = await getDashboardData(supabase, user.id);
+  const incomingInvites = await getIncomingConnectionInvites(supabase, user.email);
   const { data: billingProfile } = await supabase
     .from("profiles")
     .select("stripe_subscription_status")
@@ -325,6 +328,10 @@ export default async function DashboardPage({
           <FeedbackBanner title={feedback.title} body={feedback.body} tone={feedback.tone} />
         </div>
       ) : null}
+
+      <div className="mb-4">
+        <IncomingConnectionInvites invites={incomingInvites} />
+      </div>
 
       <MobileSectionTabs
         initialSectionId="focus"

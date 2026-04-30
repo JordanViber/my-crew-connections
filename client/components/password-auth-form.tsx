@@ -1,9 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState, useTransition } from "react";
-import { mapLocalPasswordSignInError } from "@/lib/auth-errors";
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export function PasswordAuthForm({
   stackAvailable,
@@ -13,7 +12,7 @@ export function PasswordAuthForm({
   nextPath: string;
 }>) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -27,21 +26,27 @@ export function PasswordAuthForm({
         return;
       }
 
-      const normalizedEmail = email.trim();
-      if (!normalizedEmail || !password) {
-        setErrorMessage("Enter both email and password.");
+      const normalizedIdentifier = identifier.trim();
+      if (!normalizedIdentifier || !password) {
+        setErrorMessage("Enter your email or phone number and password.");
         return;
       }
 
-      const supabase = createBrowserSupabaseClient();
       try {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: normalizedEmail,
-          password,
+        const response = await fetch("/auth/password", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            identifier: normalizedIdentifier,
+            password,
+          }),
         });
 
-        if (error) {
-          setErrorMessage(mapLocalPasswordSignInError(error.message));
+        if (!response.ok) {
+          const result = (await response.json().catch(() => null)) as { error?: string } | null;
+          setErrorMessage(result?.error ?? "Invalid email, phone, or password.");
           return;
         }
 
@@ -64,17 +69,17 @@ export function PasswordAuthForm({
       }}
     >
       <label className="grid gap-2">
-        <span className="field-label">Email</span>
+        <span className="field-label">Email or phone</span>
         <input
-          autoComplete="email"
+          autoComplete="username"
           className="field-input"
-          type="email"
-          name="email"
-          placeholder="Enter your email"
+          type="text"
+          name="identifier"
+          placeholder="Email or phone"
           required
           disabled={isPending}
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          value={identifier}
+          onChange={(event) => setIdentifier(event.target.value)}
         />
       </label>
 
@@ -101,6 +106,9 @@ export function PasswordAuthForm({
         <button className="button-primary" type="submit" disabled={isPending}>
           {isPending ? "Signing in..." : "Sign in"}
         </button>
+        <Link className="button-secondary" href="/auth/reset">
+          Forgot password?
+        </Link>
       </div>
     </form>
   );

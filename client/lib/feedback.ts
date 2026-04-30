@@ -4,6 +4,16 @@ const feedbackMessages = {
     title: "Person added",
     body: "Cadence is set and this connection is now part of your reminder loop.",
   },
+  "connection-created-invite-sent": {
+    tone: "success",
+    title: "Person added and invite sent",
+    body: "The invite is now visible in their app account and a sign-in link was sent to their email.",
+  },
+  "connection-created-invite-ready": {
+    tone: "success",
+    title: "Person added and invite ready",
+    body: "The invite is visible when they sign in with that email. Email delivery needs SMTP configured before messages can go out reliably.",
+  },
   "connection-saved": {
     tone: "success",
     title: "Connection updated",
@@ -57,7 +67,12 @@ const feedbackMessages = {
   "invite-created": {
     tone: "success",
     title: "Invite ready",
-    body: "Share the invite link with that person so they can sign in or create an account and claim the connection.",
+    body: "The invite is visible when they sign in with that email. Share the link too if you want an extra direct path.",
+  },
+  "invite-sent": {
+    tone: "success",
+    title: "Invite sent",
+    body: "The invite is visible in their app account and a sign-in link was sent to their email.",
   },
   "connection-linked": {
     tone: "success",

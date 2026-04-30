@@ -58,7 +58,7 @@ export default async function AuthPage({
           <div className="hidden gap-2 md:grid">
             {[
               { title: "Apple", body: "Fast on supported devices." },
-              { title: "Password", body: "Use your saved account password." },
+              { title: "Password", body: "Use email or phone with your password." },
               { title: "Email link", body: "Skip typing the password." },
             ].map((option) => (
               <div key={option.title} className="section-card p-3 text-sm leading-6 text-foreground/75">
@@ -92,7 +92,7 @@ export default async function AuthPage({
           <div className="section-card p-3.5 md:p-4">
             <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Password sign-in</h2>
             <p className="mt-1.5 text-sm leading-6 text-foreground/68">
-              Use the email and password connected to your account.
+              Use the email or phone number connected to your account.
             </p>
 
             {params.error ? (

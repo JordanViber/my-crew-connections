@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import webpush, { type PushSubscription } from "web-push";
 
 export type PushPayload = {
@@ -42,4 +43,54 @@ export async function sendPushNotification(subscription: PushSubscription, paylo
 
     return { ok: false, statusCode };
   }
+}
+
+type PushSubscriptionRow = {
+  id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+};
+
+function toSubscription(row: PushSubscriptionRow): PushSubscription {
+  return {
+    endpoint: row.endpoint,
+    keys: {
+      p256dh: row.p256dh,
+      auth: row.auth,
+    },
+  };
+}
+
+export async function sendPushToUser(
+  supabase: SupabaseClient,
+  userId: string,
+  payload: PushPayload,
+) {
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("user_id", userId)
+    .eq("enabled", true);
+
+  if (error || !data?.length) {
+    return { sent: 0 };
+  }
+
+  let sent = 0;
+
+  await Promise.all(data.map(async (subscription) => {
+    const result = await sendPushNotification(toSubscription(subscription), payload);
+
+    if (result.ok) {
+      sent += 1;
+      return;
+    }
+
+    if (result.statusCode === 404 || result.statusCode === 410) {
+      await supabase.from("push_subscriptions").update({ enabled: false }).eq("id", subscription.id);
+    }
+  }));
+
+  return { sent };
 }

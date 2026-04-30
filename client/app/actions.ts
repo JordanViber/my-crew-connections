@@ -27,6 +27,7 @@ import {
   updateGroupSchema,
 } from "@/lib/validations";
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
+import { notifyConnectionInvite } from "@/lib/connection-invites";
 import { buildConnectionInvitePath, normalizeInviteEmail } from "@/lib/invites";
 import { canCreateConnection, canCreateGroup } from "@/lib/entitlements";
 
@@ -464,6 +465,8 @@ export async function createConnectionAction(formData: FormData) {
 
   assertMutation(cadenceError, "Failed to create cadence rule");
 
+  let feedbackKey = "connection-created";
+
   if (payload.inviteEmail) {
     const normalizedEmail = normalizeInviteEmail(payload.inviteEmail);
     const token = crypto.randomUUID();
@@ -476,10 +479,12 @@ export async function createConnectionAction(formData: FormData) {
     });
 
     assertMutation(inviteError, "Failed to create connection invite");
+    const notification = await notifyConnectionInvite(supabase, normalizedEmail, token, payload.displayName);
+    feedbackKey = notification.emailSent ? "connection-created-invite-sent" : "connection-created-invite-ready";
   }
 
   revalidateRelationshipPaths("connection", connection.id);
-  redirect(withFeedback(`/connections/${connection.id}`, "connection-created"));
+  redirect(withFeedback(`/connections/${connection.id}`, feedbackKey));
 }
 
 export async function updateConnectionAction(formData: FormData) {
@@ -734,6 +739,15 @@ export async function createConnectionInviteAction(formData: FormData) {
 
   assertMutation(revokeError, "Failed to replace existing invite");
 
+  const { data: connection, error: connectionError } = await supabase
+    .from("connections")
+    .select("display_name")
+    .eq("id", connectionId)
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+
+  assertMutation(connectionError, "Failed to load connection for invite");
+
   const token = crypto.randomUUID();
   const { error } = await supabase.from("connection_invites").insert({
     owner_user_id: user.id,
@@ -743,9 +757,16 @@ export async function createConnectionInviteAction(formData: FormData) {
   });
 
   assertMutation(error, "Failed to create invite");
+  const notification = await notifyConnectionInvite(
+    supabase,
+    normalizedEmail,
+    token,
+    connection?.display_name ?? "A connection",
+  );
   revalidatePath("/dashboard");
+  revalidatePath("/connections");
   revalidatePath(`/connections/${connectionId}`);
-  redirect(withFeedback(redirectTo || `/connections/${connectionId}`, "invite-created"));
+  redirect(withFeedback(redirectTo || `/connections/${connectionId}`, notification.emailSent ? "invite-sent" : "invite-created"));
 }
 
 export async function claimConnectionInviteAction(formData: FormData) {
