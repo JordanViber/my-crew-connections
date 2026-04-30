@@ -15,7 +15,7 @@ function isLocalSupabaseHost(url: string) {
 export default async function CreateAccountPage({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; inviteEmail?: string }>;
 }>) {
   const params = await searchParams;
   const nextPath = params.next ?? "/dashboard";
@@ -30,6 +30,7 @@ export default async function CreateAccountPage({
 
   const stackStatus = await getLocalSupabaseStatus();
   const preferLocalHelper = isLocalSupabaseHost(env.supabaseUrl);
+  const signInHref = `/auth?next=${encodeURIComponent(nextPath)}`;
 
   return (
     <main className="shell flex items-center justify-center px-3 py-3 md:px-8 md:py-6">
@@ -41,27 +42,27 @@ export default async function CreateAccountPage({
             </div>
             <h1 className="mt-3 text-[2.15rem] font-semibold leading-none tracking-tight text-foreground md:text-[2.75rem]">Create your account.</h1>
             <p className="mt-3 max-w-xl text-base leading-7 text-foreground/70">
-              Start with your name, email, and password. Phone and mailing details can be finished now or later in settings.
+              Create your account, then continue exactly where you left off.
             </p>
           </div>
 
           <div className="hidden gap-2 md:grid">
             <article className="section-card p-3 text-sm leading-6 text-foreground/75">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">Identity</p>
-              <p className="mt-1.5">Your name anchors invites, reminders, and profile details.</p>
+              <p className="mt-1.5">Used for your profile and invites.</p>
             </article>
             <article className="section-card p-3 text-sm leading-6 text-foreground/75">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">Security</p>
-              <p className="mt-1.5">Choose a password now or continue with Apple.</p>
+              <p className="mt-1.5">Use Apple or email and password.</p>
             </article>
             <article className="section-card p-3 text-sm leading-6 text-foreground/75">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">Contact</p>
-              <p className="mt-1.5">Add phone or mailing details only if they are useful now.</p>
+              <p className="mt-1.5">Optional details can wait.</p>
             </article>
           </div>
 
           <div className="rounded-lg border border-border/85 bg-surface-muted px-3.5 py-3 text-sm leading-6 text-foreground/70">
-            Already have an account? <Link className="font-semibold text-accent-strong" href="/auth">Go to sign in</Link>.
+            Already have an account? <Link className="font-semibold text-accent-strong" href={signInHref}>Go to sign in</Link>.
           </div>
         </section>
 
@@ -75,9 +76,6 @@ export default async function CreateAccountPage({
           )}
 
           <div className="section-card p-3.5 md:p-4">
-            <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Create your account</h2>
-            <p className="mt-1.5 text-sm leading-6 text-foreground/68">Continue with Apple for speed, or use email below.</p>
-
             <div className="mt-4">
               <AppleAuthButton nextPath={nextPath} />
             </div>
@@ -88,7 +86,7 @@ export default async function CreateAccountPage({
               <span className="h-px flex-1 bg-border/80" />
             </div>
 
-            <CreateAccountForm nextPath={nextPath} stackAvailable={stackStatus.available} preferLocalHelper={preferLocalHelper} />
+            <CreateAccountForm nextPath={nextPath} stackAvailable={stackStatus.available} preferLocalHelper={preferLocalHelper} initialEmail={params.inviteEmail ?? ""} />
           </div>
         </section>
       </div>

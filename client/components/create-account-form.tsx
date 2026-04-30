@@ -8,14 +8,24 @@ import { PhoneNumberInput } from "@/components/phone-number-input";
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
+function RequiredLabel({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <span className="field-label">
+      {children} <span className="text-accent-strong">*</span>
+    </span>
+  );
+}
+
 export function CreateAccountForm({
   nextPath,
   stackAvailable,
   preferLocalHelper,
+  initialEmail = "",
 }: Readonly<{
   nextPath: string;
   stackAvailable: boolean;
   preferLocalHelper: boolean;
+  initialEmail?: string;
 }>) {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -24,6 +34,7 @@ export function CreateAccountForm({
   const [isPending, startTransition] = useTransition();
 
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+  const signInHref = `/auth?next=${encodeURIComponent(nextPath)}`;
 
   function getValue(formData: FormData, key: string) {
     const value = formData.get(key);
@@ -163,33 +174,32 @@ export function CreateAccountForm({
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-2">
-          <span className="field-label">First name</span>
+          <RequiredLabel>First name</RequiredLabel>
           <input className="field-input" type="text" name="firstName" autoComplete="given-name" required disabled={isPending} />
         </label>
         <label className="grid gap-2">
-          <span className="field-label">Last name</span>
+          <RequiredLabel>Last name</RequiredLabel>
           <input className="field-input" type="text" name="lastName" autoComplete="family-name" required disabled={isPending} />
         </label>
       </div>
 
       <label className="grid gap-2">
         <span className="field-label">Phone number</span>
-        <PhoneNumberInput name="phoneNumber" disabled={isPending} placeholder="(415) 555-0132" />
-        <span className="text-sm leading-6 text-foreground/60">Optional. You can add or change it later in settings.</span>
+        <PhoneNumberInput name="phoneNumber" disabled={isPending} placeholder="Optional" />
       </label>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-2 sm:col-span-2">
-          <span className="field-label">Email</span>
-          <input className="field-input" type="email" name="email" autoComplete="email" placeholder="you@example.com" required disabled={isPending} />
+          <RequiredLabel>Email</RequiredLabel>
+          <input className="field-input" type="email" name="email" autoComplete="email" placeholder="you@example.com" defaultValue={initialEmail} required disabled={isPending} />
         </label>
         <label className="grid gap-2">
-          <span className="field-label">Password</span>
-          <input className="field-input" type="password" name="password" autoComplete="new-password" placeholder="At least 8 characters" value={password} onChange={(event) => setPassword(event.target.value)} required disabled={isPending} />
+          <RequiredLabel>Password</RequiredLabel>
+          <input className="field-input" type="password" name="password" autoComplete="new-password" placeholder="8+ characters" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required disabled={isPending} />
         </label>
         <label className="grid gap-2">
-          <span className="field-label">Confirm password</span>
-          <input className="field-input" type="password" name="confirmPassword" autoComplete="new-password" placeholder="Repeat your password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required disabled={isPending} />
+          <RequiredLabel>Confirm password</RequiredLabel>
+          <input className="field-input" type="password" name="confirmPassword" autoComplete="new-password" placeholder="Repeat password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required disabled={isPending} />
         </label>
       </div>
 
@@ -201,8 +211,7 @@ export function CreateAccountForm({
 
       <div className="rounded-lg border border-border/85 bg-white/66 px-3.5 py-3.5 md:px-4 md:py-4">
         <div className="mb-3">
-          <p className="text-sm font-semibold text-foreground">Mailing address</p>
-          <p className="mt-1 text-sm leading-6 text-foreground/68">Optional for now. Start with your street address if you want the rest filled in automatically.</p>
+          <p className="text-sm font-semibold text-foreground">Mailing address <span className="font-normal text-foreground/52">(optional)</span></p>
         </div>
         <AddressFields disabled={isPending} initialCountry={getDefaultCountry(undefined)} />
       </div>
@@ -215,8 +224,8 @@ export function CreateAccountForm({
         <button className="button-primary" type="submit" disabled={isPending}>
           {isPending ? "Creating account..." : "Create account"}
         </button>
-        <Link className="button-secondary" href="/auth">
-          I already have an account
+        <Link className="button-secondary" href={signInHref}>
+          Sign in instead
         </Link>
       </div>
     </form>

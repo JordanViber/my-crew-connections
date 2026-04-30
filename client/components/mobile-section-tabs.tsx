@@ -33,10 +33,10 @@ export function MobileSectionTabs({
   }
 
   return (
-    <div className="grid gap-3 md:hidden">
+    <div className="grid min-w-0 gap-3 overflow-hidden md:hidden">
       <div className={`pb-1 ${sticky ? "sticky top-2 z-20" : ""}`}>
         <div
-          className="glass-panel grid gap-1.5 border border-border/80 p-1.5 shadow-[0_10px_24px_rgba(31,44,49,0.1)]"
+          className="glass-panel grid min-w-0 gap-1.5 border border-border/80 p-1.5 shadow-[0_10px_24px_rgba(31,44,49,0.1)]"
           style={{ gridTemplateColumns: `repeat(${sections.length}, minmax(0, 1fr))` }}
         >
           {sections.map((section) => {
@@ -45,7 +45,7 @@ export function MobileSectionTabs({
             return (
               <button
                 key={section.id}
-                className={`relative rounded-lg px-2.5 py-1.5 text-sm font-semibold transition ${active ? "text-accent-strong" : "text-foreground/65"}`}
+                className={`relative min-w-0 rounded-lg px-1.5 py-1.5 text-sm font-semibold transition ${active ? "text-accent-strong" : "text-foreground/65"}`}
                 onClick={() => setActiveSectionId(section.id)}
                 type="button"
               >
@@ -56,7 +56,7 @@ export function MobileSectionTabs({
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 ) : null}
-                <span className="relative z-10">{section.label}</span>
+                <span className="relative z-10 block truncate">{section.label}</span>
               </button>
             );
           })}
@@ -66,6 +66,7 @@ export function MobileSectionTabs({
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={activeSection.id}
+          className="min-w-0 overflow-hidden"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}

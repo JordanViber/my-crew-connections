@@ -18,13 +18,13 @@ export function GroupCreateForm({
         <span className="field-label">Description</span>
         <textarea className="field-input min-h-24" name="description" placeholder="What makes this group meaningful or recurring?" />
       </label>
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-[0.8fr_1fr_1.35fr]">
         <label className="grid gap-2">
-          <span className="field-label">Cadence value</span>
+          <span className="field-label">Every</span>
           <input className="field-input" name="cadenceValue" type="number" min="1" max="90" defaultValue="1" required />
         </label>
         <label className="grid gap-2">
-          <span className="field-label">Unit</span>
+          <span className="field-label">Cadence unit</span>
           <select className="field-input" name="cadenceUnit" defaultValue="months">
             <option value="weeks">Weeks</option>
             <option value="months">Months</option>
@@ -32,16 +32,15 @@ export function GroupCreateForm({
           </select>
         </label>
         <label className="grid gap-2">
-          <span className="field-label">Reminder lead</span>
+          <span className="field-label">Remind me days before</span>
           <input className="field-input" name="reminderLeadDays" type="number" min="0" max="30" defaultValue="7" required />
         </label>
       </div>
+      <p className="text-xs leading-5 text-foreground/56">Example: every 1 month, remind me 7 days before the group is due.</p>
 
       <GroupMemberPicker connections={connections} />
 
-      <p className="text-sm leading-6 text-foreground/64">
-        Creating the group sets the cadence immediately, so it can show up in the dashboard reminder queue as soon as you start using it.
-      </p>
+      <p className="text-sm leading-6 text-foreground/64">The group starts appearing in the dashboard reminder queue immediately.</p>
       <div className="flex flex-wrap gap-2">
         <button className="button-primary" type="submit">
           Create group

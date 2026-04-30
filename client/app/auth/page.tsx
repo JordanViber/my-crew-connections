@@ -11,7 +11,7 @@ import { getLocalSupabaseStatus } from "@/lib/supabase/local-stack-status";
 export default async function AuthPage({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ error?: string; prepared?: string; sent?: string; created?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; prepared?: string; sent?: string; created?: string; next?: string; invite?: string; inviteEmail?: string; inviteName?: string }>;
 }>) {
   const params = await searchParams;
   const supabase = await createServerSupabaseClient();
@@ -25,6 +25,10 @@ export default async function AuthPage({
   }
 
   const stackStatus = await getLocalSupabaseStatus();
+  const createAccountHref = `/auth/create?${new URLSearchParams({
+    next: nextPath,
+    ...(params.inviteEmail ? { inviteEmail: params.inviteEmail } : {}),
+  }).toString()}`;
 
   return (
     <main className="shell flex items-center justify-center px-3 py-3 md:px-8 md:py-6">
@@ -33,10 +37,18 @@ export default async function AuthPage({
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-strong">Sign in</p>
           <h1 className="text-[2.15rem] font-semibold leading-none tracking-tight text-foreground md:text-[2.75rem]">Welcome back.</h1>
           <p className="max-w-xl text-base leading-7 text-foreground/70">
-            Choose the sign-in path that feels best today, then head straight back into your dashboard.
+            Sign in, or create an account if this is your first time here.
           </p>
+          {params.invite ? (
+            <div className="rounded-lg border border-accent/20 bg-accent-soft px-3.5 py-3 text-sm leading-6 text-foreground/78">
+              <p className="font-semibold text-foreground">Connection invite</p>
+              <p className="mt-1">
+                {params.inviteName ?? "Someone"} invited {params.inviteEmail ? <strong>{params.inviteEmail}</strong> : "you"} to connect. After sign-in, you will return to the invite.
+              </p>
+            </div>
+          ) : null}
           <div className="flex flex-wrap gap-3">
-            <Link className="button-primary" href={`/auth/create?next=${encodeURIComponent(nextPath)}`}>
+            <Link className="button-primary" href={createAccountHref}>
               Create account
             </Link>
             <Link className="button-secondary" href="/">
@@ -45,9 +57,9 @@ export default async function AuthPage({
           </div>
           <div className="hidden gap-2 md:grid">
             {[
-              { title: "Apple", body: "Fast, familiar, and easy on supported devices." },
-              { title: "Password", body: "Best when you want the fastest repeat sign-in." },
-              { title: "Email link", body: "Great when you would rather skip the password field." },
+              { title: "Apple", body: "Fast on supported devices." },
+              { title: "Password", body: "Use your saved account password." },
+              { title: "Email link", body: "Skip typing the password." },
             ].map((option) => (
               <div key={option.title} className="section-card p-3 text-sm leading-6 text-foreground/75">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">{option.title}</p>

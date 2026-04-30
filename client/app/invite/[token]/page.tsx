@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { claimConnectionInviteAction } from "@/app/actions";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { SectionCard } from "@/components/section-card";
@@ -45,28 +45,14 @@ export default async function InviteClaimPage({
 
   if (!user) {
     const nextPath = `/invite/${token}`;
+    const authParams = new URLSearchParams({
+      next: nextPath,
+      invite: token,
+      inviteEmail: invite.invited_email,
+      inviteName: connection.display_name,
+    });
 
-    return (
-      <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
-        <div className="glass-panel grid max-w-3xl gap-4 p-5 md:p-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">Connection invite</p>
-          <h1 className="text-[2.1rem] font-semibold leading-tight tracking-tight text-foreground md:text-4xl">
-            {connection.display_name} wants to connect in My Crew Connections.
-          </h1>
-          <p className="text-sm leading-7 text-foreground/72">
-            Sign in or create your account with <strong>{invite.invited_email}</strong>, then come right back here to claim the connection.
-          </p>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Link className="button-primary w-full sm:w-auto" href={`/auth?next=${encodeURIComponent(nextPath)}`}>
-              Sign in to claim
-            </Link>
-            <Link className="button-secondary w-full sm:w-auto" href={`/auth?next=${encodeURIComponent(nextPath)}`}>
-              Open auth
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
+    redirect(`/auth?${authParams.toString()}`);
   }
 
   return (

@@ -195,7 +195,7 @@ export function SecuritySettingsEditor({
 
       <div className="grid gap-3 py-4 first:pt-0 last:pb-0">
         <div className="flex items-start justify-between gap-4">
-          <SummaryLine label="Password" value="Set for this account" />
+          <SummaryLine label="Password" value="********" />
           <IconEditButton label="Edit password" onClick={() => setEditing(editing === "password" ? null : "password")} />
         </div>
         {editing === "password" ? (

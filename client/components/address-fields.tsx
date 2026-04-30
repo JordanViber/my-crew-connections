@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { COUNTRY_OPTIONS, type AddressSuggestion, getDefaultCountry } from "@/lib/account-fields";
+
+const suggestionCache = new Map<string, AddressSuggestion[]>();
 
 type AddressFieldsProps = {
   initialAddressLine1?: string;
@@ -57,10 +59,19 @@ export function AddressFields({
       return undefined;
     }
 
+    const cacheKey = `${country.toLowerCase()}:${query.toLowerCase()}`;
+    const cachedSuggestions = suggestionCache.get(cacheKey);
+
+    if (cachedSuggestions) {
+      setSuggestions(cachedSuggestions);
+      setHasSearchResults(cachedSuggestions.length > 0);
+      setIsLoading(false);
+      return undefined;
+    }
+
+    setIsLoading(true);
     const controller = new AbortController();
     const timeoutId = globalThis.setTimeout(async () => {
-      setIsLoading(true);
-
       try {
         const response = await fetch(`/api/address-search?q=${encodeURIComponent(query)}&country=${encodeURIComponent(country)}`, {
           signal: controller.signal,
@@ -73,6 +84,7 @@ export function AddressFields({
         const data = (await response.json()) as { suggestions?: AddressSuggestion[] };
         const nextSuggestions = data.suggestions ?? [];
 
+        suggestionCache.set(cacheKey, nextSuggestions);
         setSuggestions(nextSuggestions);
         setHasSearchResults(nextSuggestions.length > 0);
       } catch {
@@ -85,7 +97,7 @@ export function AddressFields({
           setIsLoading(false);
         }
       }
-    }, 220);
+    }, 140);
 
     return () => {
       controller.abort();
@@ -93,17 +105,7 @@ export function AddressFields({
     };
   }, [addressLine1, country, disabled, hasTypedSearch, suppressSuggestions]);
 
-  const helperText = useMemo(() => {
-    if (isLoading) {
-      return "Finding nearby matches...";
-    }
-
-    if (!hasSearchResults && addressLine1.trim().length >= 5) {
-      return "No close match yet. You can still enter the address manually.";
-    }
-
-    return "Start typing to autofill the city, state, postal code, and country.";
-  }, [addressLine1, hasSearchResults, isLoading]);
+  const showSuggestionPanel = hasTypedSearch && !suppressSuggestions && addressLine1.trim().length >= 5 && !disabled;
 
   function applySuggestion(suggestion: AddressSuggestion) {
     setAddressLine1(suggestion.addressLine1);
@@ -149,28 +151,42 @@ export function AddressFields({
                 setSuggestions([]);
               }
             }}
-            placeholder="Start typing your street address"
+            placeholder="Street address"
             type="text"
             value={addressLine1}
           />
 
-          {suggestions.length ? (
+          {showSuggestionPanel ? (
             <div className="absolute inset-x-0 top-[calc(100%+0.4rem)] z-20 overflow-hidden rounded-lg border border-border/90 bg-[rgba(255,255,255,0.98)] shadow-[0_18px_36px_rgba(29,36,40,0.12)] backdrop-blur-xl">
-              {suggestions.map((suggestion, index) => (
-                <button
-                  key={`${suggestion.label}-${index}`}
-                  className="flex w-full flex-col items-start gap-1 border-b border-border/60 px-4 py-3 text-left transition last:border-b-0 hover:bg-[rgba(239,107,74,0.08)]"
-                  onClick={() => applySuggestion(suggestion)}
-                  type="button"
-                >
-                  <span className="text-sm font-semibold text-foreground">{suggestion.addressLine1 || suggestion.label}</span>
-                  <span className="text-xs leading-5 text-foreground/62">{suggestion.label}</span>
-                </button>
-              ))}
+              {isLoading ? (
+                <div className="grid gap-2 p-3">
+                  {[0, 1, 2].map((index) => (
+                    <div key={index} className="grid gap-2 rounded-lg border border-border/60 bg-surface-muted px-3 py-2.5">
+                      <span className="h-3 w-3/4 animate-pulse rounded-full bg-foreground/12" />
+                      <span className="h-2.5 w-1/2 animate-pulse rounded-full bg-foreground/10" />
+                    </div>
+                  ))}
+                </div>
+              ) : suggestions.length ? (
+                suggestions.map((suggestion, index) => (
+                  <button
+                    key={`${suggestion.label}-${index}`}
+                    className="flex w-full flex-col items-start gap-1 border-b border-border/60 px-4 py-3 text-left transition last:border-b-0 hover:bg-[rgba(239,107,74,0.08)]"
+                    onClick={() => applySuggestion(suggestion)}
+                    type="button"
+                  >
+                    <span className="text-sm font-semibold text-foreground">{suggestion.addressLine1 || suggestion.label}</span>
+                    <span className="text-xs leading-5 text-foreground/62">{suggestion.label}</span>
+                  </button>
+                ))
+              ) : !hasSearchResults ? (
+                <div className="px-4 py-3 text-sm text-foreground/62">
+                  No close match. You can keep typing or enter it manually.
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
-        <span className="text-xs leading-5 text-foreground/58">{helperText}</span>
       </label>
 
       <label className="grid gap-2">
@@ -184,7 +200,6 @@ export function AddressFields({
             setAddressLine2(event.target.value);
             suppressAutofillSuggestions();
           }}
-          placeholder="Apt 4B"
           type="text"
           value={addressLine2}
         />

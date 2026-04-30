@@ -84,8 +84,14 @@ export function NotificationSettingRow() {
         <p className="mt-0.5 text-sm leading-6 text-foreground/58">
           Get reminders for upcoming hangouts and relationships that need attention.
         </p>
+        {state === "default" ? (
+          <p className="mt-1 text-sm text-foreground/58">Tap Turn on and your browser will ask for permission.</p>
+        ) : null}
         {state === "denied" ? (
-          <p className="mt-1 text-sm text-accent-strong">Enable notifications for this site in your browser settings to turn this on.</p>
+          <p className="mt-1 text-sm text-accent-strong">Notifications are blocked. Open browser site settings, allow notifications for this app, then return here.</p>
+        ) : null}
+        {state === "unsupported" ? (
+          <p className="mt-1 text-sm text-foreground/58">Push works best from the installed app or a browser with web push support.</p>
         ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -98,7 +104,7 @@ export function NotificationSettingRow() {
           onClick={enableNotifications}
           type="button"
         >
-          Enable
+          {state === "enabled" ? "Enabled" : state === "saving" ? "Saving" : "Turn on"}
         </button>
       </div>
     </div>

@@ -54,9 +54,9 @@ function MobileRelationshipRail({
       {items.length === 0 ? (
         <p className="text-sm leading-6 text-foreground/68">{emptyCopy}</p>
       ) : (
-        <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1">
+        <div className="grid gap-3">
           {items.map((item) => (
-            <article key={`${item.targetType}:${item.id}`} className="min-w-60 snap-start rounded-lg border border-border/85 bg-white/82 p-3.5">
+            <article key={`${item.targetType}:${item.id}`} className="rounded-lg border border-border/85 bg-white/82 p-3.5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-accent-strong">{item.targetType}</p>
@@ -128,9 +128,9 @@ function MobileRecentHistory({
       {touchpoints.length === 0 ? (
         <p className="text-sm leading-6 text-foreground/68">{emptyCopy}</p>
       ) : (
-        <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1">
+        <div className="grid gap-3">
           {touchpoints.slice(0, 4).map((touchpoint) => (
-            <article key={touchpoint.id} className="min-w-60 snap-start rounded-lg border border-border/85 bg-white/78 p-3.5">
+            <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
