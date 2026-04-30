@@ -40,7 +40,9 @@ export function GroupCreateForm({
 
       <GroupMemberPicker connections={connections} />
 
-      <p className="text-sm leading-6 text-foreground/64">The group starts appearing in the dashboard reminder queue immediately.</p>
+      <p className="text-sm leading-6 text-foreground/64">
+        The group starts appearing in the dashboard reminder queue immediately. People with a saved email will show as pending until they accept.
+      </p>
       <div className="flex flex-wrap gap-2">
         <button className="button-primary" type="submit">
           Create group

@@ -7,6 +7,16 @@ import { summarizeGroupMemberStatuses } from "@/lib/group-members";
 import { filterGroups, type GroupDirectoryFilter } from "@/lib/group-directory";
 import type { RelationshipSummary } from "@/lib/mvp-data";
 
+function getGroupMembershipSummary(group: RelationshipSummary) {
+  const summaryParts = [`${group.memberNames.length} accepted`];
+
+  if (group.pendingMemberCount > 0) {
+    summaryParts.push(`${group.pendingMemberCount} pending`);
+  }
+
+  return summaryParts.join(" • ");
+}
+
 function SummaryChip({
   label,
   value,
@@ -45,7 +55,7 @@ function GroupSection({
         <article key={group.id} className="rounded-lg border border-border/90 bg-white/82 p-3.5">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-accent-strong">{group.memberNames.length} members</p>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-accent-strong">{getGroupMembershipSummary(group)}</p>
               <h2 className="mt-1.5 text-[1.15rem] font-semibold text-foreground">{group.title}</h2>
               <p className="mt-2 text-sm leading-7 text-foreground/72">{group.subtitle}</p>
               <p className="mt-2 text-sm text-foreground/70">{group.cadenceLabel}</p>
@@ -53,6 +63,11 @@ function GroupSection({
                 <p className="mt-2 text-sm text-foreground/65">{summarizeGroupMemberStatuses(group.memberStatusCounts)}</p>
               ) : null}
               <p className="mt-2 text-sm text-foreground/65">{group.memberNames.length > 0 ? group.memberNames.join(", ") : "No members added yet"}</p>
+              {group.pendingMemberCount > 0 ? (
+                <p className="mt-1 text-sm text-foreground/62">
+                  Pending: {group.pendingMembers.map((member) => member.name).join(", ")}
+                </p>
+              ) : null}
               {group.nextHangoutLabel ? (
                 <p className="mt-1 text-sm text-foreground/65">Next plan: {group.nextHangoutLabel}</p>
               ) : null}

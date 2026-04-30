@@ -12,6 +12,7 @@ import {
 export type ConnectionRow = {
   id: string;
   display_name: string;
+  contact_email: string | null;
   linked_user_id: string | null;
   tags: string[] | null;
   notes: string | null;
@@ -74,6 +75,19 @@ type ConnectionInviteRow = {
   created_at: string;
 };
 
+type GroupInviteRow = {
+  group_id: string;
+  connection_id: string;
+  invited_email: string;
+  created_at: string;
+};
+
+type PendingGroupMember = {
+  connectionId: string;
+  name: string;
+  invitedEmail: string;
+};
+
 export type RelationshipSummary = {
   id: string;
   targetType: "connection" | "group";
@@ -87,6 +101,7 @@ export type RelationshipSummary = {
   notes?: string;
   tags: string[];
   linkedUserId?: string;
+  contactEmail?: string;
   linkState?: "linked" | "pending" | "unlinked";
   pendingInviteEmail?: string;
   preferredActivities?: string;
@@ -96,6 +111,9 @@ export type RelationshipSummary = {
   touchpointCount: number;
   memberNames: string[];
   memberConnectionIds: string[];
+  pendingMembers: PendingGroupMember[];
+  pendingMemberConnectionIds: string[];
+  pendingMemberCount: number;
   memberStatusCounts?: GroupMemberStatusCounts;
 };
 
@@ -191,12 +209,28 @@ function buildGroupMemberMap(groups: GroupRow[], memberships: GroupMembershipRow
   return memberMap;
 }
 
+function buildGroupPendingInviteMap(groupInvites: GroupInviteRow[], connections: ConnectionRow[]) {
+  const connectionNameMap = new Map(connections.map((connection) => [connection.id, connection.display_name]));
+
+  return groupInvites.reduce<Map<string, PendingGroupMember[]>>((accumulator, invite) => {
+    const pendingMembers = accumulator.get(invite.group_id) ?? [];
+
+    pendingMembers.push({
+      connectionId: invite.connection_id,
+      name: connectionNameMap.get(invite.connection_id) ?? invite.invited_email,
+      invitedEmail: invite.invited_email,
+    });
+    accumulator.set(invite.group_id, pendingMembers);
+    return accumulator;
+  }, new Map());
+}
+
 export async function getDashboardData(supabase: SupabaseClient, userId: string) {
   const [profileResult, connectionResult, groupResult, cadenceResult, touchpointResult, hangoutResult, inviteResult] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
     supabase
       .from("connections")
-      .select("id, display_name, linked_user_id, tags, notes, preferred_activities, created_at")
+      .select("id, display_name, contact_email, linked_user_id, tags, notes, preferred_activities, created_at")
       .eq("owner_user_id", userId)
       .is("archived_at", null)
       .order("display_name"),
@@ -246,24 +280,42 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   const invites = (inviteResult.data ?? []) as ConnectionInviteRow[];
 
   let memberships: GroupMembershipRow[] = [];
+  let groupInvites: GroupInviteRow[] = [];
 
   if (groups.length > 0) {
-    const membershipResult = await supabase
-      .from("group_memberships")
-      .select("group_id, connection_id, user_id, role")
-      .in(
-        "group_id",
-        groups.map((group) => group.id),
-      )
-      .is("removed_at", null);
+    const [membershipResult, groupInviteResult] = await Promise.all([
+      supabase
+        .from("group_memberships")
+        .select("group_id, connection_id, user_id, role")
+        .in(
+          "group_id",
+          groups.map((group) => group.id),
+        )
+        .is("removed_at", null),
+      supabase
+        .from("group_invites")
+        .select("group_id, connection_id, invited_email, created_at")
+        .eq("owner_user_id", userId)
+        .in(
+          "group_id",
+          groups.map((group) => group.id),
+        )
+        .is("accepted_at", null)
+        .is("declined_at", null)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false }),
+    ]);
 
     assertNoError(membershipResult.error, "Failed to load group memberships");
+    assertNoError(groupInviteResult.error, "Failed to load group invites");
     memberships = (membershipResult.data ?? []) as GroupMembershipRow[];
+    groupInvites = (groupInviteResult.data ?? []) as GroupInviteRow[];
   }
 
   const cadenceMap = new Map(cadenceRules.map((rule) => [`${rule.target_type}:${rule.target_id}`, rule]));
   const latestTouchpoints = latestTouchpointMap(touchpoints);
   const groupMemberMap = buildGroupMemberMap(groups, memberships, connections);
+  const groupPendingInviteMap = buildGroupPendingInviteMap(groupInvites, connections);
   const groupMemberIdsMap = memberships.reduce<Map<string, string[]>>((accumulator, membership) => {
     if (!membership.connection_id) {
       return accumulator;
@@ -310,6 +362,15 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
 
     const latestTouchpoint = latestTouchpoints.get(key);
     const pendingInvite = inviteMap.get(connection.id);
+    const nextHangout = nextHangoutMap.get(key);
+    let linkState: RelationshipSummary["linkState"] = "unlinked";
+
+    if (connection.linked_user_id) {
+      linkState = "linked";
+    } else if (pendingInvite) {
+      linkState = "pending";
+    }
+
     const health = getRelationshipHealth({
       createdAt: connection.created_at,
       lastTouchpointAt: latestTouchpoint?.occurred_at,
@@ -332,21 +393,25 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       notes: connection.notes ?? undefined,
       tags: connection.tags ?? [],
       linkedUserId: connection.linked_user_id ?? undefined,
-      linkState: connection.linked_user_id ? "linked" : pendingInvite ? "pending" : "unlinked",
+      contactEmail: connection.contact_email ?? undefined,
+      linkState,
       pendingInviteEmail: pendingInvite?.invited_email,
       preferredActivities: connection.preferred_activities ?? undefined,
       lastTouchpointAt: latestTouchpoint?.occurred_at,
       lastTouchpointLabel: formatDateLabel(latestTouchpoint?.occurred_at),
-      nextHangoutLabel: nextHangoutMap.get(key)
+      nextHangoutLabel: nextHangout
         ? formatHangoutWindow({
-            startsAt: nextHangoutMap.get(key)!.starts_at,
-            endsAt: nextHangoutMap.get(key)!.ends_at ?? undefined,
-            timezone: nextHangoutMap.get(key)!.timezone,
+            startsAt: nextHangout.starts_at,
+            endsAt: nextHangout.ends_at ?? undefined,
+            timezone: nextHangout.timezone,
           })
         : undefined,
       touchpointCount: touchpointCounts.get(key) ?? 0,
       memberNames: [],
       memberConnectionIds: [],
+      pendingMembers: [],
+      pendingMemberConnectionIds: [],
+      pendingMemberCount: 0,
     };
   });
 
@@ -372,6 +437,8 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
 
     const memberNames = groupMemberMap.get(group.id) ?? [];
     const memberConnectionIds = groupMemberIdsMap.get(group.id) ?? [];
+    const pendingMembers = groupPendingInviteMap.get(group.id) ?? [];
+    const nextHangout = nextHangoutMap.get(key);
     const memberStatusCounts = countGroupMemberStatuses(
       memberConnectionIds.map((connectionId) => connectionSummaryMap.get(connectionId)?.linkState),
     );
@@ -390,16 +457,19 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       tags: [],
       lastTouchpointAt: latestTouchpoint?.occurred_at,
       lastTouchpointLabel: formatDateLabel(latestTouchpoint?.occurred_at),
-      nextHangoutLabel: nextHangoutMap.get(key)
+      nextHangoutLabel: nextHangout
         ? formatHangoutWindow({
-            startsAt: nextHangoutMap.get(key)!.starts_at,
-            endsAt: nextHangoutMap.get(key)!.ends_at ?? undefined,
-            timezone: nextHangoutMap.get(key)!.timezone,
+            startsAt: nextHangout.starts_at,
+            endsAt: nextHangout.ends_at ?? undefined,
+            timezone: nextHangout.timezone,
           })
         : undefined,
       touchpointCount: touchpointCounts.get(key) ?? 0,
       memberNames,
       memberConnectionIds,
+      pendingMembers,
+      pendingMemberConnectionIds: pendingMembers.map((member) => member.connectionId),
+      pendingMemberCount: pendingMembers.length,
       memberStatusCounts,
     };
   });

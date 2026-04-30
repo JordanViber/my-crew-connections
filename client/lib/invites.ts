@@ -10,6 +10,14 @@ export function buildConnectionInviteUrl(origin: string, token: string) {
   return `${origin}${buildConnectionInvitePath(token)}`;
 }
 
+export function buildGroupInvitePath(token: string) {
+  return `/group-invite/${token}`;
+}
+
+export function buildGroupInviteUrl(origin: string, token: string) {
+  return `${origin}${buildGroupInvitePath(token)}`;
+}
+
 export function getConnectionLinkState({
   linkedUserLabel,
   pendingInviteEmail,

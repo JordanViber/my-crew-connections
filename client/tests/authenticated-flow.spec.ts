@@ -1,7 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 const email = `e2e-${Date.now()}@example.com`;
-const password = "test-password-123";
+const password = process.env.E2E_TEST_PASSWORD ?? `e2e-${randomUUID()}`;
 const iphone15Viewport = { width: 393, height: 852 };
 
 async function createAccount(page: Parameters<typeof test>[0]["page"], emailAddress: string, passwordValue: string) {
@@ -30,7 +31,7 @@ async function prepareLocalAccount(page: Parameters<typeof test>[0]["page"], ema
 }
 
 async function signInWithPassword(page: Parameters<typeof test>[0]["page"], emailAddress: string, passwordValue: string) {
-  await page.getByPlaceholder("Enter your email").fill(emailAddress);
+  await page.getByPlaceholder("Email or phone").fill(emailAddress);
   await page.getByPlaceholder("Enter your password").fill(passwordValue);
   await page.getByRole("button", { name: "Sign in" }).click();
 }
@@ -326,7 +327,8 @@ test("invite links can be started during creation and then claimed by a second u
 
   await page.goto("/connections?tab=create");
   await page.locator('input[name="displayName"]:visible').fill("Invite Friend");
-  await page.locator('input[name="inviteEmail"]:visible').fill(inviteeEmail);
+  await page.locator('input[name="contactEmail"]:visible').fill(inviteeEmail);
+  await page.locator('input[name="sendInviteNow"]:visible').check();
   await page.locator('input[name="cadenceValue"]:visible').fill("2");
   await page.locator('input[name="reminderLeadDays"]:visible').fill("3");
   await page.getByRole("button", { name: "Create connection" }).click();
@@ -343,15 +345,15 @@ test("invite links can be started during creation and then claimed by a second u
   await page.locator('input[name="name"]:visible').fill("Invite Status Crew");
   await page.locator('input[type="checkbox"][name="connectionIds"]').first().check();
   await page.getByRole("button", { name: "Create group" }).click();
-  await expect(page).toHaveURL(/\/groups\/.+feedback=group-created/);
-  await expect(page.getByText("Invite sent").first()).toBeVisible();
+  await expect(page).toHaveURL(/\/groups\/.+feedback=group-created-with-invites/);
+  await expect(page.getByRole("heading", { name: "Pending invites" })).toBeVisible();
+  await expect(page.getByText(/1 accepted .* 1 pending|0 accepted .* 1 pending/i).first()).toBeVisible();
 
   const inviteeContext = await browser.newContext({ viewport: iphone15Viewport });
   const inviteePage = await inviteeContext.newPage();
   await inviteePage.goto(inviteUrl);
-  await expect(inviteePage.getByText(/Invite Friend wants to connect/i)).toBeVisible();
-  await inviteePage.getByRole("link", { name: "Sign in to claim" }).click();
   await inviteePage.waitForURL(/\/auth\?next=/);
+  await expect(inviteePage.getByText(/connection invite/i)).toBeVisible();
   await prepareLocalAccount(inviteePage, inviteeEmail, password);
   await signInWithPassword(inviteePage, inviteeEmail, password);
   await inviteePage.waitForURL(/\/invite\//);
@@ -364,7 +366,8 @@ test("invite links can be started during creation and then claimed by a second u
   await inviteeContext.close();
 
   await page.reload();
-  await expect(page.getByText("Connected").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pending invites" })).toBeVisible();
+  await expect(page.getByText(/0 accepted .* 1 pending/i).first()).toBeVisible();
   await page.goto("http://127.0.0.1:3100/connections");
   await page.getByRole("button", { name: "Active" }).click();
   await expect(page.getByText("Connected").first()).toBeVisible();
@@ -375,23 +378,26 @@ test("existing account can claim an invite and receive the reciprocal connection
   const ownerEmail = `owner-existing-${Date.now()}@example.com`;
   const inviteeEmail = `invitee-existing-${Date.now()}@example.com`;
 
+  const inviteeContext = await browser.newContext({ viewport: iphone15Viewport });
+  const inviteePage = await inviteeContext.newPage();
+  await inviteePage.goto("/auth");
+  await prepareLocalAccount(inviteePage, inviteeEmail, password);
+
   await page.goto("/auth");
-  await prepareLocalAccount(page, inviteeEmail, password);
   await prepareLocalAccount(page, ownerEmail, password);
   await signInWithPassword(page, ownerEmail, password);
   await page.waitForURL("**/dashboard");
 
   await page.goto("/connections?tab=create");
   await page.locator('input[name="displayName"]:visible').fill("Existing Invite Friend");
-  await page.locator('input[name="inviteEmail"]:visible').fill(inviteeEmail);
+  await page.locator('input[name="contactEmail"]:visible').fill(inviteeEmail);
+  await page.locator('input[name="sendInviteNow"]:visible').check();
   await page.locator('input[name="cadenceValue"]:visible').fill("2");
   await page.locator('input[name="reminderLeadDays"]:visible').fill("3");
   await page.getByRole("button", { name: "Create connection" }).click();
   await expect(page).toHaveURL(/\/connections\/.+feedback=connection-created/);
   const inviteUrl = await page.locator('input[readonly]:visible').inputValue();
 
-  const inviteeContext = await browser.newContext({ viewport: iphone15Viewport });
-  const inviteePage = await inviteeContext.newPage();
   await inviteePage.goto("/auth");
   await signInWithPassword(inviteePage, inviteeEmail, password);
   await inviteePage.waitForURL("**/dashboard");
@@ -404,5 +410,57 @@ test("existing account can claim an invite and receive the reciprocal connection
   await inviteePage.waitForURL(/\/connections\?feedback=connection-linked/);
   await inviteePage.getByRole("button", { name: "Active" }).click();
   await expect(inviteePage.getByText(ownerEmail.split("@")[0], { exact: false }).first()).toBeVisible();
+  await inviteeContext.close();
+});
+
+test("free-tier recipient cannot claim a connection invite after using their only person slot", async ({ page, browser }) => {
+  await page.setViewportSize(iphone15Viewport);
+  const ownerEmail = `owner-limit-${Date.now()}@example.com`;
+  const inviteeEmail = `invitee-limit-${Date.now()}@example.com`;
+
+  await page.goto("/auth");
+  await prepareLocalAccount(page, inviteeEmail, password);
+  await prepareLocalAccount(page, ownerEmail, password);
+  await signInWithPassword(page, ownerEmail, password);
+  await page.waitForURL("**/dashboard");
+
+  const inviteeContext = await browser.newContext({ viewport: iphone15Viewport });
+  const inviteePage = await inviteeContext.newPage();
+  await inviteePage.goto("/auth");
+  await signInWithPassword(inviteePage, inviteeEmail, password);
+  await inviteePage.waitForURL("**/dashboard");
+  await inviteePage.goto("/connections?tab=create");
+  await inviteePage.locator('input[name="displayName"]:visible').fill("Already Using Free Slot");
+  await inviteePage.locator('input[name="cadenceValue"]:visible').fill("2");
+  await inviteePage.locator('input[name="reminderLeadDays"]:visible').fill("3");
+  await inviteePage.getByRole("button", { name: "Create connection" }).click();
+  await expect(inviteePage).toHaveURL(/\/connections\/.+feedback=connection-created/);
+
+  await page.goto("/connections?tab=create");
+  await page.locator('input[name="displayName"]:visible').fill("Over Limit Friend");
+  await page.locator('input[name="contactEmail"]:visible').fill(inviteeEmail);
+  await page.locator('input[name="sendInviteNow"]:visible').check();
+  await page.locator('input[name="cadenceValue"]:visible').fill("2");
+  await page.locator('input[name="reminderLeadDays"]:visible').fill("3");
+  await page.getByRole("button", { name: "Create connection" }).click();
+  await expect(page).toHaveURL(/\/connections\/.+feedback=connection-created/);
+  await expect(page.getByRole("heading", { name: "Invite pending" })).toBeVisible();
+  const inviteUrl = await page.locator('input[readonly]:visible').inputValue();
+
+  await inviteePage.goto(inviteUrl);
+  await expect(inviteePage.getByRole("heading", { name: /claim your connection/i })).toBeVisible();
+  await inviteePage.getByRole("button", { name: "Claim connection" }).click();
+  await expect(inviteePage.getByText(/already used your free person slot/i)).toBeVisible();
+  await expect(inviteePage.getByRole("button", { name: "Claim connection" })).toBeVisible();
+
+  await inviteePage.goto("/connections");
+  await inviteePage.getByRole("button", { name: "Active" }).click();
+  await expect(inviteePage.getByRole("heading", { name: "Already Using Free Slot" }).first()).toBeVisible();
+  await expect(inviteePage.getByRole("link", { name: "Open person" })).toHaveCount(1);
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Invite pending" })).toBeVisible();
+  await expect(page.getByText(new RegExp(inviteeEmail, "i")).first()).toBeVisible();
+
   await inviteeContext.close();
 });

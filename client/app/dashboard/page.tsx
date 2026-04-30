@@ -5,6 +5,7 @@ import { ConnectionLinkBadge } from "@/components/connection-link-badge";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { HangoutList } from "@/components/hangout-list";
 import { IncomingConnectionInvites } from "@/components/incoming-connection-invites";
+import { IncomingGroupInvites } from "@/components/incoming-group-invites";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
@@ -12,6 +13,7 @@ import { UpgradePrompt } from "@/components/upgrade-prompt";
 import { cancelHangoutAction, completeHangoutAction, createTouchpointAction } from "@/app/actions";
 import { canCreateConnection, canCreateGroup, getFreeTierUsageLabel, hasPremiumAccess } from "@/lib/entitlements";
 import { getIncomingConnectionInvites } from "@/lib/connection-invites";
+import { getIncomingGroupInvites } from "@/lib/group-invites";
 import { getFeedback } from "@/lib/feedback";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -57,32 +59,37 @@ function MobileRelationshipRail({
         <p className="text-sm leading-6 text-foreground/68">{emptyCopy}</p>
       ) : (
         <div className="grid gap-3">
-          {items.map((item) => (
-            <article key={`${item.targetType}:${item.id}`} className="rounded-lg border border-border/85 bg-white/82 p-3.5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-accent-strong">{item.targetType}</p>
-                  <h3 className="mt-1.5 text-[1.1rem] font-semibold text-foreground">{item.title}</h3>
-                  <p className="mt-1 text-sm text-foreground/70">{item.subtitle}</p>
-                </div>
-                <StatusPill health={item.health} />
-              </div>
+          {items.map((item) => {
+            const groupMembershipSummary = getGroupMembershipSummary(item);
 
-              <div className="mt-3 space-y-2 text-sm text-foreground/68">
-                <p>{item.cadenceLabel}</p>
-                <p>{item.health.summary}</p>
-                {item.targetType === "connection" ? (
-                  <div className="pt-1">
-                    <ConnectionLinkBadge linkState={item.linkState} pendingInviteEmail={item.pendingInviteEmail} />
+            return (
+              <article key={`${item.targetType}:${item.id}`} className="rounded-lg border border-border/85 bg-white/82 p-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-accent-strong">{item.targetType}</p>
+                    <h3 className="mt-1.5 text-[1.1rem] font-semibold text-foreground">{item.title}</h3>
+                    <p className="mt-1 text-sm text-foreground/70">{item.subtitle}</p>
                   </div>
-                ) : null}
-              </div>
+                  <StatusPill health={item.health} />
+                </div>
 
-              <Link className="button-secondary mt-3 inline-flex" href={`/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`}>
-                Open details
-              </Link>
-            </article>
-          ))}
+                <div className="mt-3 space-y-2 text-sm text-foreground/68">
+                  <p>{item.cadenceLabel}</p>
+                  <p>{item.health.summary}</p>
+                  {item.targetType === "connection" ? (
+                    <div className="pt-1">
+                      <ConnectionLinkBadge linkState={item.linkState} pendingInviteEmail={item.pendingInviteEmail} />
+                    </div>
+                  ) : null}
+                  {item.targetType === "group" && groupMembershipSummary ? <p>{groupMembershipSummary}</p> : null}
+                </div>
+
+                <Link className="button-secondary mt-3 inline-flex" href={`/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`}>
+                  Open details
+                </Link>
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
@@ -187,36 +194,57 @@ function RelationshipList({
 
   return (
     <div className="grid gap-4">
-      {items.map((item) => (
-        <article key={`${item.targetType}:${item.id}`} className="rounded-lg border border-border/90 bg-white/80 p-3.5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-accent-strong">{item.targetType}</p>
-              <h3 className="mt-1.5 text-[1.1rem] font-semibold text-foreground">{item.title}</h3>
-              <p className="mt-1 text-sm leading-7 text-foreground/70">{item.subtitle}</p>
-              <p className="mt-2 text-sm font-medium text-foreground/70">{item.cadenceLabel}</p>
-              {item.targetType === "connection" ? (
-                <div className="mt-3">
-                  <ConnectionLinkBadge linkState={item.linkState} pendingInviteEmail={item.pendingInviteEmail} />
-                </div>
-              ) : null}
-              {item.nextHangoutLabel ? (
-                <p className="mt-2 text-sm text-foreground/65">Next plan: {item.nextHangoutLabel}</p>
-              ) : null}
-            </div>
+      {items.map((item) => {
+        const groupMembershipSummary = getGroupMembershipSummary(item);
 
-            <div className="flex flex-col items-start gap-3 md:items-end">
-              <StatusPill health={item.health} />
-              <p className="max-w-xs text-sm text-foreground/65">{item.health.summary}</p>
-              <Link className="button-secondary" href={`/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`}>
-                {ctaLabel}
-              </Link>
+        return (
+          <article key={`${item.targetType}:${item.id}`} className="rounded-lg border border-border/90 bg-white/80 p-3.5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-accent-strong">{item.targetType}</p>
+                <h3 className="mt-1.5 text-[1.1rem] font-semibold text-foreground">{item.title}</h3>
+                <p className="mt-1 text-sm leading-7 text-foreground/70">{item.subtitle}</p>
+                <p className="mt-2 text-sm font-medium text-foreground/70">{item.cadenceLabel}</p>
+                {item.targetType === "connection" ? (
+                  <div className="mt-3">
+                    <ConnectionLinkBadge linkState={item.linkState} pendingInviteEmail={item.pendingInviteEmail} />
+                  </div>
+                ) : null}
+                {item.targetType === "group" && groupMembershipSummary ? (
+                  <p className="mt-2 text-sm text-foreground/65">{groupMembershipSummary}</p>
+                ) : null}
+                {item.nextHangoutLabel ? (
+                  <p className="mt-2 text-sm text-foreground/65">Next plan: {item.nextHangoutLabel}</p>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col items-start gap-3 md:items-end">
+                <StatusPill health={item.health} />
+                <p className="max-w-xs text-sm text-foreground/65">{item.health.summary}</p>
+                <Link className="button-secondary" href={`/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`}>
+                  {ctaLabel}
+                </Link>
+              </div>
             </div>
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
+}
+
+function getGroupMembershipSummary(item: Awaited<ReturnType<typeof getDashboardData>>["relationships"][number]) {
+  if (item.targetType !== "group") {
+    return null;
+  }
+
+  const summaryParts = [`${item.memberNames.length} accepted`];
+
+  if (item.pendingMemberCount > 0) {
+    summaryParts.push(`${item.pendingMemberCount} pending`);
+  }
+
+  return summaryParts.join(" • ");
 }
 
 function toDateTimeLocalValue() {
@@ -292,7 +320,10 @@ export default async function DashboardPage({
 
   const supabase = createServerAdminSupabaseClient();
   const data = await getDashboardData(supabase, user.id);
-  const incomingInvites = await getIncomingConnectionInvites(supabase, user.email);
+  const [incomingConnectionInvites, incomingGroupInvites] = await Promise.all([
+    getIncomingConnectionInvites(supabase, user.email),
+    getIncomingGroupInvites(supabase, user.email),
+  ]);
   const { data: billingProfile } = await supabase
     .from("profiles")
     .select("stripe_subscription_status")
@@ -310,10 +341,17 @@ export default async function DashboardPage({
   const canAddConnection = canCreateConnection(billingProfile, data.connections.length, user.email);
   const canAddGroup = canCreateGroup(billingProfile, data.groups.length, user.email);
   const showUpgradePrompt = !hasPremium && (!canAddConnection || !canAddGroup);
-  const upgradeUsageLabel = [
-    !canAddConnection ? getFreeTierUsageLabel("connection", data.connections.length) : null,
-    !canAddGroup ? getFreeTierUsageLabel("group", data.groups.length) : null,
-  ].filter(Boolean).join(" / ");
+  const upgradeUsageParts: string[] = [];
+
+  if (!canAddConnection) {
+    upgradeUsageParts.push(getFreeTierUsageLabel("connection", data.connections.length));
+  }
+
+  if (!canAddGroup) {
+    upgradeUsageParts.push(getFreeTierUsageLabel("group", data.groups.length));
+  }
+
+  const upgradeUsageLabel = upgradeUsageParts.join(" / ");
 
   return (
     <AppShell
@@ -329,8 +367,9 @@ export default async function DashboardPage({
         </div>
       ) : null}
 
-      <div className="mb-4">
-        <IncomingConnectionInvites invites={incomingInvites} />
+      <div className="mb-4 grid gap-3">
+        <IncomingGroupInvites invites={incomingGroupInvites} />
+        <IncomingConnectionInvites invites={incomingConnectionInvites} />
       </div>
 
       <MobileSectionTabs

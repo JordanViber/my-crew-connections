@@ -5,6 +5,7 @@ import { InviteLinkPanel } from "@/components/invite-link-panel";
 type ConnectionLinkSectionProps = Readonly<{
   connectionId: string;
   redirectTo: string;
+  contactEmail?: string | null;
   linkedUserLabel?: string | null;
   activeInvite?: {
     email: string;
@@ -15,6 +16,7 @@ type ConnectionLinkSectionProps = Readonly<{
 export function ConnectionLinkSection({
   connectionId,
   redirectTo,
+  contactEmail,
   linkedUserLabel,
   activeInvite,
 }: ConnectionLinkSectionProps) {
@@ -49,7 +51,7 @@ export function ConnectionLinkSection({
             <span className="field-label">{activeInvite ? "Replace pending invite" : "Invite email"}</span>
             <input
               className="field-input"
-              defaultValue={activeInvite?.email ?? ""}
+              defaultValue={activeInvite?.email ?? contactEmail ?? ""}
               name="email"
               type="email"
               placeholder="friend@example.com"
@@ -57,7 +59,7 @@ export function ConnectionLinkSection({
             />
           </label>
           <p className="text-sm leading-6 text-foreground/68">
-            They can sign in or create an account with this email, then claim the invite when they open the link.
+            This uses the saved contact email when available. They can sign in or create an account with that email, then claim the invite when they open the link.
           </p>
           <button className="button-primary w-full sm:w-auto" type="submit">
             {activeInvite ? "Refresh invite link" : "Create invite link"}

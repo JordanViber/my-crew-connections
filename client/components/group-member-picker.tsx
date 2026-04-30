@@ -40,6 +40,14 @@ export function GroupMemberPicker({
     [orderedConnections],
   );
 
+  function getJoinModeLabel(connection: RelationshipSummary) {
+    if (connection.contactEmail || connection.linkedUserId) {
+      return "Will be invited to accept";
+    }
+
+    return "Will be added immediately";
+  }
+
   return (
     <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
       <legend className="field-label px-2">Add existing people</legend>
@@ -48,7 +56,7 @@ export function GroupMemberPicker({
       ) : (
         <>
           <p className="text-sm leading-6 text-foreground/68">
-            Search your current people, then check the ones that belong in this crew. This only uses people you already created.
+            Search your current people, then check the ones that belong in this crew. Saved emails become pending invites. Local-only people join immediately.
           </p>
           <label className="grid gap-2">
             <span className="field-label">Search existing people</span>
@@ -80,6 +88,7 @@ export function GroupMemberPicker({
                     </div>
                     <p className="mt-1 text-sm text-foreground/65">{connection.cadenceLabel}</p>
                     {connection.subtitle ? <p className="mt-1 text-sm text-foreground/62">{connection.subtitle}</p> : null}
+                    <p className="mt-1 text-sm text-foreground/62">{getJoinModeLabel(connection)}</p>
                   </div>
                 </label>
               ))}

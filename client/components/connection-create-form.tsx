@@ -14,8 +14,12 @@ export function ConnectionCreateForm() {
         <input className="field-input" name="displayName" type="text" placeholder="Jordan, Alexis, dinner crew organizer" required />
       </label>
       <label className="grid gap-2">
-        <span className="field-label">Link to real user now</span>
-        <input className="field-input" name="inviteEmail" type="email" placeholder="Optional email to start the invite now" />
+        <span className="field-label">Contact email</span>
+        <input className="field-input" name="contactEmail" type="email" placeholder="Optional email to save on this person" />
+      </label>
+      <label className="flex items-start gap-3 rounded-lg border border-border/80 bg-white/76 px-3 py-3 text-sm text-foreground/72">
+        <input className="mt-1 h-4 w-4 shrink-0" name="sendInviteNow" type="checkbox" value="true" />
+        <span>Send the invite right away if a contact email is present.</span>
       </label>
       <label className="grid gap-2">
         <span className="field-label">Tags</span>
@@ -50,7 +54,7 @@ export function ConnectionCreateForm() {
         <span className="field-label">Private notes</span>
         <textarea className="field-input min-h-24" name="notes" placeholder="Anything useful to remember later." />
       </label>
-      <p className="text-sm leading-6 text-foreground/64">Adding an email sends the connection invite right away.</p>
+      <p className="text-sm leading-6 text-foreground/64">Saving an email prevents duplicate people and keeps the invite address ready even if you do not send it yet.</p>
       <button className="button-primary" type="submit">
         Create connection
       </button>

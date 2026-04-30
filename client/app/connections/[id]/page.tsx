@@ -174,6 +174,10 @@ export default async function ConnectionDetailPage({
                         <input className="field-input" name="tags" type="text" defaultValue={connection.tags.join(", ")} />
                       </label>
                     </div>
+                    <label className="grid gap-2">
+                      <span className="field-label">Contact email</span>
+                      <input className="field-input" name="contactEmail" type="email" defaultValue={connection.contactEmail ?? ""} placeholder="friend@example.com" />
+                    </label>
                     <div className="grid gap-4">
                       <label className="grid gap-2">
                         <span className="field-label">Cadence value</span>
@@ -246,6 +250,7 @@ export default async function ConnectionDetailPage({
                   <ConnectionLinkSection
                     connectionId={connection.id}
                     redirectTo={`/connections/${connection.id}`}
+                    contactEmail={connection.contactEmail}
                     linkedUserLabel={linkedUserLabel}
                     activeInvite={activeInvite}
                   />

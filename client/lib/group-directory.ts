@@ -10,12 +10,13 @@ export function filterGroups(
   const normalizedSearch = search.trim().toLowerCase();
 
   return groups.filter((group) => {
-    const matchesFilter =
-      filter === "all"
-        ? true
-        : filter === "attention"
-          ? group.health.state !== "on-track"
-          : group.health.state === "on-track";
+    let matchesFilter = true;
+
+    if (filter === "attention") {
+      matchesFilter = group.health.state !== "on-track";
+    } else if (filter === "on-track") {
+      matchesFilter = group.health.state === "on-track";
+    }
 
     if (!matchesFilter) {
       return false;
@@ -26,6 +27,7 @@ export function filterGroups(
     }
 
     const haystack = [group.title, group.subtitle, group.memberNames.join(" "), group.notes ?? ""].join(" ").toLowerCase();
-    return haystack.includes(normalizedSearch);
+    const pendingHaystack = group.pendingMembers.map((member) => `${member.name} ${member.invitedEmail}`).join(" ").toLowerCase();
+    return `${haystack} ${pendingHaystack}`.includes(normalizedSearch);
   });
 }

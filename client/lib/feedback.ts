@@ -24,6 +24,11 @@ const feedbackMessages = {
     title: "Email already linked",
     body: "That email is already linked to another person in your list. Open the existing person instead of creating a duplicate link.",
   },
+  "connection-email-already-saved": {
+    tone: "error",
+    title: "Email already saved",
+    body: "That email already belongs to another person in your list. Reuse the existing person instead of saving the same contact email twice.",
+  },
   "connection-email-invite-pending": {
     tone: "error",
     title: "Invite already pending",
@@ -34,6 +39,16 @@ const feedbackMessages = {
     title: "Group created",
     body: "This crew is now tracked on the dashboard with its own cadence.",
   },
+  "group-created-with-invites": {
+    tone: "success",
+    title: "Group created and invites started",
+    body: "Invite-backed members are pending now. They will show as accepted only after they respond.",
+  },
+  "group-created-with-members-and-invites": {
+    tone: "success",
+    title: "Group created with members and invites",
+    body: "Local-only members were added immediately, and invite-backed members are waiting on a response.",
+  },
   "group-saved": {
     tone: "success",
     title: "Group updated",
@@ -43,6 +58,26 @@ const feedbackMessages = {
     tone: "success",
     title: "Members added",
     body: "The group now includes the selected people.",
+  },
+  "group-invites-created": {
+    tone: "success",
+    title: "Group invites started",
+    body: "The selected people are pending until they accept or decline the group invite.",
+  },
+  "members-added-and-invited": {
+    tone: "success",
+    title: "Members added and invites started",
+    body: "Local-only people were added now, while invite-backed people are waiting on a response.",
+  },
+  "group-invite-accepted": {
+    tone: "success",
+    title: "Group invite accepted",
+    body: "Your response is recorded. The group owner now sees you as an accepted member.",
+  },
+  "group-invite-declined": {
+    tone: "success",
+    title: "Group invite declined",
+    body: "Your decline is recorded, so the owner still sees that invite as declined instead of accepted.",
   },
   "connection-archived": {
     tone: "success",

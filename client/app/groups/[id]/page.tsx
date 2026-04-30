@@ -32,6 +32,78 @@ function toInputDateTime() {
   return now.toISOString().slice(0, 16);
 }
 
+type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
+type GroupConnectionSummary = DashboardData["connections"][number];
+type PendingGroupMember = DashboardData["groups"][number]["pendingMembers"][number];
+
+function getGroupMembershipSummary(acceptedCount: number, pendingCount: number) {
+  const summaryParts = [`${acceptedCount} accepted`];
+
+  if (pendingCount > 0) {
+    summaryParts.push(`${pendingCount} pending`);
+  }
+
+  return summaryParts.join(" • ");
+}
+
+function AcceptedGroupMembersList({
+  members,
+  emptyCopy,
+}: Readonly<{
+  members: GroupConnectionSummary[];
+  emptyCopy: string;
+}>) {
+  if (members.length === 0) {
+    return <p className="text-sm leading-7 text-foreground/68">{emptyCopy}</p>;
+  }
+
+  return members.map((member) => (
+    <article key={member.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-base font-semibold text-foreground">{member.title}</p>
+          <p className="mt-1 text-sm text-foreground/65">{member.subtitle}</p>
+        </div>
+        <ConnectionLinkBadge linkState={member.linkState} pendingInviteEmail={member.pendingInviteEmail} />
+      </div>
+      <div className="mt-3">
+        <Link className="button-secondary inline-flex" href={`/connections/${member.id}`}>
+          Open person
+        </Link>
+      </div>
+    </article>
+  ));
+}
+
+function PendingGroupInviteList({
+  members,
+  emptyCopy,
+}: Readonly<{
+  members: PendingGroupMember[];
+  emptyCopy: string;
+}>) {
+  if (members.length === 0) {
+    return <p className="text-sm leading-7 text-foreground/68">{emptyCopy}</p>;
+  }
+
+  return members.map((member) => (
+    <article key={member.connectionId} className="rounded-lg border border-[#ebc8a8] bg-[#fff0df] p-3.5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-base font-semibold text-foreground">{member.name}</p>
+          <p className="mt-1 text-sm text-foreground/65">Waiting on {member.invitedEmail} to accept or decline.</p>
+        </div>
+        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#8b5b2b]">Pending acceptance</span>
+      </div>
+      <div className="mt-3">
+        <Link className="button-secondary inline-flex" href={`/connections/${member.connectionId}`}>
+          Open person
+        </Link>
+      </div>
+    </article>
+  ));
+}
+
 export default async function GroupDetailPage({
   params,
   searchParams,
@@ -67,8 +139,11 @@ export default async function GroupDetailPage({
   const memberConnections = sortConnectionsForGroupMembers(
     data.connections.filter((connection) => group.memberConnectionIds.includes(connection.id)),
   );
+  const pendingMemberSummary = group.pendingMembers;
   const availableConnections = sortConnectionsForGroupMembers(
-    data.connections.filter((connection) => !group.memberConnectionIds.includes(connection.id)),
+    data.connections.filter(
+      (connection) => !group.memberConnectionIds.includes(connection.id) && !group.pendingMemberConnectionIds.includes(connection.id),
+    ),
   );
   const feedback = getFeedback(query.feedback);
   const latestActivity = timeline.find((touchpoint) => touchpoint.activityLabel || touchpoint.locationLabel);
@@ -151,31 +226,18 @@ export default async function GroupDetailPage({
                   </form>
                 </SectionCard>
 
-                <SectionCard title="Members" description="Add people from your existing list to build out the crew over time.">
+                <SectionCard title="Accepted members" description="These people are already in the group. New invite-backed people stay pending until they respond.">
                   <div className="mb-5 grid gap-3">
+                    <p className="text-sm leading-6 text-foreground/68">
+                      {getGroupMembershipSummary(memberConnections.length, group.pendingMemberCount)}
+                    </p>
                     {memberConnections.length > 0 ? (
                       <p className="text-sm leading-6 text-foreground/68">{memberStatusSummary}</p>
                     ) : null}
-                    {memberConnections.length > 0 ? (
-                      memberConnections.map((member) => (
-                        <article key={member.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-base font-semibold text-foreground">{member.title}</p>
-                              <p className="mt-1 text-sm text-foreground/65">{member.subtitle}</p>
-                            </div>
-                            <ConnectionLinkBadge linkState={member.linkState} pendingInviteEmail={member.pendingInviteEmail} />
-                          </div>
-                          <div className="mt-3">
-                            <Link className="button-secondary inline-flex" href={`/connections/${member.id}`}>
-                              Open person
-                            </Link>
-                          </div>
-                        </article>
-                      ))
-                    ) : (
-                      <p className="text-sm leading-7 text-foreground/68">No connection members are attached yet. Add people below to turn this into a real crew.</p>
-                    )}
+                    <AcceptedGroupMembersList
+                      members={memberConnections}
+                      emptyCopy="No accepted members are attached yet. Add people below to turn this into a real crew."
+                    />
                   </div>
 
                   <form action={addGroupMembersAction} className="grid gap-3">
@@ -184,7 +246,7 @@ export default async function GroupDetailPage({
                     <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
                       <legend className="field-label px-2">Add existing connections</legend>
                       {availableConnections.length === 0 ? (
-                        <p className="text-sm leading-7 text-foreground/68">No additional connections are available to add right now.</p>
+                        <p className="text-sm leading-7 text-foreground/68">Everyone in your list is already accepted or pending in this group.</p>
                       ) : (
                         availableConnections.map((connection) => (
                           <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
@@ -196,9 +258,21 @@ export default async function GroupDetailPage({
                       )}
                     </fieldset>
                     <button className="button-secondary" type="submit" disabled={availableConnections.length === 0}>
-                      Add selected members
+                      Add or invite selected people
                     </button>
                   </form>
+                </SectionCard>
+
+                <SectionCard
+                  title="Pending invites"
+                  description="These people have not accepted yet, so the group still treats them as pending instead of active members."
+                >
+                  <div className="grid gap-3">
+                    <PendingGroupInviteList
+                      members={pendingMemberSummary}
+                      emptyCopy="No pending invites right now. Everyone attached to this group is either accepted already or still local-only."
+                    />
+                  </div>
                 </SectionCard>
 
                 <SectionCard
@@ -397,31 +471,18 @@ export default async function GroupDetailPage({
               </ConfirmSubmitButton>
             </form>
           </SectionCard>
-          <SectionCard title="Members" description="Build the crew from people already in your list, even if not everyone uses the app yet.">
+          <SectionCard title="Accepted members" description="These people are already in the group. New invite-backed people stay pending until they respond.">
             <div className="mb-5 grid gap-3">
+              <p className="text-sm leading-6 text-foreground/68">
+                {getGroupMembershipSummary(memberConnections.length, group.pendingMemberCount)}
+              </p>
               {memberConnections.length > 0 ? (
                 <p className="text-sm leading-6 text-foreground/68">{memberStatusSummary}</p>
               ) : null}
-              {memberConnections.length > 0 ? (
-                memberConnections.map((member) => (
-                  <article key={member.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-base font-semibold text-foreground">{member.title}</p>
-                        <p className="mt-1 text-sm text-foreground/65">{member.subtitle}</p>
-                      </div>
-                      <ConnectionLinkBadge linkState={member.linkState} pendingInviteEmail={member.pendingInviteEmail} />
-                    </div>
-                    <div className="mt-3">
-                      <Link className="button-secondary inline-flex" href={`/connections/${member.id}`}>
-                        Open person
-                      </Link>
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <p className="text-sm leading-7 text-foreground/68">No connection members are attached yet. Add people below to turn this into a real crew.</p>
-              )}
+              <AcceptedGroupMembersList
+                members={memberConnections}
+                emptyCopy="No accepted members are attached yet. Add people below to turn this into a real crew."
+              />
             </div>
 
             <form action={addGroupMembersAction} className="grid gap-3">
@@ -430,7 +491,7 @@ export default async function GroupDetailPage({
               <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
                 <legend className="field-label px-2">Add existing connections</legend>
                 {availableConnections.length === 0 ? (
-                  <p className="text-sm leading-7 text-foreground/68">No additional connections are available to add right now.</p>
+                  <p className="text-sm leading-7 text-foreground/68">Everyone in your list is already accepted or pending in this group.</p>
                 ) : (
                   availableConnections.map((connection) => (
                     <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
@@ -442,9 +503,21 @@ export default async function GroupDetailPage({
                 )}
               </fieldset>
               <button className="button-secondary" type="submit" disabled={availableConnections.length === 0}>
-                Add selected members
+                Add or invite selected people
               </button>
             </form>
+          </SectionCard>
+
+          <SectionCard
+            title="Pending invites"
+            description="These people have not accepted yet, so the group still treats them as pending instead of active members."
+          >
+            <div className="grid gap-3">
+              <PendingGroupInviteList
+                members={pendingMemberSummary}
+                emptyCopy="No pending invites right now. Everyone attached to this group is either accepted already or still local-only."
+              />
+            </div>
           </SectionCard>
         </div>
 
