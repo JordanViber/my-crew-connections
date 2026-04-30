@@ -177,6 +177,15 @@ export async function signOutAction() {
   redirect("/");
 }
 
+export async function signOutToPathAction(formData: FormData) {
+  const supabase = await createServerSupabaseClient();
+  const redirectTo = getString(formData, "redirectTo") || "/";
+  const { error } = await supabase.auth.signOut();
+
+  assertMutation(error, "Failed to sign out");
+  redirect(redirectTo.startsWith("/") ? redirectTo : "/");
+}
+
 export async function updateProfileAction(formData: FormData) {
   const { authSupabase, user } = await getAuthenticatedSession();
   const supabase = createServerAdminSupabaseClient();

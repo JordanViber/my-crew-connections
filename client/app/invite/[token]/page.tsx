@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { claimConnectionInviteAction } from "@/app/actions";
+import { claimConnectionInviteAction, signOutToPathAction } from "@/app/actions";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { SectionCard } from "@/components/section-card";
+import { normalizeInviteEmail } from "@/lib/invites";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -42,11 +43,11 @@ export default async function InviteClaimPage({
   }
 
   const isClaimed = Boolean(invite.claimed_at);
+  const invitePath = `/invite/${token}`;
 
   if (!user) {
-    const nextPath = `/invite/${token}`;
     const authParams = new URLSearchParams({
-      next: nextPath,
+      next: invitePath,
       invite: token,
       inviteEmail: invite.invited_email,
       inviteName: connection.display_name,
@@ -54,6 +55,9 @@ export default async function InviteClaimPage({
 
     redirect(`/auth?${authParams.toString()}`);
   }
+
+  const signedInEmail = user.email ?? "";
+  const emailMatchesInvite = normalizeInviteEmail(signedInEmail) === normalizeInviteEmail(invite.invited_email);
 
   return (
     <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
@@ -77,6 +81,18 @@ export default async function InviteClaimPage({
                 Open people
               </Link>
             </div>
+          </SectionCard>
+        ) : !emailMatchesInvite ? (
+          <SectionCard
+            title="Switch accounts to claim"
+            description="This invite can only be claimed by the email address it was sent to."
+          >
+            <form action={signOutToPathAction} className="grid gap-3">
+              <input type="hidden" name="redirectTo" value={invitePath} />
+              <button className="button-primary w-full sm:w-auto" type="submit">
+                Sign out and continue
+              </button>
+            </form>
           </SectionCard>
         ) : (
           <SectionCard
