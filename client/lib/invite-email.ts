@@ -2,6 +2,16 @@ import { Resend } from "resend";
 import { getAppUrl } from "@/lib/billing";
 import { buildConnectionInviteUrl } from "@/lib/invites";
 
+export type InviteEmailDeliveryStatus = "pending" | "sent" | "failed" | "not_configured";
+
+export type InviteEmailResult = {
+  provider: "resend" | null;
+  status: InviteEmailDeliveryStatus;
+  sent: boolean;
+  messageId?: string;
+  errorMessage?: string;
+};
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -71,7 +81,12 @@ export async function sendConnectionInviteEmail({
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    return { sent: false, errorMessage: "Missing RESEND_API_KEY." };
+    return {
+      provider: null,
+      status: "not_configured",
+      sent: false,
+      errorMessage: "Missing RESEND_API_KEY.",
+    } satisfies InviteEmailResult;
   }
 
   const resend = new Resend(apiKey);
@@ -90,11 +105,19 @@ export async function sendConnectionInviteEmail({
       },
     });
 
-    return { sent: !result.error, errorMessage: result.error?.message };
+    return {
+      provider: "resend",
+      status: result.error ? "failed" : "sent",
+      sent: !result.error,
+      messageId: result.data?.id,
+      errorMessage: result.error?.message,
+    } satisfies InviteEmailResult;
   } catch (error) {
     return {
+      provider: "resend",
+      status: "failed",
       sent: false,
       errorMessage: error instanceof Error ? error.message : "Unknown invite email error.",
-    };
+    } satisfies InviteEmailResult;
   }
 }

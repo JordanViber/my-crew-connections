@@ -1,7 +1,7 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { findAuthUserByEmail } from "@/lib/auth-users";
 import { buildConnectionInvitePath, normalizeInviteEmail } from "@/lib/invites";
-import { sendConnectionInviteEmail } from "@/lib/invite-email";
+import { sendConnectionInviteEmail, type InviteEmailResult } from "@/lib/invite-email";
 import { sendPushToUser } from "@/lib/push";
 
 type IncomingInviteRow = {
@@ -42,6 +42,32 @@ function getConnectionName(row: IncomingInviteRow) {
 function getProfileName(profile?: ProfileRow) {
   const fullName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
   return profile?.display_name?.trim() || fullName || "Someone";
+}
+
+async function recordInviteEmailResult(
+  supabase: SupabaseClient,
+  token: string,
+  emailResult: InviteEmailResult,
+) {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("connection_invites")
+    .update({
+      email_provider: emailResult.provider,
+      email_message_id: emailResult.messageId ?? null,
+      email_delivery_status: emailResult.status,
+      email_error_message: emailResult.errorMessage ?? null,
+      email_last_attempted_at: now,
+      email_sent_at: emailResult.sent ? now : null,
+      email_updated_at: now,
+    })
+    .eq("token", token);
+
+  if (error) {
+    return { recorded: false, errorMessage: error.message };
+  }
+
+  return { recorded: true };
 }
 
 export async function getIncomingConnectionInvites(
@@ -107,6 +133,7 @@ export async function notifyConnectionInvite(
     connectionName,
     inviterName,
   });
+  const auditResult = await recordInviteEmailResult(supabase, token, emailResult);
 
   const recipient = await findAuthUserByEmail(supabase, normalizedEmail);
 
@@ -119,5 +146,10 @@ export async function notifyConnectionInvite(
     }).catch(() => ({ sent: 0 }));
   }
 
-  return { emailSent: emailResult.sent, errorMessage: emailResult.errorMessage };
+  return {
+    emailSent: emailResult.sent,
+    emailMessageId: emailResult.messageId,
+    emailStatus: emailResult.status,
+    errorMessage: emailResult.errorMessage ?? auditResult.errorMessage,
+  };
 }
