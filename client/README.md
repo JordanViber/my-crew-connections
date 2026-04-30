@@ -37,12 +37,12 @@ npm run dev
 
 The app currently includes:
 - landing, auth, dashboard, people, groups, invite, and auth callback routes
-- password sign-in plus magic link authentication
+- password sign-in plus email code authentication with link fallback
 - people and group management with cadence tracking
 - reminder-oriented dashboard summaries
 - touchpoint history and hangout planning
 - ICS export for saved plans
-- invite-link based relationship linking
+- invite-link based relationship linking with push-first delivery and explicit stale-link states
 
 ## Notes
 

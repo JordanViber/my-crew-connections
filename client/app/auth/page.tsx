@@ -10,6 +10,78 @@ import { appleAuthEnabled, phoneAuthEnabled } from "@/lib/auth-features";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getLocalSupabaseStatus } from "@/lib/supabase/local-stack-status";
 
+function InviteNotice({
+  inviteEmail,
+  inviteName,
+}: Readonly<{
+  inviteEmail?: string;
+  inviteName?: string;
+}>) {
+  return (
+    <div className="rounded-lg border border-accent/20 bg-accent-soft px-3.5 py-3 text-sm leading-6 text-foreground/78">
+      <p className="font-semibold text-foreground">Invite waiting</p>
+      <p className="mt-1">
+        You have an invite waiting for {inviteName ? <strong>{inviteName}</strong> : "someone"}.{" "}
+        {inviteEmail ? (
+          <>
+            Use <strong>{inviteEmail}</strong> to accept it.
+          </>
+        ) : (
+          "Sign in or create an account to accept it."
+        )}{" "}
+        After sign-in, you will return to the invite.
+      </p>
+    </div>
+  );
+}
+
+function AuthOptionCards() {
+  const options = [
+    ...(appleAuthEnabled ? [{ title: "Apple", body: "Fast on supported devices." }] : []),
+    { title: "Password", body: phoneAuthEnabled ? "Use email or phone with your password." : "Use your email with your password." },
+    { title: "Email code", body: "Enter the code from your inbox, or use the sign-in link as a fallback." },
+    ...(phoneAuthEnabled ? [{ title: "Phone code", body: "Use a verified phone number to sign in by text." }] : []),
+  ];
+
+  return (
+    <div className="hidden gap-2 md:grid">
+      {options.map((option) => (
+        <div key={option.title} className="section-card p-3 text-sm leading-6 text-foreground/75">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">{option.title}</p>
+          <p className="mt-1.5">{option.body}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PasswordStatusBanners({
+  created,
+  error,
+}: Readonly<{
+  created?: string;
+  error?: string;
+}>) {
+  return (
+    <>
+      {error ? (
+        <div className="mt-3">
+          <FeedbackBanner title="Sign-in issue" body={error} tone="error" />
+        </div>
+      ) : null}
+
+      {created ? (
+        <div className="mt-3">
+          <FeedbackBanner
+            title="Check your email"
+            body="If email confirmation is enabled for this environment, finish account setup from the message we just sent. After that, you can continue back into your invite or sign in below."
+          />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export default async function AuthPage({
   searchParams,
 }: Readonly<{
@@ -43,22 +115,7 @@ export default async function AuthPage({
           <p className="max-w-xl text-base leading-7 text-foreground/70">
             Sign in, or create an account if this is your first time here.
           </p>
-          {params.invite ? (
-            <div className="rounded-lg border border-accent/20 bg-accent-soft px-3.5 py-3 text-sm leading-6 text-foreground/78">
-              <p className="font-semibold text-foreground">Connection invite</p>
-              <p className="mt-1">
-                You were invited to connect with {params.inviteName ? <strong>{params.inviteName}</strong> : "someone"}.{" "}
-                {params.inviteEmail ? (
-                  <>
-                    Use <strong>{params.inviteEmail}</strong> to accept it.
-                  </>
-                ) : (
-                  "Sign in or create an account to accept it."
-                )}{" "}
-                After sign-in, you will return to the invite.
-              </p>
-            </div>
-          ) : null}
+          {params.invite ? <InviteNotice inviteEmail={params.inviteEmail} inviteName={params.inviteName} /> : null}
           <div className="flex flex-wrap gap-3">
             <Link className="button-primary" href={createAccountHref}>
               Create account
@@ -67,19 +124,7 @@ export default async function AuthPage({
               Back to home
             </Link>
           </div>
-          <div className="hidden gap-2 md:grid">
-            {[
-              ...(appleAuthEnabled ? [{ title: "Apple", body: "Fast on supported devices." }] : []),
-              { title: "Password", body: phoneAuthEnabled ? "Use email or phone with your password." : "Use your email with your password." },
-              { title: "Email link", body: "Skip typing the password." },
-              ...(phoneAuthEnabled ? [{ title: "Phone code", body: "Use a verified phone number to sign in by text." }] : []),
-            ].map((option) => (
-              <div key={option.title} className="section-card p-3 text-sm leading-6 text-foreground/75">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">{option.title}</p>
-                <p className="mt-1.5">{option.body}</p>
-              </div>
-            ))}
-          </div>
+          <AuthOptionCards />
         </section>
 
         <section className="grid gap-3">
@@ -110,20 +155,7 @@ export default async function AuthPage({
               {phoneAuthEnabled ? "Use the email or phone number connected to your account." : "Use the email connected to your account."}
             </p>
 
-            {params.error ? (
-              <div className="mt-3">
-                <FeedbackBanner title="Sign-in issue" body={params.error} tone="error" />
-              </div>
-            ) : null}
-
-            {params.created ? (
-              <div className="mt-3">
-                <FeedbackBanner
-                  title="Check your email"
-                  body="If email confirmation is enabled for this environment, finish account setup from the message we just sent. After that, you can continue back into your invite or sign in below."
-                />
-              </div>
-            ) : null}
+            <PasswordStatusBanners created={params.created} error={params.error} />
 
             <PasswordAuthForm stackAvailable={stackStatus.available} nextPath={nextPath} />
           </div>
@@ -140,16 +172,16 @@ export default async function AuthPage({
           ) : null}
 
           <div className="section-card p-3.5 md:p-4">
-            <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Email sign-in link</h2>
+            <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Email sign-in code</h2>
             <p className="mt-1.5 text-sm leading-6 text-foreground/68">
-              Use this when you want a sign-in link sent straight to your inbox.
+              We send a code you can enter here, and the same email also includes a sign-in link as a fallback.
             </p>
 
             {params.sent ? (
               <div className="mt-3">
                 <FeedbackBanner
-                  title="Magic link sent"
-                  body="Check your inbox, then come back through the confirmation link to finish sign-in."
+                  title="Sign-in email sent"
+                  body="Check your inbox, then enter the code here or open the sign-in link to finish signing in."
                 />
               </div>
             ) : null}

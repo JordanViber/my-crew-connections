@@ -7,6 +7,24 @@ import { buildGroupInvitePath, normalizeInviteEmail } from "@/lib/invites";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+function InviteTerminalActions({
+  user,
+  signInHref,
+}: Readonly<{
+  user: { email?: string | null } | null;
+  signInHref: string;
+}>) {
+  return user ? (
+    <Link className="button-primary w-full sm:w-auto" href="/dashboard">
+      Open dashboard
+    </Link>
+  ) : (
+    <Link className="button-primary w-full sm:w-auto" href={signInHref}>
+      Sign in
+    </Link>
+  );
+}
+
 function getGroupName(
   group: { name: string } | { name: string }[] | null,
 ) {
@@ -46,13 +64,56 @@ export default async function GroupInvitePage({
     throw new Error(`Failed to load group invite: ${error.message}`);
   }
 
-  if (!invite || invite.revoked_at) {
+  if (!invite) {
     notFound();
   }
 
   const groupName = getGroupName(invite.groups);
   const connectionName = getConnectionName(invite.connections);
   const invitePath = buildGroupInvitePath(token);
+  const signInHref = `/auth?next=${encodeURIComponent(invitePath)}`;
+
+  if (invite.revoked_at) {
+    return (
+      <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
+        <div className="glass-panel grid max-w-3xl gap-4 p-5 md:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">Group invite</p>
+          <SectionCard
+            title="Invite no longer active"
+            description="This group invite was replaced or revoked. Ask the sender to share the newest invite, or sign in to check whether a current invite is already waiting in the app."
+          >
+            <InviteTerminalActions signInHref={signInHref} user={user} />
+          </SectionCard>
+        </div>
+      </main>
+    );
+  }
+
+  if (query.accepted || invite.accepted_at) {
+    return (
+      <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
+        <div className="glass-panel grid max-w-3xl gap-4 p-5 md:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">Group invite</p>
+          <SectionCard title="Invite accepted" description="Your response is recorded. The group owner now sees you as an accepted member.">
+            <InviteTerminalActions signInHref={signInHref} user={user} />
+          </SectionCard>
+        </div>
+      </main>
+    );
+  }
+
+  if (query.declined || invite.declined_at) {
+    return (
+      <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
+        <div className="glass-panel grid max-w-3xl gap-4 p-5 md:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">Group invite</p>
+          <SectionCard title="Invite declined" description="Your decline is recorded, so the owner still sees that invite as declined instead of accepted.">
+            <InviteTerminalActions signInHref={signInHref} user={user} />
+          </SectionCard>
+        </div>
+      </main>
+    );
+  }
 
   if (!user) {
     const authParams = new URLSearchParams({
@@ -69,23 +130,7 @@ export default async function GroupInvitePage({
   const emailMatchesInvite = normalizeInviteEmail(signedInEmail) === normalizeInviteEmail(invite.invited_email);
   let inviteResponseContent: React.ReactNode;
 
-  if (query.accepted || invite.accepted_at) {
-    inviteResponseContent = (
-      <SectionCard title="Invite accepted" description="Your response is recorded. The group owner now sees you as an accepted member.">
-        <Link className="button-primary w-full sm:w-auto" href="/dashboard?feedback=group-invite-accepted">
-          Open dashboard
-        </Link>
-      </SectionCard>
-    );
-  } else if (query.declined || invite.declined_at) {
-    inviteResponseContent = (
-      <SectionCard title="Invite declined" description="Your decline is recorded, so the owner still sees that invite as declined instead of accepted.">
-        <Link className="button-primary w-full sm:w-auto" href="/dashboard?feedback=group-invite-declined">
-          Open dashboard
-        </Link>
-      </SectionCard>
-    );
-  } else if (emailMatchesInvite) {
+  if (emailMatchesInvite) {
     inviteResponseContent = (
       <SectionCard
         title="Respond to this invite"

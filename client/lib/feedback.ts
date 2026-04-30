@@ -9,6 +9,11 @@ const feedbackMessages = {
     title: "Person added and invite sent",
     body: "The invite email went out with a direct claim link, and the invite will also appear in-app if they already have an account.",
   },
+  "connection-created-invite-pushed": {
+    tone: "success",
+    title: "Person added and invite delivered in app",
+    body: "Push reached an existing account, and the invite is waiting in the app without sending a duplicate email first.",
+  },
   "connection-created-invite-ready": {
     tone: "success",
     title: "Person added and invite ready",
@@ -118,6 +123,11 @@ const feedbackMessages = {
     tone: "success",
     title: "Invite sent",
     body: "The invite email went out with a direct claim link, and it will also appear in-app if they already have an account.",
+  },
+  "invite-pushed": {
+    tone: "success",
+    title: "Invite delivered in app",
+    body: "Push reached an existing account, and the invite is waiting in the app without sending a duplicate email first.",
   },
   "connection-linked": {
     tone: "success",

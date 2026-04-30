@@ -2,7 +2,7 @@ import { Resend } from "resend";
 import { getAppUrl } from "@/lib/billing";
 import { buildConnectionInviteUrl, buildGroupInviteUrl } from "@/lib/invites";
 
-export type InviteEmailDeliveryStatus = "pending" | "sent" | "failed" | "not_configured";
+export type InviteEmailDeliveryStatus = "pending" | "sent" | "failed" | "not_configured" | "suppressed";
 
 export type InviteEmailResult = {
   provider: "resend" | null;

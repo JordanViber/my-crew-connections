@@ -1,7 +1,11 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { findAuthUserByEmail } from "@/lib/auth-users";
-import { sendGroupInviteEmail, type InviteEmailResult } from "@/lib/invite-email";
-import { buildGroupInvitePath, normalizeInviteEmail } from "@/lib/invites";
+import {
+  sendGroupInviteEmail,
+  type InviteEmailDeliveryStatus,
+  type InviteEmailResult,
+} from "@/lib/invite-email";
+import { normalizeInviteEmail } from "@/lib/invites";
 import { sendPushToUser } from "@/lib/push";
 
 type IncomingGroupInviteRow = {
@@ -29,6 +33,15 @@ type ProfileRow = {
   display_name: string | null;
   first_name: string | null;
   last_name: string | null;
+};
+
+export type GroupInviteNotificationResult = {
+  delivery: "push" | "email" | "ready";
+  pushSent: boolean;
+  emailSent: boolean;
+  emailMessageId?: string;
+  emailStatus: InviteEmailDeliveryStatus;
+  errorMessage?: string;
 };
 
 export type IncomingGroupInvite = {
@@ -143,9 +156,36 @@ export async function notifyGroupInvite(
   groupName: string,
   connectionName: string,
   inviterName?: string | null,
-) {
+) : Promise<GroupInviteNotificationResult> {
   const normalizedEmail = normalizeInviteEmail(email);
-  const invitePath = buildGroupInvitePath(token);
+  const recipient = await findAuthUserByEmail(supabase, normalizedEmail);
+
+  if (recipient) {
+    const pushResult = await sendPushToUser(supabase, recipient.id, {
+      title: "New group invite",
+      body: `${inviterName?.trim() || "Someone"} invited you to join ${groupName}. Open the app to respond.`,
+      url: "/dashboard",
+      tag: `group-invite-${token}`,
+    }).catch(() => ({ sent: 0 }));
+
+    if (pushResult.sent > 0) {
+      const emailResult = {
+        provider: null,
+        status: "suppressed",
+        sent: false,
+      } satisfies InviteEmailResult;
+      const auditResult = await recordGroupInviteEmailResult(supabase, token, emailResult);
+
+      return {
+        delivery: "push",
+        pushSent: true,
+        emailSent: false,
+        emailStatus: emailResult.status,
+        errorMessage: auditResult.errorMessage,
+      };
+    }
+  }
+
   const emailResult = await sendGroupInviteEmail({
     to: normalizedEmail,
     token,
@@ -155,18 +195,9 @@ export async function notifyGroupInvite(
   });
   const auditResult = await recordGroupInviteEmailResult(supabase, token, emailResult);
 
-  const recipient = await findAuthUserByEmail(supabase, normalizedEmail);
-
-  if (recipient) {
-    await sendPushToUser(supabase, recipient.id, {
-      title: "New group invite",
-      body: `${inviterName?.trim() || "Someone"} invited you to join ${groupName}.`,
-      url: invitePath,
-      tag: `group-invite-${token}`,
-    }).catch(() => ({ sent: 0 }));
-  }
-
   return {
+    delivery: emailResult.sent ? "email" : "ready",
+    pushSent: false,
     emailSent: emailResult.sent,
     emailMessageId: emailResult.messageId,
     emailStatus: emailResult.status,

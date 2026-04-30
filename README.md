@@ -47,7 +47,7 @@ This repository contains an actively developed local-first build of My Crew Conn
 
 Available today:
 - Next.js App Router app in `client/`
-- Supabase-backed auth with password sign-in as the primary local path and magic link as a secondary option
+- Supabase-backed auth with password sign-in, email code sign-in with link fallback, and optional phone OTP sign-in
 - people and groups CRUD with archive support
 - searchable and filterable people directory with linked, pending, and local-only states
 - searchable and filterable group directory for larger crews
@@ -61,11 +61,11 @@ Available today:
 - connection invite links that can be claimed by another real app user
 - optional invite start during connection creation
 - two-way relationship linking so invite claim creates or reuses a reciprocal connection for the invited user
+- push-first invite delivery for existing users with email fallback when push is unavailable
+- explicit accepted, declined, claimed, and inactive terminal states on invite links
 - unit tests plus Playwright coverage for the core authenticated flows
 
 Still intentionally deferred:
-- push notification delivery
-- production email delivery
 - hosted deployment setup
 - rich collaboration beyond connection linking and invite claiming
 - photo and media upload flow

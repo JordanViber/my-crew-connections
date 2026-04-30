@@ -7,6 +7,24 @@ import { normalizeInviteEmail } from "@/lib/invites";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+function InviteTerminalActions({
+  user,
+  signInHref,
+}: Readonly<{
+  user: { email?: string | null } | null;
+  signInHref: string;
+}>) {
+  return user ? (
+    <Link className="button-primary w-full sm:w-auto" href="/dashboard">
+      Open dashboard
+    </Link>
+  ) : (
+    <Link className="button-primary w-full sm:w-auto" href={signInHref}>
+      Sign in
+    </Link>
+  );
+}
+
 export default async function InviteClaimPage({
   params,
   searchParams,
@@ -32,7 +50,7 @@ export default async function InviteClaimPage({
     throw new Error(`Failed to load invite: ${error.message}`);
   }
 
-  if (!invite || invite.revoked_at) {
+  if (!invite) {
     notFound();
   }
 
@@ -44,6 +62,36 @@ export default async function InviteClaimPage({
 
   const isClaimed = Boolean(invite.claimed_at);
   const invitePath = `/invite/${token}`;
+  const signInHref = `/auth?next=${encodeURIComponent(invitePath)}`;
+
+  if (invite.revoked_at) {
+    return (
+      <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
+        <div className="glass-panel grid max-w-3xl gap-4 p-5 md:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">Connection invite</p>
+          <SectionCard
+            title="Invite no longer active"
+            description="This invite was replaced or revoked. Ask the sender to share the newest invite, or sign in to check whether a current invite is already waiting for you in the app."
+          >
+            <InviteTerminalActions signInHref={signInHref} user={user} />
+          </SectionCard>
+        </div>
+      </main>
+    );
+  }
+
+  if (isClaimed) {
+    return (
+      <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
+        <div className="glass-panel grid max-w-3xl gap-4 p-5 md:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">Connection invite</p>
+          <SectionCard title="Invite claimed" description="This connection is already linked to a real app user.">
+            <InviteTerminalActions signInHref={signInHref} user={user} />
+          </SectionCard>
+        </div>
+      </main>
+    );
+  }
 
   if (!user) {
     const authParams = new URLSearchParams({
@@ -58,6 +106,47 @@ export default async function InviteClaimPage({
 
   const signedInEmail = user.email ?? "";
   const emailMatchesInvite = normalizeInviteEmail(signedInEmail) === normalizeInviteEmail(invite.invited_email);
+  let inviteResponseContent: React.ReactNode;
+
+  if (query.claimed) {
+    inviteResponseContent = (
+      <SectionCard title="Invite claimed" description="This connection is already linked to a real app user.">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Link className="button-primary w-full sm:w-auto" href="/connections?feedback=connection-linked">
+            Open people
+          </Link>
+        </div>
+      </SectionCard>
+    );
+  } else if (emailMatchesInvite) {
+    inviteResponseContent = (
+      <SectionCard
+        title="Claim this connection"
+        description="Once claimed, the owner can treat this relationship as linked to your real account."
+      >
+        <form action={claimConnectionInviteAction} className="grid gap-3">
+          <input type="hidden" name="token" value={token} />
+          <button className="button-primary w-full sm:w-auto" type="submit">
+            Claim connection
+          </button>
+        </form>
+      </SectionCard>
+    );
+  } else {
+    inviteResponseContent = (
+      <SectionCard
+        title="Switch accounts to claim"
+        description="This invite can only be claimed by the email address it was sent to."
+      >
+        <form action={signOutToPathAction} className="grid gap-3">
+          <input type="hidden" name="redirectTo" value={invitePath} />
+          <button className="button-primary w-full sm:w-auto" type="submit">
+            Sign out and continue
+          </button>
+        </form>
+      </SectionCard>
+    );
+  }
 
   return (
     <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
@@ -74,39 +163,7 @@ export default async function InviteClaimPage({
           <FeedbackBanner title="Invite issue" body={query.error} tone="error" />
         ) : null}
 
-        {query.claimed || isClaimed ? (
-          <SectionCard title="Invite claimed" description="This connection is already linked to a real app user.">
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link className="button-primary w-full sm:w-auto" href="/connections?feedback=connection-linked">
-                Open people
-              </Link>
-            </div>
-          </SectionCard>
-        ) : !emailMatchesInvite ? (
-          <SectionCard
-            title="Switch accounts to claim"
-            description="This invite can only be claimed by the email address it was sent to."
-          >
-            <form action={signOutToPathAction} className="grid gap-3">
-              <input type="hidden" name="redirectTo" value={invitePath} />
-              <button className="button-primary w-full sm:w-auto" type="submit">
-                Sign out and continue
-              </button>
-            </form>
-          </SectionCard>
-        ) : (
-          <SectionCard
-            title="Claim this connection"
-            description="Once claimed, the owner can treat this relationship as linked to your real account."
-          >
-            <form action={claimConnectionInviteAction} className="grid gap-3">
-              <input type="hidden" name="token" value={token} />
-              <button className="button-primary w-full sm:w-auto" type="submit">
-                Claim connection
-              </button>
-            </form>
-          </SectionCard>
-        )}
+        {inviteResponseContent}
       </div>
     </main>
   );

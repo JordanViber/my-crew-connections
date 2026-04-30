@@ -98,10 +98,10 @@ export function AuthConfirmContent({
       <div className="glass-panel grid max-w-3xl gap-4 p-5 text-center md:p-7">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">Signing you in</p>
         <h1 className="text-[2.1rem] font-semibold leading-tight tracking-tight text-foreground md:text-4xl">
-          Finishing your magic-link sign-in.
+          Finishing your email sign-in.
         </h1>
         <p className="text-sm leading-7 text-foreground/72">
-          Hold for a moment while the browser completes the session exchange and redirects you into the app.
+          Hold for a moment while the browser completes the email sign-in and redirects you into the app.
         </p>
 
         {errorMessage ? (

@@ -1,7 +1,11 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { findAuthUserByEmail } from "@/lib/auth-users";
-import { buildConnectionInvitePath, normalizeInviteEmail } from "@/lib/invites";
-import { sendConnectionInviteEmail, type InviteEmailResult } from "@/lib/invite-email";
+import { normalizeInviteEmail } from "@/lib/invites";
+import {
+  sendConnectionInviteEmail,
+  type InviteEmailDeliveryStatus,
+  type InviteEmailResult,
+} from "@/lib/invite-email";
 import { sendPushToUser } from "@/lib/push";
 
 type IncomingInviteRow = {
@@ -23,6 +27,15 @@ type ProfileRow = {
   display_name: string | null;
   first_name: string | null;
   last_name: string | null;
+};
+
+export type InviteNotificationResult = {
+  delivery: "push" | "email" | "ready";
+  pushSent: boolean;
+  emailSent: boolean;
+  emailMessageId?: string;
+  emailStatus: InviteEmailDeliveryStatus;
+  errorMessage?: string;
 };
 
 export type IncomingConnectionInvite = {
@@ -124,9 +137,36 @@ export async function notifyConnectionInvite(
   token: string,
   connectionName: string,
   inviterName?: string | null,
-) {
+) : Promise<InviteNotificationResult> {
   const normalizedEmail = normalizeInviteEmail(email);
-  const invitePath = buildConnectionInvitePath(token);
+  const recipient = await findAuthUserByEmail(supabase, normalizedEmail);
+
+  if (recipient) {
+    const pushResult = await sendPushToUser(supabase, recipient.id, {
+      title: "New connection invite",
+      body: `${connectionName} is waiting for you in My Crew Connections. Open the app to review it.`,
+      url: "/dashboard",
+      tag: `connection-invite-${token}`,
+    }).catch(() => ({ sent: 0 }));
+
+    if (pushResult.sent > 0) {
+      const emailResult = {
+        provider: null,
+        status: "suppressed",
+        sent: false,
+      } satisfies InviteEmailResult;
+      const auditResult = await recordInviteEmailResult(supabase, token, emailResult);
+
+      return {
+        delivery: "push",
+        pushSent: true,
+        emailSent: false,
+        emailStatus: emailResult.status,
+        errorMessage: auditResult.errorMessage,
+      };
+    }
+  }
+
   const emailResult = await sendConnectionInviteEmail({
     to: normalizedEmail,
     token,
@@ -135,18 +175,9 @@ export async function notifyConnectionInvite(
   });
   const auditResult = await recordInviteEmailResult(supabase, token, emailResult);
 
-  const recipient = await findAuthUserByEmail(supabase, normalizedEmail);
-
-  if (recipient) {
-    await sendPushToUser(supabase, recipient.id, {
-      title: "New connection invite",
-      body: `${connectionName} is waiting for you in My Crew Connections.`,
-      url: invitePath,
-      tag: `connection-invite-${token}`,
-    }).catch(() => ({ sent: 0 }));
-  }
-
   return {
+    delivery: emailResult.sent ? "email" : "ready",
+    pushSent: false,
     emailSent: emailResult.sent,
     emailMessageId: emailResult.messageId,
     emailStatus: emailResult.status,

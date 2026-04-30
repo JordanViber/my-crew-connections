@@ -803,7 +803,13 @@ export async function createConnectionAction(formData: FormData) {
       payload.displayName,
       user.user_metadata?.display_name ?? user.email,
     );
-    feedbackKey = notification.emailSent ? "connection-created-invite-sent" : "connection-created-invite-ready";
+    if (notification.delivery === "push") {
+      feedbackKey = "connection-created-invite-pushed";
+    } else if (notification.emailSent) {
+      feedbackKey = "connection-created-invite-sent";
+    } else {
+      feedbackKey = "connection-created-invite-ready";
+    }
   }
 
   revalidateRelationshipPaths("connection", connection.id);
@@ -1135,7 +1141,15 @@ export async function createConnectionInviteAction(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/connections");
   revalidatePath(`/connections/${connectionId}`);
-  redirect(withFeedback(redirectTo || `/connections/${connectionId}`, notification.emailSent ? "invite-sent" : "invite-created"));
+  let feedbackKey = "invite-created";
+
+  if (notification.delivery === "push") {
+    feedbackKey = "invite-pushed";
+  } else if (notification.emailSent) {
+    feedbackKey = "invite-sent";
+  }
+
+  redirect(withFeedback(redirectTo || `/connections/${connectionId}`, feedbackKey));
 }
 
 export async function claimConnectionInviteAction(formData: FormData) {
@@ -1152,8 +1166,12 @@ export async function claimConnectionInviteAction(formData: FormData) {
 
   assertMutation(error, "Failed to load invite");
 
-  if (!invite || invite.revoked_at) {
+  if (!invite) {
     redirect(withFeedback("/auth", "invite-created"));
+  }
+
+  if (invite.revoked_at) {
+    redirect(`${fallbackPath}?error=${encodeURIComponent("This invite is no longer active.")}`);
   }
 
   if (invite.claimed_at) {
