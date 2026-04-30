@@ -41,7 +41,7 @@ export function GroupMemberPicker({
   );
 
   function getJoinModeLabel(connection: RelationshipSummary) {
-    if (connection.contactEmail || connection.linkedUserId) {
+    if (connection.contactEmail || connection.linkedUserId || connection.pendingInviteEmail) {
       return "Will be invited to accept";
     }
 

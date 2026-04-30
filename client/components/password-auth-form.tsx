@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { PasswordInput } from "@/components/password-input";
 
 export function PasswordAuthForm({
   stackAvailable,
@@ -85,10 +86,9 @@ export function PasswordAuthForm({
 
       <label className="grid gap-2">
         <span className="field-label">Password</span>
-        <input
+        <PasswordInput
           autoComplete="current-password"
           className="field-input"
-          type="password"
           name="password"
           placeholder="Enter your password"
           required

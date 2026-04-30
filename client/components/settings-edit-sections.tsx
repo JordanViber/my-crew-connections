@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AddressFields } from "@/components/address-fields";
+import { PasswordInput } from "@/components/password-input";
 import { PhoneNumberInput } from "@/components/phone-number-input";
 import { updateAccountEmailAction, updateAccountPasswordAction, updateProfileAction } from "@/app/actions";
 import { formatPhoneNumberForDisplay, getDefaultCountry, normalizePhoneNumberForAuth } from "@/lib/account-fields";
@@ -219,11 +220,11 @@ export function SecuritySettingsEditor({
           <form action={updateAccountPasswordAction} className="grid gap-3 sm:max-w-xl">
             <label className="grid gap-2">
               <span className="field-label">New password</span>
-              <input className="field-input" type="password" name="password" autoComplete="new-password" minLength={8} required />
+              <PasswordInput className="field-input" name="password" autoComplete="new-password" minLength={8} required />
             </label>
             <label className="grid gap-2">
               <span className="field-label">Confirm password</span>
-              <input className="field-input" type="password" name="confirmPassword" autoComplete="new-password" minLength={8} required />
+              <PasswordInput className="field-input" name="confirmPassword" autoComplete="new-password" minLength={8} required />
             </label>
             <div className="flex flex-wrap gap-2">
               <button className="button-primary" type="submit">Save password</button>

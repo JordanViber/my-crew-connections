@@ -247,6 +247,33 @@ async function resolveConnectionContactEmail(
     }
   }
 
+  if (!connection.contact_email) {
+    const { data: pendingInvite, error: pendingInviteError } = await supabase
+      .from("connection_invites")
+      .select("invited_email")
+      .eq("owner_user_id", ownerUserId)
+      .eq("connection_id", connection.id)
+      .is("claimed_at", null)
+      .is("revoked_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    assertMutation(pendingInviteError, "Failed to load pending connection invite email");
+
+    if (pendingInvite?.invited_email) {
+      const normalizedInviteEmail = normalizeInviteEmail(pendingInvite.invited_email);
+      const { error: savePendingInviteEmailError } = await supabase
+        .from("connections")
+        .update({ contact_email: normalizedInviteEmail })
+        .eq("id", connection.id)
+        .eq("owner_user_id", ownerUserId);
+
+      assertMutation(savePendingInviteEmailError, "Failed to save pending invite email on connection");
+      return normalizedInviteEmail;
+    }
+  }
+
   return connection.contact_email ? normalizeInviteEmail(connection.contact_email) : null;
 }
 

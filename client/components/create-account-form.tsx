@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type ReactNode, useState, useTransition } from "react";
 import { AddressFields } from "@/components/address-fields";
+import { PasswordInput } from "@/components/password-input";
 import { PhoneNumberInput } from "@/components/phone-number-input";
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
-function RequiredLabel({ children }: Readonly<{ children: React.ReactNode }>) {
+function RequiredLabel({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <span className="field-label">
       {children} <span className="text-accent-strong">*</span>
@@ -213,11 +214,11 @@ export function CreateAccountForm({
         </label>
         <label className="grid gap-2">
           <RequiredLabel>Password</RequiredLabel>
-          <input className="field-input" type="password" name="password" autoComplete="new-password" placeholder="8+ characters" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required disabled={isPending} />
+          <PasswordInput className="field-input" name="password" autoComplete="new-password" placeholder="8+ characters" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required disabled={isPending} />
         </label>
         <label className="grid gap-2">
           <RequiredLabel>Confirm password</RequiredLabel>
-          <input className="field-input" type="password" name="confirmPassword" autoComplete="new-password" placeholder="Repeat password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required disabled={isPending} />
+          <PasswordInput className="field-input" name="confirmPassword" autoComplete="new-password" placeholder="Repeat password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required disabled={isPending} />
         </label>
       </div>
 

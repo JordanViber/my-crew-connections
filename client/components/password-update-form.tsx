@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import { PasswordInput } from "@/components/password-input";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export function PasswordUpdateForm({
@@ -88,28 +89,26 @@ export function PasswordUpdateForm({
 
       <label className="grid gap-2">
         <span className="field-label">New password</span>
-        <input
+        <PasswordInput
           autoComplete="new-password"
           className="field-input"
           disabled={!ready || isPending}
           minLength={8}
           onChange={(event) => setPassword(event.target.value)}
           required
-          type="password"
           value={password}
         />
       </label>
 
       <label className="grid gap-2">
         <span className="field-label">Confirm password</span>
-        <input
+        <PasswordInput
           autoComplete="new-password"
           className="field-input"
           disabled={!ready || isPending}
           minLength={8}
           onChange={(event) => setConfirmPassword(event.target.value)}
           required
-          type="password"
           value={confirmPassword}
         />
       </label>

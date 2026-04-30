@@ -25,6 +25,7 @@ export type GroupRow = {
   name: string;
   description: string | null;
   created_at: string;
+  owner_user_id: string;
 };
 
 export type CadenceRuleRow = {
@@ -82,6 +83,21 @@ type GroupInviteRow = {
   created_at: string;
 };
 
+type AcceptedGroupInviteRow = {
+  group_id: string;
+};
+
+type ProfileRow = {
+  id: string;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+};
+
+type GroupConnectionRow = ConnectionRow & {
+  owner_user_id: string;
+};
+
 type PendingGroupMember = {
   connectionId: string;
   name: string;
@@ -115,6 +131,9 @@ export type RelationshipSummary = {
   pendingMemberConnectionIds: string[];
   pendingMemberCount: number;
   memberStatusCounts?: GroupMemberStatusCounts;
+  membershipRole?: "owner" | "member";
+  ownerName?: string;
+  canManage?: boolean;
 };
 
 export type HangoutSummary = {
@@ -156,6 +175,7 @@ export type DashboardData = {
   recentTouchpoints: RecentTouchpoint[];
   connections: RelationshipSummary[];
   groups: RelationshipSummary[];
+  ownedGroupCount: number;
 };
 
 function assertNoError(error: { message: string } | null, label: string) {
@@ -179,8 +199,18 @@ function latestTouchpointMap(touchpoints: TouchpointRow[]) {
   return latest;
 }
 
-function buildGroupMemberMap(groups: GroupRow[], memberships: GroupMembershipRow[], connections: ConnectionRow[]) {
-  const connectionNameMap = new Map(connections.map((connection) => [connection.id, connection.display_name]));
+function getProfileName(profile?: ProfileRow) {
+  const fullName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
+  return profile?.display_name?.trim() || fullName || "Someone";
+}
+
+function buildGroupMemberMap(
+  groups: GroupRow[],
+  memberships: GroupMembershipRow[],
+  groupConnections: GroupConnectionRow[],
+  profiles: Map<string, ProfileRow>,
+) {
+  const connectionNameMap = new Map(groupConnections.map((connection) => [connection.id, connection.display_name]));
   const memberMap = new Map<string, string[]>();
 
   groups.forEach((group) => memberMap.set(group.id, []));
@@ -189,6 +219,11 @@ function buildGroupMemberMap(groups: GroupRow[], memberships: GroupMembershipRow
     const names = memberMap.get(membership.group_id);
 
     if (!names) {
+      continue;
+    }
+
+    if (membership.user_id) {
+      names.push(getProfileName(profiles.get(membership.user_id)));
       continue;
     }
 
@@ -221,8 +256,8 @@ function buildGroupPendingInviteMap(groupInvites: GroupInviteRow[], connections:
 }
 
 export async function getDashboardData(supabase: SupabaseClient, userId: string) {
-  const [profileResult, connectionResult, groupResult, cadenceResult, touchpointResult, hangoutResult, inviteResult] = await Promise.all([
-    supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
+  const [profileResult, connectionResult, ownedGroupResult, cadenceResult, touchpointResult, hangoutResult, inviteResult, acceptedGroupInviteResult] = await Promise.all([
+    supabase.from("profiles").select("id, display_name, first_name, last_name").eq("id", userId).maybeSingle(),
     supabase
       .from("connections")
       .select("id, display_name, contact_email, linked_user_id, tags, notes, preferred_activities, created_at")
@@ -231,7 +266,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       .order("display_name"),
     supabase
       .from("groups")
-      .select("id, name, description, created_at")
+      .select("id, name, description, created_at, owner_user_id")
       .eq("owner_user_id", userId)
       .is("archived_at", null)
       .order("name"),
@@ -257,25 +292,90 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       .is("claimed_at", null)
       .is("revoked_at", null)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("group_invites")
+      .select("group_id")
+      .eq("accepted_by_user_id", userId)
+      .not("accepted_at", "is", null)
+      .is("revoked_at", null),
   ]);
 
   assertNoError(profileResult.error, "Failed to load profile");
   assertNoError(connectionResult.error, "Failed to load connections");
-  assertNoError(groupResult.error, "Failed to load groups");
+  assertNoError(ownedGroupResult.error, "Failed to load groups");
   assertNoError(cadenceResult.error, "Failed to load cadence rules");
   assertNoError(touchpointResult.error, "Failed to load touchpoints");
   assertNoError(hangoutResult.error, "Failed to load hangouts");
   assertNoError(inviteResult.error, "Failed to load connection invites");
+  assertNoError(acceptedGroupInviteResult.error, "Failed to load accepted group invites");
 
   const connections = (connectionResult.data ?? []) as ConnectionRow[];
-  const groups = (groupResult.data ?? []) as GroupRow[];
+  const ownedGroups = (ownedGroupResult.data ?? []) as GroupRow[];
   const cadenceRules = (cadenceResult.data ?? []) as CadenceRuleRow[];
-  const touchpoints = (touchpointResult.data ?? []) as TouchpointRow[];
-  const hangouts = (hangoutResult.data ?? []) as HangoutRow[];
+  const baseTouchpoints = (touchpointResult.data ?? []) as TouchpointRow[];
+  const baseHangouts = (hangoutResult.data ?? []) as HangoutRow[];
   const invites = (inviteResult.data ?? []) as ConnectionInviteRow[];
+  const acceptedGroupInvites = (acceptedGroupInviteResult.data ?? []) as AcceptedGroupInviteRow[];
+
+  const ownedGroupIds = new Set(ownedGroups.map((group) => group.id));
+  const joinedGroupIds = [...new Set(acceptedGroupInvites.map((invite) => invite.group_id))].filter((groupId) => !ownedGroupIds.has(groupId));
+
+  let joinedGroups: GroupRow[] = [];
+  let extraCadenceRules: CadenceRuleRow[] = [];
+  let extraTouchpoints: TouchpointRow[] = [];
+  let extraHangouts: HangoutRow[] = [];
+
+  if (joinedGroupIds.length > 0) {
+    const [joinedGroupResult, joinedCadenceResult, joinedTouchpointResult, joinedHangoutResult] = await Promise.all([
+      supabase
+        .from("groups")
+        .select("id, name, description, created_at, owner_user_id")
+        .in("id", joinedGroupIds)
+        .is("archived_at", null)
+        .order("name"),
+      supabase
+        .from("cadence_rules")
+        .select("id, target_type, target_id, cadence_value, cadence_unit, reminder_lead_days")
+        .eq("target_type", "group")
+        .in("target_id", joinedGroupIds),
+      supabase
+        .from("touchpoints")
+        .select("id, target_type, target_id, touchpoint_type, occurred_at, note, activity_label, location_label")
+        .eq("target_type", "group")
+        .in("target_id", joinedGroupIds)
+        .order("occurred_at", { ascending: false })
+        .limit(100),
+      supabase
+        .from("hangouts")
+        .select("id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, completed_at, created_at")
+        .eq("target_type", "group")
+        .in("target_id", joinedGroupIds)
+        .order("starts_at"),
+    ]);
+
+    assertNoError(joinedGroupResult.error, "Failed to load joined groups");
+    assertNoError(joinedCadenceResult.error, "Failed to load joined group cadence rules");
+    assertNoError(joinedTouchpointResult.error, "Failed to load joined group touchpoints");
+    assertNoError(joinedHangoutResult.error, "Failed to load joined group hangouts");
+
+    joinedGroups = (joinedGroupResult.data ?? []) as GroupRow[];
+    extraCadenceRules = (joinedCadenceResult.data ?? []) as CadenceRuleRow[];
+    extraTouchpoints = (joinedTouchpointResult.data ?? []) as TouchpointRow[];
+    extraHangouts = (joinedHangoutResult.data ?? []) as HangoutRow[];
+  }
+
+  const groups = [...ownedGroups, ...joinedGroups].sort((left, right) => left.name.localeCompare(right.name));
+  const allCadenceRules = [...cadenceRules, ...extraCadenceRules];
+  const touchpoints = [...baseTouchpoints, ...extraTouchpoints]
+    .sort((left, right) => right.occurred_at.localeCompare(left.occurred_at))
+    .slice(0, 100);
+  const hangouts = [...baseHangouts, ...extraHangouts].sort((left, right) => left.starts_at.localeCompare(right.starts_at));
 
   let memberships: GroupMembershipRow[] = [];
   let groupInvites: GroupInviteRow[] = [];
+  let groupConnections: GroupConnectionRow[] = [];
+  let groupConnectionInvites: ConnectionInviteRow[] = [];
+  let groupProfiles = new Map<string, ProfileRow>();
 
   if (groups.length > 0) {
     const [membershipResult, groupInviteResult] = await Promise.all([
@@ -290,7 +390,6 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       supabase
         .from("group_invites")
         .select("group_id, connection_id, invited_email, created_at")
-        .eq("owner_user_id", userId)
         .in(
           "group_id",
           groups.map((group) => group.id),
@@ -305,12 +404,53 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     assertNoError(groupInviteResult.error, "Failed to load group invites");
     memberships = (membershipResult.data ?? []) as GroupMembershipRow[];
     groupInvites = (groupInviteResult.data ?? []) as GroupInviteRow[];
+
+    const groupConnectionIds = [...new Set([
+      ...memberships.flatMap((membership) => membership.connection_id ? [membership.connection_id] : []),
+      ...groupInvites.map((invite) => invite.connection_id),
+    ])];
+    const groupProfileIds = [...new Set([
+      ...groups.map((group) => group.owner_user_id),
+      ...memberships.flatMap((membership) => membership.user_id ? [membership.user_id] : []),
+    ])];
+
+    const [groupConnectionResult, groupConnectionInviteResult, groupProfileResult] = await Promise.all([
+      groupConnectionIds.length > 0
+        ? supabase
+            .from("connections")
+            .select("id, owner_user_id, display_name, contact_email, linked_user_id, tags, notes, preferred_activities, created_at")
+            .in("id", groupConnectionIds)
+        : Promise.resolve({ data: [], error: null }),
+      groupConnectionIds.length > 0
+        ? supabase
+            .from("connection_invites")
+            .select("connection_id, invited_email, created_at")
+            .in("connection_id", groupConnectionIds)
+            .is("claimed_at", null)
+            .is("revoked_at", null)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+      groupProfileIds.length > 0
+        ? supabase
+            .from("profiles")
+            .select("id, display_name, first_name, last_name")
+            .in("id", groupProfileIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    assertNoError(groupConnectionResult.error, "Failed to load group connections");
+    assertNoError(groupConnectionInviteResult.error, "Failed to load group connection invites");
+    assertNoError(groupProfileResult.error, "Failed to load group profiles");
+
+    groupConnections = (groupConnectionResult.data ?? []) as GroupConnectionRow[];
+    groupConnectionInvites = (groupConnectionInviteResult.data ?? []) as ConnectionInviteRow[];
+    groupProfiles = new Map(((groupProfileResult.data ?? []) as ProfileRow[]).map((profile) => [profile.id, profile]));
   }
 
-  const cadenceMap = new Map(cadenceRules.map((rule) => [`${rule.target_type}:${rule.target_id}`, rule]));
+  const cadenceMap = new Map(allCadenceRules.map((rule) => [`${rule.target_type}:${rule.target_id}`, rule]));
   const latestTouchpoints = latestTouchpointMap(touchpoints);
-  const groupMemberMap = buildGroupMemberMap(groups, memberships, connections);
-  const groupPendingInviteMap = buildGroupPendingInviteMap(groupInvites, connections);
+  const groupMemberMap = buildGroupMemberMap(groups, memberships, groupConnections, groupProfiles);
+  const groupPendingInviteMap = buildGroupPendingInviteMap(groupInvites, groupConnections);
   const groupMemberIdsMap = memberships.reduce<Map<string, string[]>>((accumulator, membership) => {
     if (!membership.connection_id) {
       return accumulator;
@@ -322,6 +462,13 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     return accumulator;
   }, new Map());
   const inviteMap = invites.reduce<Map<string, ConnectionInviteRow>>((accumulator, current) => {
+    if (!accumulator.has(current.connection_id)) {
+      accumulator.set(current.connection_id, current);
+    }
+
+    return accumulator;
+  }, new Map());
+  const groupConnectionInviteMap = groupConnectionInvites.reduce<Map<string, ConnectionInviteRow>>((accumulator, current) => {
     if (!accumulator.has(current.connection_id)) {
       accumulator.set(current.connection_id, current);
     }
@@ -411,6 +558,26 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   });
 
   const connectionSummaryMap = new Map(connectionSummaries.map((connection) => [connection.id, connection]));
+  const groupConnectionSummaryMap = new Map(
+    groupConnections.map((connection) => {
+      const pendingInvite = groupConnectionInviteMap.get(connection.id);
+      let linkState: RelationshipSummary["linkState"] = "unlinked";
+
+      if (connection.linked_user_id) {
+        linkState = "linked";
+      } else if (pendingInvite) {
+        linkState = "pending";
+      }
+
+      return [
+        connection.id,
+        {
+          linkState,
+          pendingInviteEmail: pendingInvite?.invited_email,
+        },
+      ] as const;
+    }),
+  );
 
   const groupSummaries: RelationshipSummary[] = groups.map((group) => {
     const key = `group:${group.id}`;
@@ -435,8 +602,9 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     const pendingMembers = groupPendingInviteMap.get(group.id) ?? [];
     const nextHangout = nextHangoutMap.get(key);
     const memberStatusCounts = countGroupMemberStatuses(
-      memberConnectionIds.map((connectionId) => connectionSummaryMap.get(connectionId)?.linkState),
+      memberConnectionIds.map((connectionId) => groupConnectionSummaryMap.get(connectionId)?.linkState),
     );
+    const membershipRole = group.owner_user_id === userId ? "owner" : "member";
 
     return {
       id: group.id,
@@ -466,6 +634,9 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       pendingMemberConnectionIds: pendingMembers.map((member) => member.connectionId),
       pendingMemberCount: pendingMembers.length,
       memberStatusCounts,
+      membershipRole,
+      ownerName: getProfileName(groupProfiles.get(group.owner_user_id)),
+      canManage: membershipRole === "owner",
     };
   });
 
@@ -521,5 +692,6 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     recentTouchpoints,
     connections: connectionSummaries,
     groups: groupSummaries,
+    ownedGroupCount: ownedGroups.length,
   } satisfies DashboardData;
 }

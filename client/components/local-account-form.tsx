@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { PasswordInput } from "@/components/password-input";
 
 export function LocalAccountForm({
   stackAvailable,
@@ -80,10 +81,9 @@ export function LocalAccountForm({
 
       <label className="grid gap-2">
         <span className="field-label">Password</span>
-        <input
+        <PasswordInput
           autoComplete="current-password"
           className="field-input"
-          type="password"
           name="password"
           placeholder="Choose a password for this device"
           required

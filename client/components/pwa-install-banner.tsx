@@ -16,11 +16,6 @@ function isStandaloneDisplay() {
     || ("standalone" in window.navigator && Boolean(window.navigator.standalone));
 }
 
-function isMobileDevice() {
-  return window.matchMedia("(max-width: 767px)").matches
-    || window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-}
-
 function wasRecentlyDismissed() {
   const dismissedAt = Number(window.localStorage.getItem(dismissedStorageKey) ?? "0");
   return Boolean(dismissedAt && Date.now() - dismissedAt < dismissWindowMs);
@@ -35,31 +30,32 @@ export function PwaInstallBanner() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [installed, setInstalled] = useState(false);
-  const [showIosHint, setShowIosHint] = useState(false);
+  const [iosSafari, setIosSafari] = useState(false);
+  const [showIosSteps, setShowIosSteps] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return undefined;
     }
 
-    if (isStandaloneDisplay() || !isMobileDevice() || wasRecentlyDismissed()) {
+    if (isStandaloneDisplay() || wasRecentlyDismissed()) {
       return undefined;
     }
 
     const storedInstalled = window.localStorage.getItem(installedStorageKey) === "1";
-    const iosSafari = isProbablyIosSafari();
+    const isIos = isProbablyIosSafari();
 
     window.setTimeout(() => {
       setInstalled(storedInstalled);
-      setVisible(storedInstalled || iosSafari);
-      setShowIosHint(iosSafari && !storedInstalled);
+      setIosSafari(isIos);
+      setShowIosSteps(isIos && !storedInstalled);
+      setVisible(storedInstalled || isIos);
     }, 0);
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
       setInstallPrompt(event as BeforeInstallPromptEvent);
       setVisible(true);
-      setShowIosHint(false);
     };
 
     const handleInstalled = () => {
@@ -96,11 +92,11 @@ export function PwaInstallBanner() {
       };
     }
 
-    if (showIosHint) {
+    if (iosSafari) {
       return {
         title: "Add to Home Screen",
-        body: "Install this app from Safari's share menu for a faster app-like experience.",
-        action: "How to install",
+        body: "Install this app from Safari's Share menu for faster access and a cleaner full-screen experience.",
+        action: showIosSteps ? "Hide steps" : "Show me how",
       };
     }
 
@@ -109,7 +105,7 @@ export function PwaInstallBanner() {
       body: "Get faster access, full-screen mode, and notification support on this device.",
       action: "Install",
     };
-  }, [installed, showIosHint]);
+  }, [installed, iosSafari, showIosSteps]);
 
   if (!visible) {
     return null;
@@ -121,8 +117,8 @@ export function PwaInstallBanner() {
       return;
     }
 
-    if (showIosHint) {
-      setShowIosHint(false);
+    if (iosSafari) {
+      setShowIosSteps((current) => !current);
       return;
     }
 
@@ -159,8 +155,15 @@ export function PwaInstallBanner() {
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-foreground">{copy.title}</p>
           <p className="mt-0.5 text-sm leading-5 text-foreground/62">
-            {showIosHint ? "Tap Share, then Add to Home Screen." : copy.body}
+            {copy.body}
           </p>
+          {iosSafari && showIosSteps ? (
+            <ol className="mt-2 grid gap-1.5 pl-5 text-sm leading-5 text-foreground/66">
+              <li>Tap the Share button in Safari.</li>
+              <li>Scroll down and choose Add to Home Screen.</li>
+              <li>Confirm Add to keep My Crew Connections on your Home Screen.</li>
+            </ol>
+          ) : null}
           <div className="mt-2 flex flex-wrap gap-2">
             <button className="button-primary button-compact" onClick={handlePrimaryAction} type="button">
               {copy.action}

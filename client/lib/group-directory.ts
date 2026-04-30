@@ -26,8 +26,8 @@ export function filterGroups(
       return true;
     }
 
-    const haystack = [group.title, group.subtitle, group.memberNames.join(" "), group.notes ?? ""].join(" ").toLowerCase();
-    const pendingHaystack = group.pendingMembers.map((member) => `${member.name} ${member.invitedEmail}`).join(" ").toLowerCase();
+    const haystack = [group.title, group.subtitle, (group.memberNames ?? []).join(" "), group.notes ?? ""].join(" ").toLowerCase();
+    const pendingHaystack = (group.pendingMembers ?? []).map((member) => `${member.name} ${member.invitedEmail}`).join(" ").toLowerCase();
     return `${haystack} ${pendingHaystack}`.includes(normalizedSearch);
   });
 }

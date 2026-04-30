@@ -339,7 +339,7 @@ export default async function DashboardPage({
   const nextStep = getNextStepCard(hasRelationships, data.recentTouchpoints.length, needsAttention, firstRelationship);
   const hasPremium = hasPremiumAccess(billingProfile, user.email);
   const canAddConnection = canCreateConnection(billingProfile, data.connections.length, user.email);
-  const canAddGroup = canCreateGroup(billingProfile, data.groups.length, user.email);
+  const canAddGroup = canCreateGroup(billingProfile, data.ownedGroupCount, user.email);
   const showUpgradePrompt = !hasPremium && (!canAddConnection || !canAddGroup);
   const upgradeUsageParts: string[] = [];
 
@@ -348,7 +348,7 @@ export default async function DashboardPage({
   }
 
   if (!canAddGroup) {
-    upgradeUsageParts.push(getFreeTierUsageLabel("group", data.groups.length));
+    upgradeUsageParts.push(getFreeTierUsageLabel("group", data.ownedGroupCount));
   }
 
   const upgradeUsageLabel = upgradeUsageParts.join(" / ");

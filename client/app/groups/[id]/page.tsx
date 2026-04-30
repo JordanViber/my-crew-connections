@@ -75,6 +75,24 @@ function AcceptedGroupMembersList({
   ));
 }
 
+function AcceptedGroupMemberNamesList({
+  members,
+  emptyCopy,
+}: Readonly<{
+  members: string[];
+  emptyCopy: string;
+}>) {
+  if (members.length === 0) {
+    return <p className="text-sm leading-7 text-foreground/68">{emptyCopy}</p>;
+  }
+
+  return members.map((member) => (
+    <article key={member} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
+      <p className="text-base font-semibold text-foreground">{member}</p>
+    </article>
+  ));
+}
+
 function PendingGroupInviteList({
   members,
   emptyCopy,
@@ -150,6 +168,11 @@ export default async function GroupDetailPage({
   const memberStatusSummary = summarizeGroupMemberStatuses(
     countGroupMemberStatuses(memberConnections.map((member) => member.linkState)),
   );
+  const canManageGroup = group.canManage ?? true;
+  const acceptedMemberCount = group.memberNames.length;
+  const groupSettingsDescription = canManageGroup
+    ? group.subtitle
+    : `${group.subtitle}${group.ownerName ? ` Organized by ${group.ownerName}.` : ""}`;
 
   return (
     <AppShell
@@ -173,94 +196,110 @@ export default async function GroupDetailPage({
             label: "Manage",
             content: (
               <div className="grid gap-3">
-                <SectionCard title="Group settings" description={group.subtitle}>
+                <SectionCard title="Group settings" description={groupSettingsDescription}>
                   <div className="mb-5 flex items-center justify-between gap-4">
                     <StatusPill health={group.health} />
                     <p className="text-sm text-foreground/65">{group.health.summary}</p>
                   </div>
+                  {canManageGroup ? (
+                    <>
+                      <EditableDetailsForm
+                        action={updateGroupAction}
+                        editLabel="Edit group"
+                        saveLabel="Save group"
+                        helperText="Keep the basics light so updating this group never feels like work."
+                      >
+                        <input type="hidden" name="groupId" value={group.id} />
+                        <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
+                        <label className="grid gap-2">
+                          <span className="field-label">Group name</span>
+                          <input className="field-input" name="name" type="text" defaultValue={group.title} required />
+                        </label>
+                        <label className="grid gap-2">
+                          <span className="field-label">Description</span>
+                          <textarea className="field-input min-h-24" name="description" defaultValue={group.notes ?? ""} />
+                        </label>
+                        <div className="grid gap-4">
+                          <label className="grid gap-2">
+                            <span className="field-label">Cadence value</span>
+                            <input className="field-input" name="cadenceValue" type="number" min="1" max="90" defaultValue={group.cadenceValue} required />
+                          </label>
+                          <label className="grid gap-2">
+                            <span className="field-label">Unit</span>
+                            <select className="field-input" name="cadenceUnit" defaultValue={group.cadenceUnit}>
+                              <option value="days">Days</option>
+                              <option value="weeks">Weeks</option>
+                              <option value="months">Months</option>
+                            </select>
+                          </label>
+                          <label className="grid gap-2">
+                            <span className="field-label">Reminder lead</span>
+                            <input className="field-input" name="reminderLeadDays" type="number" min="0" max="30" defaultValue={group.reminderLeadDays} required />
+                          </label>
+                        </div>
+                      </EditableDetailsForm>
 
-                  <EditableDetailsForm
-                    action={updateGroupAction}
-                    editLabel="Edit group"
-                    saveLabel="Save group"
-                    helperText="Keep the basics light so updating this group never feels like work."
-                  >
-                    <input type="hidden" name="groupId" value={group.id} />
-                    <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
-                    <label className="grid gap-2">
-                      <span className="field-label">Group name</span>
-                      <input className="field-input" name="name" type="text" defaultValue={group.title} required />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="field-label">Description</span>
-                      <textarea className="field-input min-h-24" name="description" defaultValue={group.notes ?? ""} />
-                    </label>
-                    <div className="grid gap-4">
-                      <label className="grid gap-2">
-                        <span className="field-label">Cadence value</span>
-                        <input className="field-input" name="cadenceValue" type="number" min="1" max="90" defaultValue={group.cadenceValue} required />
-                      </label>
-                      <label className="grid gap-2">
-                        <span className="field-label">Unit</span>
-                        <select className="field-input" name="cadenceUnit" defaultValue={group.cadenceUnit}>
-                          <option value="days">Days</option>
-                          <option value="weeks">Weeks</option>
-                          <option value="months">Months</option>
-                        </select>
-                      </label>
-                      <label className="grid gap-2">
-                        <span className="field-label">Reminder lead</span>
-                        <input className="field-input" name="reminderLeadDays" type="number" min="0" max="30" defaultValue={group.reminderLeadDays} required />
-                      </label>
+                      <form action={archiveGroupAction} className="mt-4">
+                        <input type="hidden" name="groupId" value={group.id} />
+                        <ConfirmSubmitButton
+                          className="button-secondary w-full sm:w-auto"
+                          confirmMessage="Archive this group and remove it from active reminder surfaces?"
+                        >
+                          Archive group
+                        </ConfirmSubmitButton>
+                      </form>
+                    </>
+                  ) : (
+                    <div className="rounded-lg border border-border/85 bg-white/78 p-3.5 text-sm leading-6 text-foreground/68">
+                      You can follow this group, see who is in it, and keep up with the shared history. Only the organizer can edit the settings or membership list.
                     </div>
-                  </EditableDetailsForm>
-
-                  <form action={archiveGroupAction} className="mt-4">
-                    <input type="hidden" name="groupId" value={group.id} />
-                    <ConfirmSubmitButton
-                      className="button-secondary w-full sm:w-auto"
-                      confirmMessage="Archive this group and remove it from active reminder surfaces?"
-                    >
-                      Archive group
-                    </ConfirmSubmitButton>
-                  </form>
+                  )}
                 </SectionCard>
 
                 <SectionCard title="Accepted members" description="These people are already in the group. New invite-backed people stay pending until they respond.">
                   <div className="mb-5 grid gap-3">
                     <p className="text-sm leading-6 text-foreground/68">
-                      {getGroupMembershipSummary(memberConnections.length, group.pendingMemberCount)}
+                      {getGroupMembershipSummary(acceptedMemberCount, group.pendingMemberCount)}
                     </p>
-                    {memberConnections.length > 0 ? (
+                    {canManageGroup && memberConnections.length > 0 ? (
                       <p className="text-sm leading-6 text-foreground/68">{memberStatusSummary}</p>
                     ) : null}
-                    <AcceptedGroupMembersList
-                      members={memberConnections}
-                      emptyCopy="No accepted members are attached yet. Add people below to turn this into a real crew."
-                    />
+                    {canManageGroup ? (
+                      <AcceptedGroupMembersList
+                        members={memberConnections}
+                        emptyCopy="No accepted members are attached yet. Add people below to turn this into a real crew."
+                      />
+                    ) : (
+                      <AcceptedGroupMemberNamesList
+                        members={group.memberNames}
+                        emptyCopy="No accepted members are attached yet."
+                      />
+                    )}
                   </div>
 
-                  <form action={addGroupMembersAction} className="grid gap-3">
-                    <input type="hidden" name="groupId" value={group.id} />
-                    <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
-                    <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
-                      <legend className="field-label px-2">Add existing connections</legend>
-                      {availableConnections.length === 0 ? (
-                        <p className="text-sm leading-7 text-foreground/68">Everyone in your list is already accepted or pending in this group.</p>
-                      ) : (
-                        availableConnections.map((connection) => (
-                          <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
-                            <input className="h-4 w-4" type="checkbox" name="connectionIds" value={connection.id} />
-                            <span>{connection.title}</span>
-                            <ConnectionLinkBadge linkState={connection.linkState} pendingInviteEmail={connection.pendingInviteEmail} />
-                          </label>
-                        ))
-                      )}
-                    </fieldset>
-                    <button className="button-secondary" type="submit" disabled={availableConnections.length === 0}>
-                      Add or invite selected people
-                    </button>
-                  </form>
+                  {canManageGroup ? (
+                    <form action={addGroupMembersAction} className="grid gap-3">
+                      <input type="hidden" name="groupId" value={group.id} />
+                      <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
+                      <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
+                        <legend className="field-label px-2">Add existing connections</legend>
+                        {availableConnections.length === 0 ? (
+                          <p className="text-sm leading-7 text-foreground/68">Everyone in your list is already accepted or pending in this group.</p>
+                        ) : (
+                          availableConnections.map((connection) => (
+                            <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
+                              <input className="h-4 w-4" type="checkbox" name="connectionIds" value={connection.id} />
+                              <span>{connection.title}</span>
+                              <ConnectionLinkBadge linkState={connection.linkState} pendingInviteEmail={connection.pendingInviteEmail} />
+                            </label>
+                          ))
+                        )}
+                      </fieldset>
+                      <button className="button-secondary" type="submit" disabled={availableConnections.length === 0}>
+                        Add or invite selected people
+                      </button>
+                    </form>
+                  ) : null}
                 </SectionCard>
 
                 <SectionCard
@@ -419,93 +458,109 @@ export default async function GroupDetailPage({
 
       <div className="hidden gap-5 xl:grid-cols-[0.95fr_1.05fr] md:grid">
         <div className="grid gap-5">
-          <SectionCard title="Group settings" description={group.subtitle}>
+          <SectionCard title="Group settings" description={groupSettingsDescription}>
             <div className="mb-5 flex items-center justify-between gap-4">
               <StatusPill health={group.health} />
               <p className="text-sm text-foreground/65">{group.health.summary}</p>
             </div>
+            {canManageGroup ? (
+              <>
+                <EditableDetailsForm
+                  action={updateGroupAction}
+                  editLabel="Edit group"
+                  saveLabel="Save group"
+                  helperText="Keep the basics light so updating this group never feels like work."
+                >
+                  <input type="hidden" name="groupId" value={group.id} />
+                  <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
+                  <label className="grid gap-2">
+                    <span className="field-label">Group name</span>
+                    <input className="field-input" name="name" type="text" defaultValue={group.title} required />
+                  </label>
+                  <label className="grid gap-2">
+                    <span className="field-label">Description</span>
+                    <textarea className="field-input min-h-24" name="description" defaultValue={group.notes ?? ""} />
+                  </label>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <label className="grid gap-2">
+                      <span className="field-label">Cadence value</span>
+                      <input className="field-input" name="cadenceValue" type="number" min="1" max="90" defaultValue={group.cadenceValue} required />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">Unit</span>
+                      <select className="field-input" name="cadenceUnit" defaultValue={group.cadenceUnit}>
+                        <option value="days">Days</option>
+                        <option value="weeks">Weeks</option>
+                        <option value="months">Months</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">Reminder lead</span>
+                      <input className="field-input" name="reminderLeadDays" type="number" min="0" max="30" defaultValue={group.reminderLeadDays} required />
+                    </label>
+                  </div>
+                </EditableDetailsForm>
 
-            <EditableDetailsForm
-              action={updateGroupAction}
-              editLabel="Edit group"
-              saveLabel="Save group"
-                    helperText="Keep the basics light so updating this group never feels like work."
-            >
-              <input type="hidden" name="groupId" value={group.id} />
-              <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
-              <label className="grid gap-2">
-                <span className="field-label">Group name</span>
-                <input className="field-input" name="name" type="text" defaultValue={group.title} required />
-              </label>
-              <label className="grid gap-2">
-                <span className="field-label">Description</span>
-                <textarea className="field-input min-h-24" name="description" defaultValue={group.notes ?? ""} />
-              </label>
-              <div className="grid gap-4 md:grid-cols-3">
-                <label className="grid gap-2">
-                  <span className="field-label">Cadence value</span>
-                  <input className="field-input" name="cadenceValue" type="number" min="1" max="90" defaultValue={group.cadenceValue} required />
-                </label>
-                <label className="grid gap-2">
-                  <span className="field-label">Unit</span>
-                  <select className="field-input" name="cadenceUnit" defaultValue={group.cadenceUnit}>
-                    <option value="days">Days</option>
-                    <option value="weeks">Weeks</option>
-                    <option value="months">Months</option>
-                  </select>
-                </label>
-                <label className="grid gap-2">
-                  <span className="field-label">Reminder lead</span>
-                  <input className="field-input" name="reminderLeadDays" type="number" min="0" max="30" defaultValue={group.reminderLeadDays} required />
-                </label>
+                <form action={archiveGroupAction} className="mt-4">
+                  <input type="hidden" name="groupId" value={group.id} />
+                  <ConfirmSubmitButton
+                    className="button-secondary w-full sm:w-auto"
+                    confirmMessage="Archive this group and remove it from active reminder surfaces?"
+                  >
+                    Archive group
+                  </ConfirmSubmitButton>
+                </form>
+              </>
+            ) : (
+              <div className="rounded-lg border border-border/85 bg-white/78 p-3.5 text-sm leading-6 text-foreground/68">
+                You can follow this group, see who is in it, and keep up with the shared history. Only the organizer can edit the settings or membership list.
               </div>
-            </EditableDetailsForm>
-
-            <form action={archiveGroupAction} className="mt-4">
-              <input type="hidden" name="groupId" value={group.id} />
-              <ConfirmSubmitButton
-                className="button-secondary w-full sm:w-auto"
-                confirmMessage="Archive this group and remove it from active reminder surfaces?"
-              >
-                Archive group
-              </ConfirmSubmitButton>
-            </form>
+            )}
           </SectionCard>
           <SectionCard title="Accepted members" description="These people are already in the group. New invite-backed people stay pending until they respond.">
             <div className="mb-5 grid gap-3">
               <p className="text-sm leading-6 text-foreground/68">
-                {getGroupMembershipSummary(memberConnections.length, group.pendingMemberCount)}
+                {getGroupMembershipSummary(acceptedMemberCount, group.pendingMemberCount)}
               </p>
-              {memberConnections.length > 0 ? (
+              {canManageGroup && memberConnections.length > 0 ? (
                 <p className="text-sm leading-6 text-foreground/68">{memberStatusSummary}</p>
               ) : null}
-              <AcceptedGroupMembersList
-                members={memberConnections}
-                emptyCopy="No accepted members are attached yet. Add people below to turn this into a real crew."
-              />
+              {canManageGroup ? (
+                <AcceptedGroupMembersList
+                  members={memberConnections}
+                  emptyCopy="No accepted members are attached yet. Add people below to turn this into a real crew."
+                />
+              ) : (
+                <AcceptedGroupMemberNamesList
+                  members={group.memberNames}
+                  emptyCopy="No accepted members are attached yet."
+                />
+              )}
             </div>
 
-            <form action={addGroupMembersAction} className="grid gap-3">
-              <input type="hidden" name="groupId" value={group.id} />
-              <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
-              <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
-                <legend className="field-label px-2">Add existing connections</legend>
-                {availableConnections.length === 0 ? (
-                  <p className="text-sm leading-7 text-foreground/68">Everyone in your list is already accepted or pending in this group.</p>
-                ) : (
-                  availableConnections.map((connection) => (
-                    <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
-                      <input className="h-4 w-4" type="checkbox" name="connectionIds" value={connection.id} />
-                      <span>{connection.title}</span>
-                      <ConnectionLinkBadge linkState={connection.linkState} pendingInviteEmail={connection.pendingInviteEmail} />
-                    </label>
-                  ))
-                )}
-              </fieldset>
-              <button className="button-secondary" type="submit" disabled={availableConnections.length === 0}>
-                Add or invite selected people
-              </button>
-            </form>
+            {canManageGroup ? (
+              <form action={addGroupMembersAction} className="grid gap-3">
+                <input type="hidden" name="groupId" value={group.id} />
+                <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
+                <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
+                  <legend className="field-label px-2">Add existing connections</legend>
+                  {availableConnections.length === 0 ? (
+                    <p className="text-sm leading-7 text-foreground/68">Everyone in your list is already accepted or pending in this group.</p>
+                  ) : (
+                    availableConnections.map((connection) => (
+                      <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
+                        <input className="h-4 w-4" type="checkbox" name="connectionIds" value={connection.id} />
+                        <span>{connection.title}</span>
+                        <ConnectionLinkBadge linkState={connection.linkState} pendingInviteEmail={connection.pendingInviteEmail} />
+                      </label>
+                    ))
+                  )}
+                </fieldset>
+                <button className="button-secondary" type="submit" disabled={availableConnections.length === 0}>
+                  Add or invite selected people
+                </button>
+              </form>
+            ) : null}
           </SectionCard>
 
           <SectionCard
