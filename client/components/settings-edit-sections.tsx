@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AddressFields } from "@/components/address-fields";
 import { PhoneNumberInput } from "@/components/phone-number-input";
 import { updateAccountEmailAction, updateAccountPasswordAction, updateProfileAction } from "@/app/actions";
-import { getDefaultCountry } from "@/lib/account-fields";
+import { formatPhoneNumberForDisplay, getDefaultCountry, normalizePhoneNumberForAuth } from "@/lib/account-fields";
+import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export type EditableProfile = {
   first_name: string | null;
@@ -167,8 +169,14 @@ export function AccountSettingsEditor({
 
 export function SecuritySettingsEditor({
   email,
+  profilePhoneNumber,
+  authPhoneNumber,
+  authPhoneConfirmedAt,
 }: Readonly<{
   email: string;
+  profilePhoneNumber: string | null;
+  authPhoneNumber: string | null;
+  authPhoneConfirmedAt: string | null;
 }>) {
   const [editing, setEditing] = useState<"email" | "password" | null>(null);
 
@@ -193,6 +201,12 @@ export function SecuritySettingsEditor({
         ) : null}
       </div>
 
+      <PhoneSignInSettingsRow
+        authPhoneConfirmedAt={authPhoneConfirmedAt}
+        authPhoneNumber={authPhoneNumber}
+        profilePhoneNumber={profilePhoneNumber}
+      />
+
       <div className="grid gap-3 py-4 first:pt-0 last:pb-0">
         <div className="flex items-start justify-between gap-4">
           <SummaryLine label="Password" value="********" />
@@ -215,6 +229,177 @@ export function SecuritySettingsEditor({
           </form>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function PhoneSignInSettingsRow({
+  profilePhoneNumber,
+  authPhoneNumber,
+  authPhoneConfirmedAt,
+}: Readonly<{
+  profilePhoneNumber: string | null;
+  authPhoneNumber: string | null;
+  authPhoneConfirmedAt: string | null;
+}>) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState(authPhoneNumber ?? profilePhoneNumber ?? "");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [pendingPhoneNumber, setPendingPhoneNumber] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const verifiedPhoneValue = authPhoneNumber
+    ? `${formatPhoneNumberForDisplay(authPhoneNumber)}${authPhoneConfirmedAt ? " (verified)" : " (verification pending)"}`
+    : profilePhoneNumber
+      ? `${formatPhoneNumberForDisplay(profilePhoneNumber)} saved to your profile`
+      : "No phone sign-in configured";
+
+  function resetEditor() {
+    setEditing(false);
+    setPhoneNumber(authPhoneNumber ?? profilePhoneNumber ?? "");
+    setVerificationCode("");
+    setPendingPhoneNumber(null);
+    setErrorMessage(null);
+    setStatusMessage(null);
+  }
+
+  async function sendVerificationCode() {
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    const normalizedPhoneNumber = normalizePhoneNumberForAuth(phoneNumber);
+
+    if (!normalizedPhoneNumber) {
+      setErrorMessage("Enter a phone number with a country code, or use a 10-digit US or Canada number.");
+      return;
+    }
+
+    const currentAuthPhone = normalizePhoneNumberForAuth(authPhoneNumber ?? "");
+
+    if (authPhoneConfirmedAt && currentAuthPhone === normalizedPhoneNumber) {
+      setStatusMessage("That phone number is already verified for text-message sign-in.");
+      return;
+    }
+
+    const supabase = createBrowserSupabaseClient();
+    const { error } = await supabase.auth.updateUser({ phone: normalizedPhoneNumber });
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
+    setPendingPhoneNumber(normalizedPhoneNumber);
+    setVerificationCode("");
+    setStatusMessage("We sent a verification code to that phone number.");
+  }
+
+  async function verifyPhoneNumber() {
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    if (!pendingPhoneNumber) {
+      setErrorMessage("Send a verification code first.");
+      return;
+    }
+
+    const trimmedCode = verificationCode.trim();
+
+    if (!trimmedCode) {
+      setErrorMessage("Enter the verification code you received by text.");
+      return;
+    }
+
+    const supabase = createBrowserSupabaseClient();
+    const { error } = await supabase.auth.verifyOtp({
+      phone: pendingPhoneNumber,
+      token: trimmedCode,
+      type: "phone_change",
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
+    router.replace("/settings?feedback=phone-auth-enabled");
+    router.refresh();
+  }
+
+  return (
+    <div className="grid gap-3 py-4 first:pt-0 last:pb-0">
+      <div className="flex items-start justify-between gap-4">
+        <SummaryLine label="Phone sign-in" value={verifiedPhoneValue} />
+        <IconEditButton label="Edit phone sign-in" onClick={() => setEditing((value) => !value)} />
+      </div>
+      {editing ? (
+        <div className="grid gap-3 sm:max-w-xl">
+          <p className="text-sm leading-6 text-foreground/62">
+            Verify a phone number here to let Supabase send sign-in codes and support direct phone plus password sign-in.
+          </p>
+          <label className="grid gap-2">
+            <span className="field-label">Phone number</span>
+            <PhoneNumberInput
+              defaultValue=""
+              disabled={Boolean(pendingPhoneNumber)}
+              name="phoneAuthNumber"
+              onValueChange={setPhoneNumber}
+              placeholder="(415) 555-0132"
+              value={phoneNumber}
+            />
+          </label>
+
+          {pendingPhoneNumber ? (
+            <label className="grid gap-2">
+              <span className="field-label">Verification code</span>
+              <input
+                autoComplete="one-time-code"
+                className="field-input"
+                inputMode="numeric"
+                maxLength={6}
+                name="phoneAuthCode"
+                onChange={(event) => setVerificationCode(event.target.value)}
+                placeholder="6-digit code"
+                type="text"
+                value={verificationCode}
+              />
+            </label>
+          ) : null}
+
+          {statusMessage ? (
+            <p className="rounded-lg bg-mint px-3 py-2.5 text-sm font-medium text-[#214c35]">{statusMessage}</p>
+          ) : null}
+
+          {errorMessage ? (
+            <p className="rounded-lg bg-[#f8d2ca] px-3 py-2.5 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2">
+            {pendingPhoneNumber ? (
+              <>
+                <button className="button-primary" onClick={() => void verifyPhoneNumber()} type="button">Verify phone</button>
+                <button className="button-secondary" onClick={() => void sendVerificationCode()} type="button">Send a new code</button>
+                <button
+                  className="button-secondary"
+                  onClick={() => {
+                    setPendingPhoneNumber(null);
+                    setVerificationCode("");
+                    setErrorMessage(null);
+                    setStatusMessage(null);
+                  }}
+                  type="button"
+                >
+                  Use a different number
+                </button>
+              </>
+            ) : (
+              <button className="button-primary" onClick={() => void sendVerificationCode()} type="button">Send verification code</button>
+            )}
+            <button className="button-secondary" onClick={resetEditor} type="button">Cancel</button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

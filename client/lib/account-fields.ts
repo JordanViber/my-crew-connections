@@ -123,6 +123,28 @@ export function normalizePhoneNumberForStorage(value: string) {
   return cleaned.replaceAll(/\D/g, "");
 }
 
+export function normalizePhoneNumberForAuth(value: string) {
+  const normalized = normalizePhoneNumberForStorage(value);
+
+  if (!normalized) {
+    return "";
+  }
+
+  if (normalized.startsWith("+")) {
+    return normalized;
+  }
+
+  if (/^\d{10}$/.test(normalized)) {
+    return `+1${normalized}`;
+  }
+
+  if (/^1\d{10}$/.test(normalized)) {
+    return `+${normalized}`;
+  }
+
+  return "";
+}
+
 export function formatPhoneNumberForDisplay(value: string) {
   const normalized = normalizePhoneNumberForStorage(value);
 

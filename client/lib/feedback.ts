@@ -94,6 +94,11 @@ const feedbackMessages = {
     title: "Password updated",
     body: "Your new password is active for the next sign-in.",
   },
+  "phone-auth-enabled": {
+    tone: "success",
+    title: "Phone sign-in verified",
+    body: "Your phone number is now ready for text-message sign-in and direct phone plus password sign-in.",
+  },
   "feedback-sent": {
     tone: "success",
     title: "Feedback sent",

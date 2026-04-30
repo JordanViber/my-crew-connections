@@ -269,7 +269,12 @@ export default async function SettingsPage({
 
         <SettingsGroup title="Security">
           <SettingsRow>
-            <SecuritySettingsEditor email={user.email ?? ""} />
+            <SecuritySettingsEditor
+              authPhoneConfirmedAt={user.phone_confirmed_at ?? null}
+              authPhoneNumber={user.phone ?? null}
+              email={user.email ?? ""}
+              profilePhoneNumber={typedProfile?.phone_number ?? null}
+            />
           </SettingsRow>
         </SettingsGroup>
       </div>

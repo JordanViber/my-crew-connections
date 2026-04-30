@@ -5,6 +5,7 @@ import { FeedbackBanner } from "@/components/feedback-banner";
 import { LocalAccountForm } from "@/components/local-account-form";
 import { MagicLinkForm } from "@/components/magic-link-form";
 import { PasswordAuthForm } from "@/components/password-auth-form";
+import { PhoneOtpForm } from "@/components/phone-otp-form";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getLocalSupabaseStatus } from "@/lib/supabase/local-stack-status";
 
@@ -59,6 +60,7 @@ export default async function AuthPage({
             {[
               { title: "Apple", body: "Fast on supported devices." },
               { title: "Password", body: "Use email or phone with your password." },
+              { title: "Phone code", body: "Use a verified phone number to sign in by text." },
               { title: "Email link", body: "Skip typing the password." },
             ].map((option) => (
               <div key={option.title} className="section-card p-3 text-sm leading-6 text-foreground/75">
@@ -111,6 +113,15 @@ export default async function AuthPage({
             ) : null}
 
             <PasswordAuthForm stackAvailable={stackStatus.available} nextPath={nextPath} />
+          </div>
+
+          <div className="section-card p-3.5 md:p-4">
+            <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Phone sign-in code</h2>
+            <p className="mt-1.5 text-sm leading-6 text-foreground/68">
+              Use this after you verify a phone number in settings. We only send codes to phone numbers already attached to your account.
+            </p>
+
+            <PhoneOtpForm stackAvailable={stackStatus.available} nextPath={nextPath} />
           </div>
 
           <div className="section-card p-3.5 md:p-4">

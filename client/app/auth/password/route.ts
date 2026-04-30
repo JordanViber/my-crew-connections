@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { normalizePhoneNumberForStorage } from "@/lib/account-fields";
+import { normalizePhoneNumberForAuth, normalizePhoneNumberForStorage } from "@/lib/account-fields";
 import { env } from "@/lib/env";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -8,14 +8,37 @@ function isEmailIdentifier(value: string) {
   return value.includes("@");
 }
 
+function getPhoneLookupCandidates(identifier: string) {
+  const normalizedPhone = normalizePhoneNumberForStorage(identifier);
+
+  if (!normalizedPhone) {
+    return [];
+  }
+
+  const candidates = new Set([normalizedPhone]);
+
+  if (/^\+1\d{10}$/.test(normalizedPhone)) {
+    candidates.add(normalizedPhone.slice(2));
+    candidates.add(normalizedPhone.slice(1));
+  } else if (/^1\d{10}$/.test(normalizedPhone)) {
+    candidates.add(normalizedPhone.slice(1));
+    candidates.add(`+${normalizedPhone}`);
+  } else if (/^\d{10}$/.test(normalizedPhone)) {
+    candidates.add(`1${normalizedPhone}`);
+    candidates.add(`+1${normalizedPhone}`);
+  }
+
+  return [...candidates];
+}
+
 async function resolveEmailFromIdentifier(identifier: string) {
   if (isEmailIdentifier(identifier)) {
     return identifier.trim().toLowerCase();
   }
 
-  const normalizedPhone = normalizePhoneNumberForStorage(identifier);
+  const phoneCandidates = getPhoneLookupCandidates(identifier);
 
-  if (!normalizedPhone) {
+  if (!phoneCandidates.length) {
     return null;
   }
 
@@ -23,10 +46,10 @@ async function resolveEmailFromIdentifier(identifier: string) {
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select("id")
-    .eq("phone_number", normalizedPhone)
+    .in("phone_number", phoneCandidates)
     .limit(2);
 
-  if (error || !profiles || profiles.length !== 1) {
+  if (error || profiles?.length !== 1) {
     return null;
   }
 
@@ -55,12 +78,6 @@ export async function POST(request: NextRequest) {
     return invalidResponse();
   }
 
-  const email = await resolveEmailFromIdentifier(identifier);
-
-  if (!email) {
-    return invalidResponse();
-  }
-
   const response = NextResponse.json({ ok: true });
   const supabase = createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
     cookies: {
@@ -74,6 +91,28 @@ export async function POST(request: NextRequest) {
       },
     },
   });
+
+  const normalizedPhone = isEmailIdentifier(identifier)
+    ? ""
+    : normalizePhoneNumberForAuth(identifier);
+
+  if (normalizedPhone) {
+    const { error: phoneError } = await supabase.auth.signInWithPassword({
+      phone: normalizedPhone,
+      password,
+    });
+
+    if (!phoneError) {
+      return response;
+    }
+  }
+
+  const email = await resolveEmailFromIdentifier(identifier);
+
+  if (!email) {
+    return invalidResponse();
+  }
+
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password,

@@ -187,6 +187,9 @@ export function CreateAccountForm({
         <span className="field-label">Phone number</span>
         <PhoneNumberInput name="phoneNumber" disabled={isPending} placeholder="Optional" />
       </label>
+      <p className="text-sm leading-6 text-foreground/62">
+        Add a phone number now if you want it saved to your profile. You can verify it for text-message sign-in from settings after the account is created.
+      </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-2 sm:col-span-2">
