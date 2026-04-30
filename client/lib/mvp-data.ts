@@ -192,11 +192,6 @@ function buildGroupMemberMap(groups: GroupRow[], memberships: GroupMembershipRow
       continue;
     }
 
-    if (membership.user_id) {
-      names.push(membership.role === "owner" ? "You" : "Linked member");
-      continue;
-    }
-
     if (membership.connection_id) {
       const displayName = connectionNameMap.get(membership.connection_id);
 
