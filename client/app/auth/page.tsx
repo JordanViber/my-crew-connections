@@ -46,7 +46,15 @@ export default async function AuthPage({
             <div className="rounded-lg border border-accent/20 bg-accent-soft px-3.5 py-3 text-sm leading-6 text-foreground/78">
               <p className="font-semibold text-foreground">Connection invite</p>
               <p className="mt-1">
-                {params.inviteName ?? "Someone"} invited {params.inviteEmail ? <strong>{params.inviteEmail}</strong> : "you"} to connect. After sign-in, you will return to the invite.
+                You were invited to connect with {params.inviteName ? <strong>{params.inviteName}</strong> : "someone"}.{" "}
+                {params.inviteEmail ? (
+                  <>
+                    Use <strong>{params.inviteEmail}</strong> to accept it.
+                  </>
+                ) : (
+                  "Sign in or create an account to accept it."
+                )}{" "}
+                After sign-in, you will return to the invite.
               </p>
             </div>
           ) : null}
