@@ -7,12 +7,12 @@ const feedbackMessages = {
   "connection-created-invite-sent": {
     tone: "success",
     title: "Person added and invite sent",
-    body: "The invite is now visible in their app account and a sign-in link was sent to their email.",
+    body: "The invite email went out with a direct claim link, and the invite will also appear in-app if they already have an account.",
   },
   "connection-created-invite-ready": {
     tone: "success",
     title: "Person added and invite ready",
-    body: "The invite is visible when they sign in with that email. Email delivery needs SMTP configured before messages can go out reliably.",
+    body: "The invite record is ready, but direct email delivery is not configured for this environment yet.",
   },
   "connection-saved": {
     tone: "success",
@@ -67,12 +67,12 @@ const feedbackMessages = {
   "invite-created": {
     tone: "success",
     title: "Invite ready",
-    body: "The invite is visible when they sign in with that email. Share the link too if you want an extra direct path.",
+    body: "The invite record is ready. Share the link directly if email delivery is unavailable.",
   },
   "invite-sent": {
     tone: "success",
     title: "Invite sent",
-    body: "The invite is visible in their app account and a sign-in link was sent to their email.",
+    body: "The invite email went out with a direct claim link, and it will also appear in-app if they already have an account.",
   },
   "connection-linked": {
     tone: "success",

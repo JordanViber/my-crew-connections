@@ -479,7 +479,13 @@ export async function createConnectionAction(formData: FormData) {
     });
 
     assertMutation(inviteError, "Failed to create connection invite");
-    const notification = await notifyConnectionInvite(supabase, normalizedEmail, token, payload.displayName);
+    const notification = await notifyConnectionInvite(
+      supabase,
+      normalizedEmail,
+      token,
+      payload.displayName,
+      user.user_metadata?.display_name ?? user.email,
+    );
     feedbackKey = notification.emailSent ? "connection-created-invite-sent" : "connection-created-invite-ready";
   }
 
@@ -762,6 +768,7 @@ export async function createConnectionInviteAction(formData: FormData) {
     normalizedEmail,
     token,
     connection?.display_name ?? "A connection",
+    user.user_metadata?.display_name ?? user.email,
   );
   revalidatePath("/dashboard");
   revalidatePath("/connections");

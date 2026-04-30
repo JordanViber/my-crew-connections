@@ -1,9 +1,8 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { getAppUrl } from "@/lib/billing";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { findAuthUserByEmail } from "@/lib/auth-users";
 import { buildConnectionInvitePath, normalizeInviteEmail } from "@/lib/invites";
+import { sendConnectionInviteEmail } from "@/lib/invite-email";
 import { sendPushToUser } from "@/lib/push";
-import { env } from "@/lib/env";
 
 type IncomingInviteRow = {
   id: string;
@@ -93,32 +92,20 @@ export async function getIncomingConnectionInvites(
   })) satisfies IncomingConnectionInvite[];
 }
 
-function createAnonSupabaseClient() {
-  return createClient(env.supabaseUrl, env.supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
 export async function notifyConnectionInvite(
   supabase: SupabaseClient,
   email: string,
   token: string,
   connectionName: string,
+  inviterName?: string | null,
 ) {
   const normalizedEmail = normalizeInviteEmail(email);
   const invitePath = buildConnectionInvitePath(token);
-  const appUrl = getAppUrl();
-  const redirectTo = `${appUrl}/auth/confirm?next=${encodeURIComponent(invitePath)}`;
-  const anonSupabase = createAnonSupabaseClient();
-  const { error } = await anonSupabase.auth.signInWithOtp({
-    email: normalizedEmail,
-    options: {
-      emailRedirectTo: redirectTo,
-      shouldCreateUser: true,
-    },
+  const emailResult = await sendConnectionInviteEmail({
+    to: normalizedEmail,
+    token,
+    connectionName,
+    inviterName,
   });
 
   const recipient = await findAuthUserByEmail(supabase, normalizedEmail);
@@ -132,5 +119,5 @@ export async function notifyConnectionInvite(
     }).catch(() => ({ sent: 0 }));
   }
 
-  return { emailSent: !error, errorMessage: error?.message };
+  return { emailSent: emailResult.sent, errorMessage: emailResult.errorMessage };
 }

@@ -5,39 +5,85 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
+const supportedOtpTypes = new Set(["email", "recovery", "invite", "email_change", "signup", "magiclink"]);
+
+function isSupportedOtpType(value?: string): value is "email" | "recovery" | "invite" | "email_change" | "signup" | "magiclink" {
+  return typeof value === "string" && supportedOtpTypes.has(value);
+}
+
 export function AuthConfirmContent({
   code,
+  tokenHash,
+  type,
+  errorDescription,
   nextPath,
 }: Readonly<{
   code?: string;
+  tokenHash?: string;
+  type?: string;
+  errorDescription?: string;
   nextPath: string;
 }>) {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const signInHref = `/auth?next=${encodeURIComponent(nextPath)}`;
 
   useEffect(() => {
     let cancelled = false;
 
     async function confirm() {
-      if (!code) {
-        router.replace("/auth?error=Missing%20authentication%20code.");
+      const supabase = createBrowserSupabaseClient();
+
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (error) {
+          setErrorMessage(error.message);
+          return;
+        }
+
+        router.replace(nextPath);
+        router.refresh();
         return;
       }
 
-      const supabase = createBrowserSupabaseClient();
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (tokenHash && isSupportedOtpType(type)) {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        if (error) {
+          setErrorMessage(error.message);
+          return;
+        }
+
+        router.replace(nextPath);
+        router.refresh();
+        return;
+      }
+
+      const { data } = await supabase.auth.getSession();
 
       if (cancelled) {
         return;
       }
 
-      if (error) {
-        setErrorMessage(error.message);
+      if (data.session) {
+        router.replace(nextPath);
+        router.refresh();
         return;
       }
 
-      router.replace(nextPath);
-      router.refresh();
+      setErrorMessage(errorDescription || "Missing authentication code.");
     }
 
     confirm();
@@ -45,7 +91,7 @@ export function AuthConfirmContent({
     return () => {
       cancelled = true;
     };
-  }, [code, nextPath, router]);
+  }, [code, errorDescription, nextPath, router, tokenHash, type]);
 
   return (
     <main className="shell flex items-center justify-center px-4 py-5 md:px-6">
@@ -63,7 +109,7 @@ export function AuthConfirmContent({
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent-strong">Sign-in failed</p>
             <p className="mt-2 text-sm leading-7 text-foreground/75">{errorMessage}</p>
             <div className="mt-3 flex flex-wrap gap-3">
-              <Link className="button-primary" href="/auth">
+              <Link className="button-primary" href={signInHref}>
                 Back to sign in
               </Link>
             </div>

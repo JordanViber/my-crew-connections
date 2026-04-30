@@ -21,11 +21,17 @@ export function CreateAccountForm({
   stackAvailable,
   preferLocalHelper,
   initialEmail = "",
+  inviteToken,
+  inviteEmail,
+  inviteName,
 }: Readonly<{
   nextPath: string;
   stackAvailable: boolean;
   preferLocalHelper: boolean;
   initialEmail?: string;
+  inviteToken?: string;
+  inviteEmail?: string;
+  inviteName?: string;
 }>) {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -34,7 +40,13 @@ export function CreateAccountForm({
   const [isPending, startTransition] = useTransition();
 
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
-  const signInHref = `/auth?next=${encodeURIComponent(nextPath)}`;
+  const signInParams = new URLSearchParams({
+    next: nextPath,
+    ...(inviteToken ? { invite: inviteToken } : {}),
+    ...(inviteEmail ? { inviteEmail } : {}),
+    ...(inviteName ? { inviteName } : {}),
+  });
+  const signInHref = `/auth?${signInParams.toString()}`;
 
   function getValue(formData: FormData, key: string) {
     const value = formData.get(key);
@@ -129,10 +141,12 @@ export function CreateAccountForm({
 
       const supabase = createBrowserSupabaseClient();
       const displayName = `${payload.firstName} ${payload.lastName}`.trim();
+      const emailRedirectTo = `${globalThis.location.origin}/auth/confirm?next=${encodeURIComponent(nextPath)}`;
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
         options: {
+          emailRedirectTo,
           data: {
             display_name: displayName,
             first_name: payload.firstName,
@@ -159,7 +173,8 @@ export function CreateAccountForm({
         return;
       }
 
-      router.replace(`/auth?created=1&next=${encodeURIComponent(nextPath)}`);
+      signInParams.set("created", "1");
+      router.replace(`/auth?${signInParams.toString()}`);
       router.refresh();
     });
   }

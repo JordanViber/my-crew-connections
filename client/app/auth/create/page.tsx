@@ -15,7 +15,7 @@ function isLocalSupabaseHost(url: string) {
 export default async function CreateAccountPage({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ next?: string; inviteEmail?: string }>;
+  searchParams: Promise<{ next?: string; invite?: string; inviteEmail?: string; inviteName?: string }>;
 }>) {
   const params = await searchParams;
   const nextPath = params.next ?? "/dashboard";
@@ -30,7 +30,12 @@ export default async function CreateAccountPage({
 
   const stackStatus = await getLocalSupabaseStatus();
   const preferLocalHelper = isLocalSupabaseHost(env.supabaseUrl);
-  const signInHref = `/auth?next=${encodeURIComponent(nextPath)}`;
+  const signInHref = `/auth?${new URLSearchParams({
+    next: nextPath,
+    ...(params.invite ? { invite: params.invite } : {}),
+    ...(params.inviteEmail ? { inviteEmail: params.inviteEmail } : {}),
+    ...(params.inviteName ? { inviteName: params.inviteName } : {}),
+  }).toString()}`;
 
   return (
     <main className="shell flex items-center justify-center px-3 py-3 md:px-8 md:py-6">
@@ -86,7 +91,15 @@ export default async function CreateAccountPage({
               <span className="h-px flex-1 bg-border/80" />
             </div>
 
-            <CreateAccountForm nextPath={nextPath} stackAvailable={stackStatus.available} preferLocalHelper={preferLocalHelper} initialEmail={params.inviteEmail ?? ""} />
+            <CreateAccountForm
+              nextPath={nextPath}
+              stackAvailable={stackStatus.available}
+              preferLocalHelper={preferLocalHelper}
+              initialEmail={params.inviteEmail ?? ""}
+              inviteToken={params.invite}
+              inviteEmail={params.inviteEmail}
+              inviteName={params.inviteName}
+            />
           </div>
         </section>
       </div>

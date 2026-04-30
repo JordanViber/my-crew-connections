@@ -28,7 +28,9 @@ export default async function AuthPage({
   const stackStatus = await getLocalSupabaseStatus();
   const createAccountHref = `/auth/create?${new URLSearchParams({
     next: nextPath,
+    ...(params.invite ? { invite: params.invite } : {}),
     ...(params.inviteEmail ? { inviteEmail: params.inviteEmail } : {}),
+    ...(params.inviteName ? { inviteName: params.inviteName } : {}),
   }).toString()}`;
 
   return (
@@ -106,8 +108,8 @@ export default async function AuthPage({
             {params.created ? (
               <div className="mt-3">
                 <FeedbackBanner
-                  title="Account created"
-                  body="Your account is ready. Sign in below with the email and password you just saved."
+                  title="Check your email"
+                  body="If email confirmation is enabled for this environment, finish account setup from the message we just sent. After that, you can continue back into your invite or sign in below."
                 />
               </div>
             ) : null}
