@@ -39,10 +39,9 @@ export default async function Home({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const primaryHref = user ? "/dashboard" : "/auth/create";
-  const primaryLabel = user ? "Open your dashboard" : "Create account";
-  const secondaryHref = user ? "/connections" : "/auth";
-  const secondaryLabel = user ? "People" : "Sign in";
+  if (user) {
+    redirect("/dashboard");
+  }
 
   return (
     <main className="shell px-3 py-3 md:px-6 md:py-6">
@@ -69,15 +68,15 @@ export default async function Home({
             <div className="grid gap-2 sm:flex sm:flex-wrap">
               <Link
                 className="button-primary"
-                href={primaryHref}
+                href="/auth/create"
               >
-                {primaryLabel}
+                Create account
               </Link>
               <Link
                 className="button-secondary"
-                href={secondaryHref}
+                href="/auth"
               >
-                {secondaryLabel}
+                Sign in
               </Link>
             </div>
           </div>

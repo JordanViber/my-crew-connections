@@ -63,6 +63,19 @@ test("mobile create-account and create-person flow works end to end", async ({ p
   await expect(page.getByRole("heading", { name: "Not linked yet" })).toBeVisible();
 });
 
+test("signed-in users visiting root are redirected to the dashboard", async ({ page }) => {
+  const redirectEmail = `root-redirect-${Date.now()}@example.com`;
+
+  await page.goto("/auth");
+  await prepareLocalAccount(page, redirectEmail, password);
+  await signInWithPassword(page, redirectEmail, password);
+  await page.waitForURL("**/dashboard");
+
+  await page.goto("/");
+  await page.waitForURL("**/dashboard");
+  await expect(page.getByRole("heading", { name: /your relationship dashboard/i })).toBeVisible();
+});
+
 test("logging a touchpoint updates the connection timeline", async ({ page }) => {
   await page.setViewportSize(iphone15Viewport);
   const touchpointEmail = `touchpoint-${Date.now()}@example.com`;

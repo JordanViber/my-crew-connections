@@ -215,6 +215,28 @@ function assertNoError(error: { message: string } | null, label: string) {
   }
 }
 
+function getFallbackCadenceRule(targetType: "connection" | "group", targetId: string): CadenceRuleRow {
+  if (targetType === "group") {
+    return {
+      id: `fallback-group:${targetId}`,
+      target_type: "group",
+      target_id: targetId,
+      cadence_value: 1,
+      cadence_unit: "months",
+      reminder_lead_days: 7,
+    };
+  }
+
+  return {
+    id: `fallback-connection:${targetId}`,
+    target_type: "connection",
+    target_id: targetId,
+    cadence_value: 3,
+    cadence_unit: "weeks",
+    reminder_lead_days: 5,
+  };
+}
+
 function latestTouchpointMap(touchpoints: TouchpointRow[]) {
   const latest = new Map<string, TouchpointRow>();
 
@@ -571,11 +593,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
 
   const connectionSummaries: RelationshipSummary[] = connections.map((connection) => {
     const key = `connection:${connection.id}`;
-    const cadenceRule = cadenceMap.get(key);
-
-    if (!cadenceRule) {
-      throw new Error(`Missing cadence rule for connection ${connection.display_name}`);
-    }
+    const cadenceRule = cadenceMap.get(key) ?? getFallbackCadenceRule("connection", connection.id);
 
     const latestTouchpoint = latestTouchpoints.get(key);
     const pendingInvite = inviteMap.get(connection.id);
@@ -655,11 +673,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
 
   const groupSummaries: RelationshipSummary[] = groups.map((group) => {
     const key = `group:${group.id}`;
-    const cadenceRule = cadenceMap.get(key);
-
-    if (!cadenceRule) {
-      throw new Error(`Missing cadence rule for group ${group.name}`);
-    }
+    const cadenceRule = cadenceMap.get(key) ?? getFallbackCadenceRule("group", group.id);
 
     const latestTouchpoint = latestTouchpoints.get(key);
     const health = getRelationshipHealth({
