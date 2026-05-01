@@ -557,7 +557,6 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     };
   });
 
-  const connectionSummaryMap = new Map(connectionSummaries.map((connection) => [connection.id, connection]));
   const groupConnectionSummaryMap = new Map(
     groupConnections.map((connection) => {
       const pendingInvite = groupConnectionInviteMap.get(connection.id);

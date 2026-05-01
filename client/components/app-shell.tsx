@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AccountMenu } from "@/components/account-menu";
 import { DesktopNav } from "@/components/desktop-nav";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
@@ -15,6 +16,8 @@ export function AppShell({
   email,
   firstName,
   displayName,
+  backHref,
+  backLabel,
   children,
 }: Readonly<{
   title: string;
@@ -22,6 +25,8 @@ export function AppShell({
   email: string;
   firstName?: string | null;
   displayName?: string | null;
+  backHref?: string;
+  backLabel?: string;
   children: React.ReactNode;
 }>) {
   return (
@@ -42,6 +47,14 @@ export function AppShell({
 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
+                {backHref ? (
+                  <Link
+                    className="mb-2 inline-flex text-sm font-semibold text-foreground/64 transition hover:text-foreground"
+                    href={backHref}
+                  >
+                    {backLabel ?? "Back"}
+                  </Link>
+                ) : null}
                 <h1 className="text-[1.9rem] leading-[1.04] font-semibold tracking-tight text-foreground md:text-[2.35rem]">{title}</h1>
                 <p className="mt-1.5 max-w-2xl text-[0.92rem] leading-6 text-foreground/68 md:text-[0.95rem]">{subtitle}</p>
               </div>

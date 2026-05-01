@@ -5,8 +5,7 @@ import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ConnectionLinkSection } from "@/components/connection-link-section";
 import { EditableDetailsForm } from "@/components/editable-details-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
-import { HangoutList } from "@/components/hangout-list";
-import { HangoutPlanForm } from "@/components/hangout-plan-form";
+import { HangoutPlansPanel } from "@/components/hangout-plans-panel";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
@@ -135,6 +134,8 @@ export default async function ConnectionDetailPage({
       email={user.email ?? "Signed in"}
       firstName={getUserFirstName(user)}
       displayName={getUserDisplayName(user)}
+      backHref="/connections"
+      backLabel="Back to people"
     >
       {feedback ? (
         <div className="mb-4">
@@ -161,6 +162,15 @@ export default async function ConnectionDetailPage({
                     editLabel="Edit connection"
                     saveLabel="Save connection"
                     helperText="Keep this light. A few cues are enough to make the next reconnect easier."
+                    summary={[
+                      { label: "Name", value: connection.title },
+                      { label: "Tags", value: connection.tags.length ? connection.tags.join(", ") : undefined },
+                      { label: "Contact email", value: connection.contactEmail },
+                      { label: "Cadence", value: `Every ${connection.cadenceValue} ${connection.cadenceUnit}` },
+                      { label: "Reminder lead", value: `${connection.reminderLeadDays} days before` },
+                      { label: "Preferred activities", value: connection.preferredActivities },
+                      { label: "Private notes", value: connection.notes },
+                    ]}
                   >
                     <input type="hidden" name="connectionId" value={connection.id} />
                     <input type="hidden" name="redirectTo" value={`/connections/${connection.id}`} />
@@ -310,33 +320,17 @@ export default async function ConnectionDetailPage({
             id: "plans",
             label: "Plans",
             content: (
-              <div className="grid gap-4">
-                <SectionCard
-                  title="Plan the next hangout"
-                  description="Saved plans now stay in the product instead of disappearing after a one-time export."
-                >
-                  <HangoutPlanForm
-                    action={createHangoutAction}
-                    subjectLabel={connection.title}
-                    targetType="connection"
-                    targetId={connection.id}
-                    redirectTo={`/connections/${connection.id}`}
-                  />
-                </SectionCard>
-
-                <SectionCard
-                  title="Saved plans"
-                  description="Keep upcoming hangouts visible until they become reality, get canceled, or are exported."
-                >
-                  <HangoutList
-                    hangouts={plannedHangouts}
-                    emptyCopy="No saved plans yet. The next good invite can live here before it becomes a touchpoint."
-                    completeAction={completeHangoutAction}
-                    cancelAction={cancelHangoutAction}
-                    redirectTo={`/connections/${connection.id}`}
-                  />
-                </SectionCard>
-              </div>
+              <HangoutPlansPanel
+                hangouts={plannedHangouts}
+                emptyCopy="No saved plans yet. The next good invite can live here before it becomes a touchpoint."
+                completeAction={completeHangoutAction}
+                cancelAction={cancelHangoutAction}
+                createAction={createHangoutAction}
+                subjectLabel={connection.title}
+                targetType="connection"
+                targetId={connection.id}
+                redirectTo={`/connections/${connection.id}`}
+              />
             ),
           },
           {
@@ -384,6 +378,15 @@ export default async function ConnectionDetailPage({
             editLabel="Edit connection"
             saveLabel="Save connection"
             helperText="Keep this light. A few cues are enough to make the next reconnect easier."
+            summary={[
+              { label: "Name", value: connection.title },
+              { label: "Tags", value: connection.tags.length ? connection.tags.join(", ") : undefined },
+              { label: "Contact email", value: connection.contactEmail },
+              { label: "Cadence", value: `Every ${connection.cadenceValue} ${connection.cadenceUnit}` },
+              { label: "Reminder lead", value: `${connection.reminderLeadDays} days before` },
+              { label: "Preferred activities", value: connection.preferredActivities },
+              { label: "Private notes", value: connection.notes },
+            ]}
           >
             <input type="hidden" name="connectionId" value={connection.id} />
             <input type="hidden" name="redirectTo" value={`/connections/${connection.id}`} />
@@ -397,6 +400,10 @@ export default async function ConnectionDetailPage({
                 <input className="field-input" name="tags" type="text" defaultValue={connection.tags.join(", ")} />
               </label>
             </div>
+            <label className="grid gap-2">
+              <span className="field-label">Contact email</span>
+              <input className="field-input" name="contactEmail" type="email" defaultValue={connection.contactEmail ?? ""} placeholder="friend@example.com" />
+            </label>
             <div className="grid gap-4 md:grid-cols-3">
               <label className="grid gap-2">
                 <span className="field-label">Cadence value</span>
@@ -518,31 +525,17 @@ export default async function ConnectionDetailPage({
             />
           </SectionCard>
 
-          <SectionCard
-            title="Plan the next hangout"
-            description="Saved plans now stay in the product instead of disappearing after a one-time export."
-          >
-            <HangoutPlanForm
-              action={createHangoutAction}
-              subjectLabel={connection.title}
-              targetType="connection"
-              targetId={connection.id}
-              redirectTo={`/connections/${connection.id}`}
-            />
-          </SectionCard>
-
-          <SectionCard
-            title="Saved plans"
-            description="Keep upcoming hangouts visible until they become reality, get canceled, or are exported."
-          >
-            <HangoutList
-              hangouts={plannedHangouts}
-              emptyCopy="No saved plans yet. The next good invite can live here before it becomes a touchpoint."
-              completeAction={completeHangoutAction}
-              cancelAction={cancelHangoutAction}
-              redirectTo={`/connections/${connection.id}`}
-            />
-          </SectionCard>
+          <HangoutPlansPanel
+            hangouts={plannedHangouts}
+            emptyCopy="No saved plans yet. The next good invite can live here before it becomes a touchpoint."
+            completeAction={completeHangoutAction}
+            cancelAction={cancelHangoutAction}
+            createAction={createHangoutAction}
+            subjectLabel={connection.title}
+            targetType="connection"
+            targetId={connection.id}
+            redirectTo={`/connections/${connection.id}`}
+          />
 
           <SectionCard title="Recent timeline" description={`Last touchpoint: ${connection.lastTouchpointLabel}`}>
             <div className="grid gap-3">

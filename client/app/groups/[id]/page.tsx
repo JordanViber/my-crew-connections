@@ -5,8 +5,7 @@ import { ConnectionLinkBadge } from "@/components/connection-link-badge";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { EditableDetailsForm } from "@/components/editable-details-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
-import { HangoutList } from "@/components/hangout-list";
-import { HangoutPlanForm } from "@/components/hangout-plan-form";
+import { HangoutPlansPanel } from "@/components/hangout-plans-panel";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
@@ -43,7 +42,7 @@ function getGroupMembershipSummary(acceptedCount: number, pendingCount: number) 
     summaryParts.push(`${pendingCount} pending`);
   }
 
-  return summaryParts.join(" • ");
+  return summaryParts.join(" - ");
 }
 
 function AcceptedGroupMembersList({
@@ -64,7 +63,13 @@ function AcceptedGroupMembersList({
           <p className="text-base font-semibold text-foreground">{member.title}</p>
           <p className="mt-1 text-sm text-foreground/65">{member.subtitle}</p>
         </div>
-        <ConnectionLinkBadge linkState={member.linkState} pendingInviteEmail={member.pendingInviteEmail} />
+        <ConnectionLinkBadge
+          linkState={member.linkState}
+          pendingInviteEmail={member.pendingInviteEmail}
+          linkedLabel="App account connected"
+          pendingLabel="Person invite pending"
+          unlinkedLabel="Local person"
+        />
       </div>
       <div className="mt-3">
         <Link className="button-secondary inline-flex" href={`/connections/${member.id}`}>
@@ -173,14 +178,22 @@ export default async function GroupDetailPage({
   const groupSettingsDescription = canManageGroup
     ? group.subtitle
     : `${group.subtitle}${group.ownerName ? ` Organized by ${group.ownerName}.` : ""}`;
+  const groupSettingsSummary = [
+    { label: "Group name", value: group.title },
+    { label: "Description", value: group.notes },
+    { label: "Cadence", value: `Every ${group.cadenceValue} ${group.cadenceUnit}` },
+    { label: "Reminder lead", value: `${group.reminderLeadDays} days before` },
+  ];
 
   return (
     <AppShell
       title={group.title}
-      subtitle="Keep the group&apos;s cadence, members, plans, and shared history in one calm place."
+      subtitle="Keep the group's cadence, members, plans, and shared history in one calm place."
       email={user.email ?? "Signed in"}
       firstName={getUserFirstName(user)}
       displayName={getUserDisplayName(user)}
+      backHref="/groups"
+      backLabel="Back to groups"
     >
       {feedback ? (
         <div className="mb-4">
@@ -196,6 +209,23 @@ export default async function GroupDetailPage({
             label: "Manage",
             content: (
               <div className="grid gap-3">
+                <SectionCard title="Members" description={getGroupMembershipSummary(acceptedMemberCount, group.pendingMemberCount)}>
+                  <div className="grid gap-3">
+                    <AcceptedGroupMemberNamesList
+                      members={group.memberNames}
+                      emptyCopy="No accepted members are attached yet."
+                    />
+                    {pendingMemberSummary.length > 0 ? (
+                      <div className="rounded-lg border border-[#ebc8a8] bg-[#fff0df] p-3.5">
+                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#8b5b2b]">Pending group invites</p>
+                        <p className="mt-1.5 text-sm leading-6 text-foreground/68">
+                          {pendingMemberSummary.map((member) => member.name).join(", ")}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                </SectionCard>
+
                 <SectionCard title="Group settings" description={groupSettingsDescription}>
                   <div className="mb-5 flex items-center justify-between gap-4">
                     <StatusPill health={group.health} />
@@ -208,6 +238,7 @@ export default async function GroupDetailPage({
                         editLabel="Edit group"
                         saveLabel="Save group"
                         helperText="Keep the basics light so updating this group never feels like work."
+                        summary={groupSettingsSummary}
                       >
                         <input type="hidden" name="groupId" value={group.id} />
                         <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
@@ -256,7 +287,7 @@ export default async function GroupDetailPage({
                   )}
                 </SectionCard>
 
-                <SectionCard title="Accepted members" description="These people are already in the group. New invite-backed people stay pending until they respond.">
+                <SectionCard title="Manage members" description="Accepted members are active in the group. Pending members have a group invite waiting for their account.">
                   <div className="mb-5 grid gap-3">
                     <p className="text-sm leading-6 text-foreground/68">
                       {getGroupMembershipSummary(acceptedMemberCount, group.pendingMemberCount)}
@@ -281,6 +312,9 @@ export default async function GroupDetailPage({
                     <form action={addGroupMembersAction} className="grid gap-3">
                       <input type="hidden" name="groupId" value={group.id} />
                       <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
+                      <p className="text-sm leading-6 text-foreground/68">
+                        Connected app users join immediately. People with a pending person invite can be selected once here, then stay pending in this group until they accept.
+                      </p>
                       <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
                         <legend className="field-label px-2">Add existing connections</legend>
                         {availableConnections.length === 0 ? (
@@ -290,7 +324,13 @@ export default async function GroupDetailPage({
                             <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
                               <input className="h-4 w-4" type="checkbox" name="connectionIds" value={connection.id} />
                               <span>{connection.title}</span>
-                              <ConnectionLinkBadge linkState={connection.linkState} pendingInviteEmail={connection.pendingInviteEmail} />
+                              <ConnectionLinkBadge
+                                linkState={connection.linkState}
+                                pendingInviteEmail={connection.pendingInviteEmail}
+                                linkedLabel="App account connected"
+                                pendingLabel="Person invite pending"
+                                unlinkedLabel="Local person"
+                              />
                             </label>
                           ))
                         )}
@@ -394,33 +434,17 @@ export default async function GroupDetailPage({
             id: "plans",
             label: "Plans",
             content: (
-              <div className="grid gap-4">
-                <SectionCard
-                  title="Plan the next hangout"
-                  description="Saved group plans now live in the app until they are completed, canceled, or exported."
-                >
-                  <HangoutPlanForm
-                    action={createHangoutAction}
-                    subjectLabel={group.title}
-                    targetType="group"
-                    targetId={group.id}
-                    redirectTo={`/groups/${group.id}`}
-                  />
-                </SectionCard>
-
-                <SectionCard
-                  title="Saved plans"
-                  description="Keep upcoming crew plans visible without needing a heavier collaboration system yet."
-                >
-                  <HangoutList
-                    hangouts={plannedHangouts}
-                    emptyCopy="No saved plans yet. The next dinner, hike, or game night can live here before it becomes history."
-                    completeAction={completeHangoutAction}
-                    cancelAction={cancelHangoutAction}
-                    redirectTo={`/groups/${group.id}`}
-                  />
-                </SectionCard>
-              </div>
+              <HangoutPlansPanel
+                hangouts={plannedHangouts}
+                emptyCopy="No saved plans yet. The next dinner, hike, or game night can live here before it becomes history."
+                completeAction={completeHangoutAction}
+                cancelAction={cancelHangoutAction}
+                createAction={createHangoutAction}
+                subjectLabel={group.title}
+                targetType="group"
+                targetId={group.id}
+                redirectTo={`/groups/${group.id}`}
+              />
             ),
           },
           {
@@ -458,6 +482,23 @@ export default async function GroupDetailPage({
 
       <div className="hidden gap-5 xl:grid-cols-[0.95fr_1.05fr] md:grid">
         <div className="grid gap-5">
+          <SectionCard title="Members" description={getGroupMembershipSummary(acceptedMemberCount, group.pendingMemberCount)}>
+            <div className="grid gap-3">
+              <AcceptedGroupMemberNamesList
+                members={group.memberNames}
+                emptyCopy="No accepted members are attached yet."
+              />
+              {pendingMemberSummary.length > 0 ? (
+                <div className="rounded-lg border border-[#ebc8a8] bg-[#fff0df] p-3.5">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#8b5b2b]">Pending group invites</p>
+                  <p className="mt-1.5 text-sm leading-6 text-foreground/68">
+                    {pendingMemberSummary.map((member) => member.name).join(", ")}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </SectionCard>
+
           <SectionCard title="Group settings" description={groupSettingsDescription}>
             <div className="mb-5 flex items-center justify-between gap-4">
               <StatusPill health={group.health} />
@@ -470,6 +511,7 @@ export default async function GroupDetailPage({
                   editLabel="Edit group"
                   saveLabel="Save group"
                   helperText="Keep the basics light so updating this group never feels like work."
+                  summary={groupSettingsSummary}
                 >
                   <input type="hidden" name="groupId" value={group.id} />
                   <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
@@ -517,7 +559,7 @@ export default async function GroupDetailPage({
               </div>
             )}
           </SectionCard>
-          <SectionCard title="Accepted members" description="These people are already in the group. New invite-backed people stay pending until they respond.">
+          <SectionCard title="Manage members" description="Accepted members are active in the group. Pending members have a group invite waiting for their account.">
             <div className="mb-5 grid gap-3">
               <p className="text-sm leading-6 text-foreground/68">
                 {getGroupMembershipSummary(acceptedMemberCount, group.pendingMemberCount)}
@@ -542,6 +584,9 @@ export default async function GroupDetailPage({
               <form action={addGroupMembersAction} className="grid gap-3">
                 <input type="hidden" name="groupId" value={group.id} />
                 <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
+                <p className="text-sm leading-6 text-foreground/68">
+                  Connected app users join immediately. People with a pending person invite can be selected once here, then stay pending in this group until they accept.
+                </p>
                 <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
                   <legend className="field-label px-2">Add existing connections</legend>
                   {availableConnections.length === 0 ? (
@@ -551,7 +596,13 @@ export default async function GroupDetailPage({
                       <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
                         <input className="h-4 w-4" type="checkbox" name="connectionIds" value={connection.id} />
                         <span>{connection.title}</span>
-                        <ConnectionLinkBadge linkState={connection.linkState} pendingInviteEmail={connection.pendingInviteEmail} />
+                        <ConnectionLinkBadge
+                          linkState={connection.linkState}
+                          pendingInviteEmail={connection.pendingInviteEmail}
+                          linkedLabel="App account connected"
+                          pendingLabel="Person invite pending"
+                          unlinkedLabel="Local person"
+                        />
                       </label>
                     ))
                   )}
@@ -646,31 +697,17 @@ export default async function GroupDetailPage({
             )}
           </SectionCard>
 
-          <SectionCard
-            title="Plan the next hangout"
-            description="Saved group plans now live in the app until they are completed, canceled, or exported."
-          >
-            <HangoutPlanForm
-              action={createHangoutAction}
-              subjectLabel={group.title}
-              targetType="group"
-              targetId={group.id}
-              redirectTo={`/groups/${group.id}`}
-            />
-          </SectionCard>
-
-          <SectionCard
-            title="Saved plans"
-            description="Keep upcoming crew plans visible in one place until they happen, get canceled, or move to the calendar."
-          >
-            <HangoutList
-              hangouts={plannedHangouts}
-              emptyCopy="No saved plans yet. The next dinner, hike, or game night can live here before it becomes history."
-              completeAction={completeHangoutAction}
-              cancelAction={cancelHangoutAction}
-              redirectTo={`/groups/${group.id}`}
-            />
-          </SectionCard>
+          <HangoutPlansPanel
+            hangouts={plannedHangouts}
+            emptyCopy="No saved plans yet. The next dinner, hike, or game night can live here before it becomes history."
+            completeAction={completeHangoutAction}
+            cancelAction={cancelHangoutAction}
+            createAction={createHangoutAction}
+            subjectLabel={group.title}
+            targetType="group"
+            targetId={group.id}
+            redirectTo={`/groups/${group.id}`}
+          />
 
           <SectionCard title="Recent timeline" description={`Last touchpoint: ${group.lastTouchpointLabel}`}>
             <div className="grid gap-3">

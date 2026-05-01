@@ -41,11 +41,19 @@ export function GroupMemberPicker({
   );
 
   function getJoinModeLabel(connection: RelationshipSummary) {
-    if (connection.contactEmail || connection.linkedUserId || connection.pendingInviteEmail) {
-      return "Will be invited to accept";
+    if (connection.linkedUserId) {
+      return "App account connected; joins immediately.";
     }
 
-    return "Will be added immediately";
+    if (connection.pendingInviteEmail) {
+      return "Person invite pending; group invite waits for acceptance.";
+    }
+
+    if (connection.contactEmail) {
+      return "Email on file; group invite can be sent.";
+    }
+
+    return "Local person; joins immediately.";
   }
 
   return (
@@ -84,7 +92,13 @@ export function GroupMemberPicker({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-foreground">{connection.title}</span>
-                      <ConnectionLinkBadge linkState={connection.linkState} pendingInviteEmail={connection.pendingInviteEmail} />
+                      <ConnectionLinkBadge
+                        linkState={connection.linkState}
+                        pendingInviteEmail={connection.pendingInviteEmail}
+                        linkedLabel="App account connected"
+                        pendingLabel="Person invite pending"
+                        unlinkedLabel="Local person"
+                      />
                     </div>
                     <p className="mt-1 text-sm text-foreground/65">{connection.cadenceLabel}</p>
                     {connection.subtitle ? <p className="mt-1 text-sm text-foreground/62">{connection.subtitle}</p> : null}
