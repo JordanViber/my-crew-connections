@@ -8,6 +8,12 @@ export type PushPayload = {
   tag?: string;
 };
 
+type PushSendResult = {
+  ok: boolean;
+  statusCode: number;
+  errorMessage?: string;
+};
+
 let configured = false;
 
 function configureWebPush() {
@@ -28,9 +34,9 @@ function configureWebPush() {
   return true;
 }
 
-export async function sendPushNotification(subscription: PushSubscription, payload: PushPayload) {
+export async function sendPushNotification(subscription: PushSubscription, payload: PushPayload): Promise<PushSendResult> {
   if (!configureWebPush()) {
-    return { ok: false, statusCode: 500 };
+    return { ok: false, statusCode: 500, errorMessage: "Missing VAPID configuration." };
   }
 
   try {
@@ -40,8 +46,13 @@ export async function sendPushNotification(subscription: PushSubscription, paylo
     const statusCode = typeof error === "object" && error && "statusCode" in error && typeof error.statusCode === "number"
       ? error.statusCode
       : 500;
+    const errorMessage = typeof error === "object" && error && "body" in error && typeof error.body === "string"
+      ? error.body
+      : error instanceof Error
+        ? error.message
+        : "Push delivery failed.";
 
-    return { ok: false, statusCode };
+    return { ok: false, statusCode, errorMessage };
   }
 }
 
@@ -81,11 +92,25 @@ export async function sendPushToUser(
 
   await Promise.all(data.map(async (subscription) => {
     const result = await sendPushNotification(toSubscription(subscription), payload);
+    const now = new Date().toISOString();
 
     if (result.ok) {
       sent += 1;
+      await supabase.from("push_subscriptions").update({
+        last_delivery_at: now,
+        last_delivery_source: payload.tag ?? "push-send",
+        last_delivery_status: "sent",
+        last_delivery_error: null,
+      }).eq("id", subscription.id);
       return;
     }
+
+    await supabase.from("push_subscriptions").update({
+      last_delivery_at: now,
+      last_delivery_source: payload.tag ?? "push-send",
+      last_delivery_status: `failed:${result.statusCode}`,
+      last_delivery_error: result.errorMessage ?? null,
+    }).eq("id", subscription.id);
 
     if (result.statusCode === 404 || result.statusCode === 410) {
       await supabase.from("push_subscriptions").update({ enabled: false }).eq("id", subscription.id);

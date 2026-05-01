@@ -36,7 +36,7 @@ export async function POST() {
   const row = (data?.[0] ?? null) as PushSubscriptionRow | null;
 
   if (!row) {
-    return NextResponse.json({ error: "No subscription found" }, { status: 404 });
+    return NextResponse.json({ error: "No active push subscription found yet." }, { status: 404 });
   }
 
   const result = await sendPushNotification(
@@ -55,9 +55,26 @@ export async function POST() {
     },
   );
 
+  const now = new Date().toISOString();
+  const update = {
+    last_delivery_at: now,
+    last_delivery_source: "test",
+    last_delivery_status: result.ok ? "sent" : `failed:${result.statusCode}`,
+    last_delivery_error: result.errorMessage ?? null,
+  };
+
+  await supabase.from("push_subscriptions").update(update).eq("id", row.id);
+
   if (!result.ok && (result.statusCode === 404 || result.statusCode === 410)) {
     await supabase.from("push_subscriptions").update({ enabled: false }).eq("id", row.id);
   }
 
-  return NextResponse.json({ ok: result.ok }, { status: result.ok ? 200 : 500 });
+  return NextResponse.json(
+    {
+      ok: result.ok,
+      message: result.ok ? "Test notification sent." : (result.errorMessage ?? "Push delivery failed."),
+      statusCode: result.statusCode,
+    },
+    { status: result.ok ? 200 : 500 },
+  );
 }

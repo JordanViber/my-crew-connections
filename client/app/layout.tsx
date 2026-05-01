@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Manrope } from "next/font/google";
 import { ThemeBootstrap } from "@/components/theme-bootstrap";
 import "./globals.css";
@@ -15,7 +15,21 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: "My Crew Connections",
+  applicationName: "My Crew Connections",
   description: "A warm relationship app for keeping up with the people and groups that matter most.",
+  icons: {
+    icon: "/icon",
+    apple: "/apple-icon",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "My Crew Connections",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#d1603d",
 };
 
 export default function RootLayout({

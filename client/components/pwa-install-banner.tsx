@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { getPushEnvironment } from "@/lib/pwa-client";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -12,17 +13,17 @@ const installedStorageKey = "mcc-pwa-installed";
 const dismissWindowMs = 1000 * 60 * 60 * 24 * 14;
 
 function isStandaloneDisplay() {
-  return window.matchMedia("(display-mode: standalone)").matches
-    || ("standalone" in window.navigator && Boolean(window.navigator.standalone));
+  return globalThis.matchMedia("(display-mode: standalone)").matches
+    || ("standalone" in globalThis.navigator && Boolean(globalThis.navigator.standalone));
 }
 
 function wasRecentlyDismissed() {
-  const dismissedAt = Number(window.localStorage.getItem(dismissedStorageKey) ?? "0");
+  const dismissedAt = Number(globalThis.localStorage.getItem(dismissedStorageKey) ?? "0");
   return Boolean(dismissedAt && Date.now() - dismissedAt < dismissWindowMs);
 }
 
 function isProbablyIosSafari() {
-  const userAgent = window.navigator.userAgent;
+  const userAgent = globalThis.navigator.userAgent;
   return /iphone|ipad|ipod/i.test(userAgent) && /safari/i.test(userAgent) && !/crios|fxios|edgios/i.test(userAgent);
 }
 
@@ -31,10 +32,12 @@ export function PwaInstallBanner() {
   const [visible, setVisible] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [iosSafari, setIosSafari] = useState(false);
+  const [androidDevice, setAndroidDevice] = useState(false);
   const [showIosSteps, setShowIosSteps] = useState(false);
+  const [showAndroidSteps, setShowAndroidSteps] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (globalThis.window === undefined) {
       return undefined;
     }
 
@@ -42,14 +45,16 @@ export function PwaInstallBanner() {
       return undefined;
     }
 
-    const storedInstalled = window.localStorage.getItem(installedStorageKey) === "1";
+    const storedInstalled = globalThis.localStorage.getItem(installedStorageKey) === "1";
     const isIos = isProbablyIosSafari();
+    const environment = getPushEnvironment({ installPromptAvailable: false });
 
-    window.setTimeout(() => {
+    globalThis.setTimeout(() => {
       setInstalled(storedInstalled);
       setIosSafari(isIos);
+      setAndroidDevice(environment.deviceFamily === "android");
       setShowIosSteps(isIos && !storedInstalled);
-      setVisible(storedInstalled || isIos);
+      setVisible(storedInstalled || isIos || environment.deviceFamily === "android");
     }, 0);
 
     const handleBeforeInstallPrompt = (event: Event) => {
@@ -59,17 +64,17 @@ export function PwaInstallBanner() {
     };
 
     const handleInstalled = () => {
-      window.localStorage.setItem(installedStorageKey, "1");
+      globalThis.localStorage.setItem(installedStorageKey, "1");
       setInstalled(true);
       setVisible(false);
     };
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("appinstalled", handleInstalled);
+    globalThis.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    globalThis.addEventListener("appinstalled", handleInstalled);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-      window.removeEventListener("appinstalled", handleInstalled);
+      globalThis.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      globalThis.removeEventListener("appinstalled", handleInstalled);
     };
   }, []);
 
@@ -87,7 +92,7 @@ export function PwaInstallBanner() {
     if (installed) {
       return {
         title: "Open the app",
-        body: "My Crew Connections is installed on this device.",
+        body: "My Crew Connections is installed on this device. Open it from your Home Screen or app drawer for the best notification experience.",
         action: "Open",
       };
     }
@@ -100,12 +105,20 @@ export function PwaInstallBanner() {
       };
     }
 
+    if (androidDevice && !installPrompt) {
+      return {
+        title: "Install the app",
+        body: "Android push works in supported browsers, but installing the app gives the most reliable full-screen and notification experience.",
+        action: showAndroidSteps ? "Hide steps" : "Show me how",
+      };
+    }
+
     return {
       title: "Install the app",
-      body: "Get faster access, full-screen mode, and notification support on this device.",
+      body: "Get faster access, full-screen mode, and the best notification support on this device.",
       action: "Install",
     };
-  }, [installed, iosSafari, showIosSteps]);
+  }, [androidDevice, installPrompt, installed, iosSafari, showAndroidSteps, showIosSteps]);
 
   if (!visible) {
     return null;
@@ -113,12 +126,17 @@ export function PwaInstallBanner() {
 
   async function handlePrimaryAction() {
     if (installed) {
-      window.location.assign("/dashboard");
+      globalThis.location.assign("/dashboard");
       return;
     }
 
     if (iosSafari) {
       setShowIosSteps((current) => !current);
+      return;
+    }
+
+    if (androidDevice && !installPrompt) {
+      setShowAndroidSteps((current) => !current);
       return;
     }
 
@@ -130,7 +148,7 @@ export function PwaInstallBanner() {
     const choice = await installPrompt.userChoice;
 
     if (choice.outcome === "accepted") {
-      window.localStorage.setItem(installedStorageKey, "1");
+      globalThis.localStorage.setItem(installedStorageKey, "1");
       setVisible(false);
     }
 
@@ -138,12 +156,12 @@ export function PwaInstallBanner() {
   }
 
   function dismiss() {
-    window.localStorage.setItem(dismissedStorageKey, String(Date.now()));
+    globalThis.localStorage.setItem(dismissedStorageKey, String(Date.now()));
     setVisible(false);
   }
 
   return (
-    <div className="mx-auto mb-2 max-w-7xl rounded-lg border border-border bg-surface-strong px-3 py-2.5 shadow-[var(--shadow-tight)] md:mb-3">
+    <div className="mx-auto mb-2 max-w-7xl rounded-lg border border-border bg-surface-strong px-3 py-2.5 shadow-(--shadow-tight) md:mb-3">
       <div className="flex items-start gap-3">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent-strong">
           <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9" viewBox="0 0 24 24">
@@ -162,6 +180,13 @@ export function PwaInstallBanner() {
               <li>Tap the Share button in Safari.</li>
               <li>Scroll down and choose Add to Home Screen.</li>
               <li>Confirm Add to keep My Crew Connections on your Home Screen.</li>
+            </ol>
+          ) : null}
+          {androidDevice && showAndroidSteps ? (
+            <ol className="mt-2 grid gap-1.5 pl-5 text-sm leading-5 text-foreground/66">
+              <li>Open your browser menu.</li>
+              <li>Choose Install app or Add to Home screen.</li>
+              <li>Confirm Install, then open My Crew Connections from your app drawer or Home Screen.</li>
             </ol>
           ) : null}
           <div className="mt-2 flex flex-wrap gap-2">
