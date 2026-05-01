@@ -444,6 +444,48 @@ test("invite links can be started during creation and then claimed by a second u
   await expect(page.getByText("Connected").first()).toBeVisible();
 });
 
+test("invite without a sender label switches to the recipient account name after claim", async ({ page, browser }) => {
+  await page.setViewportSize(iphone15Viewport);
+  const ownerEmail = `owner-blank-label-${Date.now()}@example.com`;
+  const inviteeEmail = `invitee-blank-label-${Date.now()}@example.com`;
+
+  await page.goto("/auth");
+  await prepareLocalAccount(page, ownerEmail, password);
+  await signInWithPassword(page, ownerEmail, password);
+  await page.waitForURL("**/dashboard");
+
+  await page.goto("/connections?tab=create");
+  await page.locator('input[name="contactEmail"]:visible').fill(inviteeEmail);
+  await page.locator('input[name="sendInviteNow"]:visible').check();
+  await page.locator('input[name="cadenceValue"]:visible').fill("2");
+  await page.locator('input[name="reminderLeadDays"]:visible').fill("3");
+  await page.getByRole("button", { name: "Create connection" }).click();
+
+  await expect(page).toHaveURL(/\/connections\/.+feedback=connection-created/);
+  await expect(page.getByText(/uses their account name after they join/i)).toBeVisible();
+  const inviteUrl = await page.locator('input[readonly]:visible').inputValue();
+
+  const inviteeContext = await browser.newContext({ viewport: iphone15Viewport });
+  const inviteePage = await inviteeContext.newPage();
+  await inviteePage.goto(inviteUrl);
+  await inviteePage.waitForURL(/\/auth\?next=/);
+  await inviteePage.getByRole("link", { name: "Create account" }).click();
+  await inviteePage.waitForURL(/\/auth\/create\?/);
+  await inviteePage.locator('input[name="firstName"]:visible').fill("Taylor");
+  await inviteePage.locator('input[name="lastName"]:visible').fill("Tester");
+  await inviteePage.locator('input[name="email"]:visible').fill(inviteeEmail);
+  await inviteePage.locator('input[name="password"]:visible').fill(password);
+  await inviteePage.locator('input[name="confirmPassword"]:visible').fill(password);
+  await inviteePage.getByRole("button", { name: "Create account" }).click();
+  await inviteePage.waitForURL(/\/invite\//);
+  await inviteePage.getByRole("button", { name: "Claim connection" }).click();
+  await inviteePage.waitForURL(/\/invite\/.*claimed=1/);
+  await inviteeContext.close();
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Taylor Tester" })).toBeVisible();
+});
+
 test("existing account can claim an invite and receive the reciprocal connection", async ({ page, browser }) => {
   await page.setViewportSize(iphone15Viewport);
   const ownerEmail = `owner-existing-${Date.now()}@example.com`;

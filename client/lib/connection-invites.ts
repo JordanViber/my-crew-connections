@@ -1,5 +1,6 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { findAuthUserByEmail } from "@/lib/auth-users";
+import { getInviteConnectionLabel } from "@/lib/connection-display";
 import { normalizeInviteEmail } from "@/lib/invites";
 import {
   sendConnectionInviteEmail,
@@ -17,8 +18,10 @@ type IncomingInviteRow = {
   created_at: string;
   connections: {
     display_name: string;
+    prefers_profile_name: boolean;
   } | {
     display_name: string;
+    prefers_profile_name: boolean;
   }[] | null;
 };
 
@@ -49,7 +52,7 @@ export type IncomingConnectionInvite = {
 
 function getConnectionName(row: IncomingInviteRow) {
   const connection = Array.isArray(row.connections) ? row.connections[0] : row.connections;
-  return connection?.display_name ?? "Someone";
+  return connection ? getInviteConnectionLabel(connection.display_name, connection.prefers_profile_name) : "Someone";
 }
 
 function getProfileName(profile?: ProfileRow) {
@@ -94,7 +97,7 @@ export async function getIncomingConnectionInvites(
   const normalizedEmail = normalizeInviteEmail(email);
   const { data, error } = await supabase
     .from("connection_invites")
-    .select("id, token, invited_email, owner_user_id, connection_id, created_at, connections!inner(display_name)")
+    .select("id, token, invited_email, owner_user_id, connection_id, created_at, connections!inner(display_name, prefers_profile_name)")
     .eq("invited_email", normalizedEmail)
     .is("claimed_at", null)
     .is("revoked_at", null)

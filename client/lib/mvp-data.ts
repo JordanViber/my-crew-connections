@@ -18,6 +18,7 @@ import {
 export type ConnectionRow = {
   id: string;
   display_name: string;
+  prefers_profile_name: boolean;
   contact_email: string | null;
   linked_user_id: string | null;
   tags: string[] | null;
@@ -137,6 +138,7 @@ export type RelationshipSummary = {
   tags: string[];
   linkedUserId?: string;
   contactEmail?: string;
+  prefersProfileName?: boolean;
   linkState?: "linked" | "pending" | "unlinked";
   pendingInviteEmail?: string;
   preferredActivities?: string;
@@ -323,7 +325,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     supabase.from("profiles").select("id, display_name, first_name, last_name").eq("id", userId).maybeSingle(),
     supabase
       .from("connections")
-      .select("id, display_name, contact_email, linked_user_id, tags, notes, preferred_activities, created_at")
+      .select("id, display_name, prefers_profile_name, contact_email, linked_user_id, tags, notes, preferred_activities, created_at")
       .eq("owner_user_id", userId)
       .is("archived_at", null)
       .order("display_name"),
@@ -629,6 +631,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       tags: connection.tags ?? [],
       linkedUserId: connection.linked_user_id ?? undefined,
       contactEmail: connection.contact_email ?? undefined,
+      prefersProfileName: connection.prefers_profile_name,
       linkState,
       pendingInviteEmail: pendingInvite?.invited_email,
       preferredActivities: connection.preferred_activities ?? undefined,

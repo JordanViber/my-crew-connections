@@ -21,7 +21,7 @@ function InviteNotice({
     <div className="rounded-lg border border-accent/20 bg-accent-soft px-3.5 py-3 text-sm leading-6 text-foreground/78">
       <p className="font-semibold text-foreground">Invite waiting</p>
       <p className="mt-1">
-        You have an invite waiting for {inviteName ? <strong>{inviteName}</strong> : "someone"}.{" "}
+        You have a connection invite waiting{inviteName ? <> for <strong>{inviteName}</strong></> : ""}.{" "}
         {inviteEmail ? (
           <>
             Use <strong>{inviteEmail}</strong> to accept it.

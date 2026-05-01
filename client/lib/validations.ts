@@ -39,11 +39,19 @@ const baseCadenceSchema = z.object({
 });
 
 export const connectionSchema = baseCadenceSchema.extend({
-  displayName: z.string().trim().min(1).max(80),
+  displayName: z.string().trim().max(80).optional().default(""),
   contactEmail: z.email().optional().or(z.literal("")).default(""),
   tags: z.string().trim().max(180).optional().default(""),
   notes: z.string().trim().max(500).optional().default(""),
   preferredActivities: z.string().trim().max(200).optional().default(""),
+}).superRefine((value, context) => {
+  if (!value.contactEmail && !value.displayName) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Enter a name when no contact email is saved.",
+      path: ["displayName"],
+    });
+  }
 });
 
 export const updateConnectionSchema = connectionSchema.extend({

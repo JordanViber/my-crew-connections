@@ -42,7 +42,7 @@ export default async function InviteClaimPage({
   const supabase = createServerAdminSupabaseClient();
   const { data: invite, error } = await supabase
     .from("connection_invites")
-    .select("id, connection_id, invited_email, claimed_at, revoked_at, connections!inner(display_name, owner_user_id, linked_user_id)")
+    .select("id, connection_id, invited_email, claimed_at, revoked_at, connections!inner(display_name, prefers_profile_name, owner_user_id, linked_user_id)")
     .eq("token", token)
     .maybeSingle();
 
@@ -63,6 +63,9 @@ export default async function InviteClaimPage({
   const isClaimed = Boolean(invite.claimed_at);
   const invitePath = `/invite/${token}`;
   const signInHref = `/auth?next=${encodeURIComponent(invitePath)}`;
+  const inviteHeading = connection.prefers_profile_name
+    ? "Claim the connection waiting for you."
+    : `Claim your connection with ${connection.display_name}.`;
 
   if (invite.revoked_at) {
     return (
@@ -98,7 +101,7 @@ export default async function InviteClaimPage({
       next: invitePath,
       invite: token,
       inviteEmail: invite.invited_email,
-      inviteName: connection.display_name,
+      ...(connection.prefers_profile_name ? {} : { inviteName: connection.display_name }),
     });
 
     redirect(`/auth?${authParams.toString()}`);
@@ -153,7 +156,7 @@ export default async function InviteClaimPage({
       <div className="glass-panel grid max-w-3xl gap-4 p-5 md:p-7">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-strong">Connection invite</p>
         <h1 className="text-[2.1rem] font-semibold leading-tight tracking-tight text-foreground md:text-4xl">
-          Claim your connection with {connection.display_name}.
+          {inviteHeading}
         </h1>
         <p className="text-sm leading-7 text-foreground/72">
           Signed in as <strong>{user.email}</strong>. To claim this connection, your signed-in email should match <strong>{invite.invited_email}</strong>.

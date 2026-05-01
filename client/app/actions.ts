@@ -29,9 +29,14 @@ import {
   updateGroupSchema,
 } from "@/lib/validations";
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
-import { findAuthUserByEmail } from "@/lib/auth-users";
+import { findAuthUserByEmail, getAuthUserById } from "@/lib/auth-users";
 import { formatHangoutWindow } from "@/lib/hangouts";
 import { notifyHangoutProposalParticipant } from "@/lib/hangout-notifications";
+import {
+  getFallbackDisplayNameFromEmail,
+  getInviteConnectionLabel,
+  shouldUseProfileName,
+} from "@/lib/connection-display";
 import { notifyConnectionInvite } from "@/lib/connection-invites";
 import { notifyGroupInvite } from "@/lib/group-invites";
 import { buildConnectionInvitePath, buildGroupInvitePath, normalizeInviteEmail } from "@/lib/invites";
@@ -90,14 +95,6 @@ function assertMutation(error: { message: string } | null, label: string) {
   }
 }
 
-function getFallbackDisplayNameFromEmail(email?: string | null) {
-  if (!email) {
-    return "Linked user";
-  }
-
-  return email.split("@")[0] || "Linked user";
-}
-
 function buildDisplayName(firstName: string, lastName: string, email?: string | null) {
   const fullName = `${firstName} ${lastName}`.trim();
 
@@ -106,6 +103,37 @@ function buildDisplayName(firstName: string, lastName: string, email?: string | 
   }
 
   return getFallbackDisplayNameFromEmail(email);
+}
+
+async function resolveAutomaticConnectionDisplayName(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  linkedUserId?: string | null,
+  contactEmail?: string | null,
+) {
+  if (!linkedUserId) {
+    return getFallbackDisplayNameFromEmail(contactEmail);
+  }
+
+  const { data: linkedProfile, error: linkedProfileError } = await supabase
+    .from("profiles")
+    .select("display_name, first_name, last_name")
+    .eq("id", linkedUserId)
+    .maybeSingle();
+
+  assertMutation(linkedProfileError, "Failed to load linked user profile");
+
+  const linkedProfileName = buildDisplayName(
+    linkedProfile?.first_name ?? "",
+    linkedProfile?.last_name ?? "",
+    linkedProfile?.display_name ?? contactEmail,
+  );
+
+  if (linkedProfile?.display_name?.trim() || linkedProfileName) {
+    return linkedProfile?.display_name?.trim() || linkedProfileName;
+  }
+
+  const linkedUser = await getAuthUserById(supabase, linkedUserId);
+  return getFallbackDisplayNameFromEmail(linkedUser?.email ?? contactEmail);
 }
 
 async function findConnectionEmailConflict(
@@ -918,6 +946,10 @@ export async function createConnectionAction(formData: FormData) {
     reminderLeadDays: getString(formData, "reminderLeadDays"),
   });
   const normalizedContactEmail = payload.contactEmail ? normalizeInviteEmail(payload.contactEmail) : null;
+  const prefersProfileName = shouldUseProfileName(payload.displayName, normalizedContactEmail);
+  const storedDisplayName = prefersProfileName
+    ? getFallbackDisplayNameFromEmail(normalizedContactEmail)
+    : payload.displayName;
 
   if (normalizedContactEmail) {
     const conflict = await findConnectionEmailConflict(supabase, user.id, normalizedContactEmail);
@@ -931,7 +963,8 @@ export async function createConnectionAction(formData: FormData) {
     .from("connections")
     .insert({
       owner_user_id: user.id,
-      display_name: payload.displayName,
+      display_name: storedDisplayName,
+      prefers_profile_name: prefersProfileName,
       contact_email: normalizedContactEmail,
       tags: parseCommaSeparatedList(payload.tags),
       notes: payload.notes || null,
@@ -974,7 +1007,7 @@ export async function createConnectionAction(formData: FormData) {
       supabase,
       normalizedContactEmail,
       token,
-      payload.displayName,
+      getInviteConnectionLabel(storedDisplayName, prefersProfileName),
       user.user_metadata?.display_name ?? user.email,
     );
     if (notification.delivery === "push") {
@@ -1013,10 +1046,29 @@ export async function updateConnectionAction(formData: FormData) {
     }
   }
 
+  const { data: currentConnection, error: currentConnectionError } = await supabase
+    .from("connections")
+    .select("linked_user_id")
+    .eq("id", payload.connectionId)
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+
+  assertMutation(currentConnectionError, "Failed to load connection");
+
+  if (!currentConnection) {
+    throw new Error("Failed to update connection: connection not found.");
+  }
+
+  const prefersProfileName = shouldUseProfileName(payload.displayName, normalizedContactEmail);
+  const storedDisplayName = prefersProfileName
+    ? await resolveAutomaticConnectionDisplayName(supabase, currentConnection.linked_user_id, normalizedContactEmail)
+    : payload.displayName;
+
   const { error: updateError } = await supabase
     .from("connections")
     .update({
-      display_name: payload.displayName,
+      display_name: storedDisplayName,
+      prefers_profile_name: prefersProfileName,
       contact_email: normalizedContactEmail,
       tags: parseCommaSeparatedList(payload.tags),
       notes: payload.notes || null,
@@ -1422,7 +1474,7 @@ export async function createConnectionInviteAction(formData: FormData) {
 
   const { data: connection, error: connectionError } = await supabase
     .from("connections")
-    .select("display_name")
+    .select("display_name, prefers_profile_name")
     .eq("id", connectionId)
     .eq("owner_user_id", user.id)
     .maybeSingle();
@@ -1450,7 +1502,7 @@ export async function createConnectionInviteAction(formData: FormData) {
     supabase,
     normalizedEmail,
     token,
-    connection?.display_name ?? "A connection",
+    getInviteConnectionLabel(connection?.display_name ?? "A connection", connection?.prefers_profile_name ?? false),
     user.user_metadata?.display_name ?? user.email,
   );
   revalidatePath("/dashboard");
@@ -1499,7 +1551,7 @@ export async function claimConnectionInviteAction(formData: FormData) {
 
   const { data: sourceConnection, error: sourceConnectionError } = await supabase
     .from("connections")
-    .select("id, owner_user_id, display_name, tags, preferred_activities, notes")
+    .select("id, owner_user_id, display_name, prefers_profile_name, contact_email, tags, preferred_activities, notes")
     .eq("id", invite.connection_id)
     .maybeSingle();
 
@@ -1595,7 +1647,11 @@ export async function claimConnectionInviteAction(formData: FormData) {
   const { error: updateConnectionError } = await supabase
     .from("connections")
     .update({
+      display_name: sourceConnection.prefers_profile_name
+        ? await resolveAutomaticConnectionDisplayName(supabase, user.id, normalizedUserEmail)
+        : sourceConnection.display_name,
       linked_user_id: user.id,
+      contact_email: normalizedUserEmail,
     })
     .eq("id", invite.connection_id);
 

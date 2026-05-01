@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { ConnectionIdentityFields } from "@/components/connection-identity-fields";
 import { ConnectionLinkSection } from "@/components/connection-link-section";
 import { EditableDetailsForm } from "@/components/editable-details-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
@@ -130,6 +131,10 @@ export default async function ConnectionDetailPage({
   const requestOrigin = await getRequestOrigin();
   const activeInvite = await loadActiveInviteInfo(supabase, user.id, connection.id, requestOrigin);
   const linkedUserLabel = await loadLinkedUserLabel(supabase, connection);
+  const connectionNameSummary = connection.prefersProfileName && connection.contactEmail && !connection.linkedUserId
+    ? "Uses their account name after they join"
+    : connection.title;
+  const connectionNameLabel = connection.contactEmail ? "Your label" : "Name";
 
   return (
     <AppShell
@@ -167,7 +172,7 @@ export default async function ConnectionDetailPage({
                     saveLabel="Save connection"
                     helperText="Keep this light. A few cues are enough to make the next reconnect easier."
                     summary={[
-                      { label: "Name", value: connection.title },
+                      { label: connectionNameLabel, value: connectionNameSummary },
                       { label: "Tags", value: connection.tags.length ? connection.tags.join(", ") : undefined },
                       { label: "Contact email", value: connection.contactEmail },
                       { label: "Cadence", value: `Every ${connection.cadenceValue} ${connection.cadenceUnit}` },
@@ -179,19 +184,18 @@ export default async function ConnectionDetailPage({
                     <input type="hidden" name="connectionId" value={connection.id} />
                     <input type="hidden" name="redirectTo" value={`/connections/${connection.id}`} />
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <label className="grid gap-2">
-                        <span className="field-label">Name</span>
-                        <input className="field-input" name="displayName" type="text" defaultValue={connection.title} required />
-                      </label>
+                      <div className="sm:col-span-2">
+                        <ConnectionIdentityFields
+                          initialContactEmail={connection.contactEmail}
+                          initialDisplayName={connection.title}
+                          initiallyUsesProfileName={connection.prefersProfileName}
+                        />
+                      </div>
                       <label className="grid gap-2">
                         <span className="field-label">Tags</span>
                         <input className="field-input" name="tags" type="text" defaultValue={connection.tags.join(", ")} />
                       </label>
                     </div>
-                    <label className="grid gap-2">
-                      <span className="field-label">Contact email</span>
-                      <input className="field-input" name="contactEmail" type="email" defaultValue={connection.contactEmail ?? ""} placeholder="friend@example.com" />
-                    </label>
                     <div className="grid gap-4">
                       <label className="grid gap-2">
                         <span className="field-label">Cadence value</span>

@@ -1,0 +1,54 @@
+"use client";
+
+import { useState } from "react";
+
+type ConnectionIdentityFieldsProps = {
+  initialContactEmail?: string;
+  initialDisplayName?: string;
+  initiallyUsesProfileName?: boolean;
+};
+
+export function ConnectionIdentityFields({
+  initialContactEmail = "",
+  initialDisplayName = "",
+  initiallyUsesProfileName = false,
+}: Readonly<ConnectionIdentityFieldsProps>) {
+  const [contactEmail, setContactEmail] = useState(initialContactEmail);
+  const inviteable = contactEmail.trim().length > 0;
+  const displayNameLabel = inviteable ? "Your label for them" : "Name";
+  const displayNamePlaceholder = inviteable
+    ? "Optional. Leave blank to use their account name after they join"
+    : "Jordan, Alexis, dinner crew organizer";
+  const helperText = inviteable
+    ? "Optional. If you leave this blank, the app will switch to their real account name once they claim the invite."
+    : "Required for local-only connections that are not tied to an invite email.";
+
+  return (
+    <>
+      <label className="grid gap-2">
+        <span className="field-label">Contact email</span>
+        <input
+          autoComplete="email"
+          className="field-input"
+          defaultValue={initialContactEmail}
+          name="contactEmail"
+          onChange={(event) => setContactEmail(event.target.value)}
+          placeholder="Optional email to save on this person"
+          type="email"
+        />
+      </label>
+      <label className="grid gap-2">
+        <span className="field-label">{displayNameLabel}</span>
+        <input
+          className="field-input"
+          defaultValue={initiallyUsesProfileName ? "" : initialDisplayName}
+          name="displayName"
+          placeholder={displayNamePlaceholder}
+          required={!inviteable}
+          type="text"
+        />
+      </label>
+      <p className="text-sm leading-6 text-foreground/64">{helperText}</p>
+    </>
+  );
+}

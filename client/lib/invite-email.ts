@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { getAppUrl } from "@/lib/billing";
+import { GENERIC_CONNECTION_INVITE_LABEL } from "@/lib/connection-display";
 import { buildConnectionInviteUrl, buildGroupInviteUrl } from "@/lib/invites";
 
 export type InviteEmailDeliveryStatus = "pending" | "sent" | "failed" | "not_configured" | "suppressed";
@@ -34,6 +35,7 @@ function buildInviteEmailHtml(inviterName: string, connectionName: string, invit
   const inviter = escapeHtml(inviterName);
   const connection = escapeHtml(connectionName);
   const url = escapeHtml(inviteUrl);
+  const genericConnection = connectionName === GENERIC_CONNECTION_INVITE_LABEL;
 
   return `
     <div style="background:#f3efe4;padding:32px 16px;font-family:Georgia,'Times New Roman',serif;color:#201816;">
@@ -41,7 +43,9 @@ function buildInviteEmailHtml(inviterName: string, connectionName: string, invit
         <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#8c684f;font-weight:700;">Connection invite</p>
         <h1 style="margin:0 0 16px;font-size:30px;line-height:1.1;color:#201816;">${inviter} invited you to My Crew Connections.</h1>
         <p style="margin:0 0 14px;font-size:16px;line-height:1.7;color:#4a3b33;">
-          They created a relationship entry for <strong>${connection}</strong> and want to link it to your real account.
+          ${genericConnection
+            ? "They created a relationship entry and want to link it to your real account."
+            : `They created a relationship entry for <strong>${connection}</strong> and want to link it to your real account.`}
         </p>
         <p style="margin:0 0 22px;font-size:16px;line-height:1.7;color:#4a3b33;">
           Open the invite, then sign in or create your account on the site. Once you finish, you can claim the connection directly in the app.
@@ -57,10 +61,12 @@ function buildInviteEmailHtml(inviterName: string, connectionName: string, invit
 }
 
 function buildInviteEmailText(inviterName: string, connectionName: string, inviteUrl: string) {
+  const genericConnection = connectionName === GENERIC_CONNECTION_INVITE_LABEL;
+
   return [
     `${inviterName} invited you to My Crew Connections.`,
     "",
-    `${connectionName} is waiting to be linked to your real account.`,
+    genericConnection ? "A connection is waiting to be linked to your real account." : `${connectionName} is waiting to be linked to your real account.`,
     "",
     "Open the invite below, then sign in or create your account to claim it:",
     inviteUrl,
