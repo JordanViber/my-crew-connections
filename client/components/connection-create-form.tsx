@@ -11,10 +11,6 @@ export function ConnectionCreateForm() {
   return (
     <form action={createConnectionAction} className="grid gap-3">
       <ConnectionIdentityFields />
-      <label className="flex items-start gap-3 rounded-lg border border-border/80 bg-white/76 px-3 py-3 text-sm text-foreground/72">
-        <input className="mt-1 h-4 w-4 shrink-0" name="sendInviteNow" type="checkbox" value="true" />
-        <span>Send the invite right away if a contact email is present.</span>
-      </label>
       <label className="grid gap-2">
         <span className="field-label">Tags</span>
         <input className="field-input" name="tags" type="text" placeholder="close friend, local, long-distance" />

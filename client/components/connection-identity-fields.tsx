@@ -37,6 +37,12 @@ export function ConnectionIdentityFields({
           type="email"
         />
       </label>
+      {inviteable ? (
+        <label className="flex items-start gap-3 rounded-lg border border-border/80 bg-white/76 px-3 py-3 text-sm text-foreground/72">
+          <input className="mt-1 h-4 w-4 shrink-0" name="sendInviteNow" type="checkbox" value="true" />
+          <span>Invite them to view and manage this connection as well.</span>
+        </label>
+      ) : null}
       <label className="grid gap-2">
         <span className="field-label">{displayNameLabel}</span>
         <input
