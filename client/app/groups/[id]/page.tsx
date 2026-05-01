@@ -7,15 +7,19 @@ import { EditableDetailsForm } from "@/components/editable-details-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { HangoutPlansPanel } from "@/components/hangout-plans-panel";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
+import { PhotoAlbumFields } from "@/components/photo-album-fields";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
+import { TouchpointTimeline } from "@/components/touchpoint-timeline";
 import {
   addGroupMembersAction,
   archiveGroupAction,
   cancelHangoutAction,
   completeHangoutAction,
+  confirmHangoutProposalAction,
   createHangoutAction,
   createTouchpointAction,
+  respondToHangoutProposalAction,
   updateGroupAction,
 } from "@/app/actions";
 import { getFeedback } from "@/lib/feedback";
@@ -110,13 +114,13 @@ function PendingGroupInviteList({
   }
 
   return members.map((member) => (
-    <article key={member.connectionId} className="rounded-lg border border-[#ebc8a8] bg-[#fff0df] p-3.5">
+    <article key={member.connectionId} className="warning-surface rounded-lg border p-3.5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold text-foreground">{member.name}</p>
           <p className="mt-1 text-sm text-foreground/65">Waiting on {member.invitedEmail} to accept or decline.</p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#8b5b2b]">Pending acceptance</span>
+        <span className="warning-surface-strong warning-text rounded-full px-3 py-1.5 text-xs font-semibold">Pending acceptance</span>
       </div>
       <div className="mt-3">
         <Link className="button-secondary inline-flex" href={`/connections/${member.connectionId}`}>
@@ -132,7 +136,7 @@ export default async function GroupDetailPage({
   searchParams,
 }: Readonly<{
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ feedback?: string }>;
+  searchParams: Promise<{ feedback?: string; exportHangoutId?: string }>;
 }>) {
   const { id } = await params;
   const query = await searchParams;
@@ -202,7 +206,7 @@ export default async function GroupDetailPage({
       ) : null}
 
       <MobileSectionTabs
-        initialSectionId="manage"
+        initialSectionId={query.exportHangoutId ? "plans" : "manage"}
         sections={[
           {
             id: "manage",
@@ -216,8 +220,8 @@ export default async function GroupDetailPage({
                       emptyCopy="No accepted members are attached yet."
                     />
                     {pendingMemberSummary.length > 0 ? (
-                      <div className="rounded-lg border border-[#ebc8a8] bg-[#fff0df] p-3.5">
-                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#8b5b2b]">Pending group invites</p>
+                      <div className="warning-surface rounded-lg border p-3.5">
+                        <p className="warning-text text-[0.72rem] font-semibold uppercase tracking-[0.18em]">Pending group invites</p>
                         <p className="mt-1.5 text-sm leading-6 text-foreground/68">
                           {pendingMemberSummary.map((member) => member.name).join(", ")}
                         </p>
@@ -420,6 +424,7 @@ export default async function GroupDetailPage({
                     <span className="field-label">Note</span>
                     <textarea className="field-input min-h-28" name="note" placeholder="Why did this matter, and what should the next plan build on?" />
                   </label>
+                  <PhotoAlbumFields />
                   <p className="text-sm leading-6 text-foreground/68">
                     Saving here refreshes the group&apos;s memory timeline and moves the cadence anchor forward.
                   </p>
@@ -437,13 +442,17 @@ export default async function GroupDetailPage({
               <HangoutPlansPanel
                 hangouts={plannedHangouts}
                 emptyCopy="No saved plans yet. The next dinner, hike, or game night can live here before it becomes history."
+                confirmAction={confirmHangoutProposalAction}
                 completeAction={completeHangoutAction}
                 cancelAction={cancelHangoutAction}
                 createAction={createHangoutAction}
+                respondAction={respondToHangoutProposalAction}
                 subjectLabel={group.title}
                 targetType="group"
                 targetId={group.id}
                 redirectTo={`/groups/${group.id}`}
+                autoExportHangoutId={query.exportHangoutId}
+                canCreate={canManageGroup}
               />
             ),
           },
@@ -452,28 +461,10 @@ export default async function GroupDetailPage({
             label: "History",
             content: (
               <SectionCard title="Recent timeline" description={`Last touchpoint: ${group.lastTouchpointLabel}`}>
-                <div className="grid gap-3">
-                  {timeline.length === 0 ? (
-                    <p className="text-sm leading-7 text-foreground/68">No group touchpoints yet. Log one event and the timeline becomes the memory surface.</p>
-                  ) : (
-                    timeline.map((touchpoint) => (
-                      <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
-                            {touchpoint.activityLabel || touchpoint.locationLabel ? (
-                              <p className="mt-2 text-sm font-medium text-foreground/70">
-                                {[touchpoint.activityLabel, touchpoint.locationLabel].filter(Boolean).join(" at ")}
-                              </p>
-                            ) : null}
-                            <p className="mt-2 text-sm leading-7 text-foreground/72">{touchpoint.note}</p>
-                          </div>
-                          <p className="text-sm text-foreground/60">{touchpoint.occurredAtLabel}</p>
-                        </div>
-                      </article>
-                    ))
-                  )}
-                </div>
+                <TouchpointTimeline
+                  touchpoints={timeline}
+                  emptyCopy="No group touchpoints yet. Log one event and the timeline becomes the memory surface."
+                />
               </SectionCard>
             ),
           },
@@ -489,8 +480,8 @@ export default async function GroupDetailPage({
                 emptyCopy="No accepted members are attached yet."
               />
               {pendingMemberSummary.length > 0 ? (
-                <div className="rounded-lg border border-[#ebc8a8] bg-[#fff0df] p-3.5">
-                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#8b5b2b]">Pending group invites</p>
+                <div className="warning-surface rounded-lg border p-3.5">
+                  <p className="warning-text text-[0.72rem] font-semibold uppercase tracking-[0.18em]">Pending group invites</p>
                   <p className="mt-1.5 text-sm leading-6 text-foreground/68">
                     {pendingMemberSummary.map((member) => member.name).join(", ")}
                   </p>
@@ -662,6 +653,7 @@ export default async function GroupDetailPage({
                 <span className="field-label">Note</span>
                 <textarea className="field-input min-h-28" name="note" placeholder="Why did this matter, and what should the next plan build on?" />
               </label>
+              <PhotoAlbumFields />
               <p className="text-sm leading-6 text-foreground/68">
                 Saving here refreshes the group&apos;s memory timeline and moves the cadence anchor forward.
               </p>
@@ -700,38 +692,24 @@ export default async function GroupDetailPage({
           <HangoutPlansPanel
             hangouts={plannedHangouts}
             emptyCopy="No saved plans yet. The next dinner, hike, or game night can live here before it becomes history."
+            confirmAction={confirmHangoutProposalAction}
             completeAction={completeHangoutAction}
             cancelAction={cancelHangoutAction}
             createAction={createHangoutAction}
+            respondAction={respondToHangoutProposalAction}
             subjectLabel={group.title}
             targetType="group"
             targetId={group.id}
             redirectTo={`/groups/${group.id}`}
+            autoExportHangoutId={query.exportHangoutId}
+            canCreate={canManageGroup}
           />
 
           <SectionCard title="Recent timeline" description={`Last touchpoint: ${group.lastTouchpointLabel}`}>
-            <div className="grid gap-3">
-              {timeline.length === 0 ? (
-                <p className="text-sm leading-7 text-foreground/68">No group touchpoints yet. Log one event and the timeline becomes the memory surface.</p>
-              ) : (
-                timeline.map((touchpoint) => (
-                  <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
-                        {touchpoint.activityLabel || touchpoint.locationLabel ? (
-                          <p className="mt-2 text-sm font-medium text-foreground/70">
-                            {[touchpoint.activityLabel, touchpoint.locationLabel].filter(Boolean).join(" at ")}
-                          </p>
-                        ) : null}
-                        <p className="mt-2 text-sm leading-7 text-foreground/72">{touchpoint.note}</p>
-                      </div>
-                      <p className="text-sm text-foreground/60">{touchpoint.occurredAtLabel}</p>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
+            <TouchpointTimeline
+              touchpoints={timeline}
+              emptyCopy="No group touchpoints yet. Log one event and the timeline becomes the memory surface."
+            />
           </SectionCard>
         </div>
       </div>

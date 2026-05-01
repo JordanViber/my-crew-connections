@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { countGroupMemberStatuses, type GroupMemberStatusCounts } from "@/lib/group-members";
+import {
+  countHangoutResponses,
+  type HangoutProposalState,
+  type HangoutResponseCounts,
+  type HangoutResponseStatus,
+} from "@/lib/hangout-participants";
 import { formatHangoutWindow, getHangoutWindowBucket, type HangoutStatus } from "@/lib/hangouts";
 import {
   formatCadence,
@@ -46,10 +52,13 @@ export type TouchpointRow = {
   note: string | null;
   activity_label: string | null;
   location_label: string | null;
+  photo_album_label: string | null;
+  photo_album_url: string | null;
 };
 
 export type HangoutRow = {
   id: string;
+  owner_user_id: string;
   target_type: "connection" | "group";
   target_id: string;
   title: string;
@@ -59,8 +68,18 @@ export type HangoutRow = {
   location: string | null;
   notes: string | null;
   status: HangoutStatus;
+  proposal_state: HangoutProposalState;
+  proposal_confirmed_at: string | null;
+  photo_album_label: string | null;
+  photo_album_url: string | null;
   completed_at: string | null;
   created_at: string;
+};
+
+type HangoutParticipantRow = {
+  hangout_id: string;
+  participant_user_id: string;
+  response_status: HangoutResponseStatus;
 };
 
 type GroupMembershipRow = {
@@ -148,6 +167,16 @@ export type HangoutSummary = {
   location?: string;
   notes?: string;
   status: HangoutStatus;
+  proposalState: HangoutProposalState;
+  proposalConfirmedAt?: string;
+  responseCounts: HangoutResponseCounts;
+  viewerRole: "owner" | "participant" | "observer";
+  viewerResponse?: HangoutResponseStatus;
+  canRespond: boolean;
+  canManage: boolean;
+  canExportCalendar: boolean;
+  photoAlbumLabel?: string;
+  photoAlbumUrl?: string;
   windowLabel: string;
   bucketLabel: string;
 };
@@ -162,6 +191,8 @@ export type RecentTouchpoint = {
   note: string;
   activityLabel?: string;
   locationLabel?: string;
+  photoAlbumLabel?: string;
+  photoAlbumUrl?: string;
 };
 
 export type DashboardData = {
@@ -256,7 +287,17 @@ function buildGroupPendingInviteMap(groupInvites: GroupInviteRow[], connections:
 }
 
 export async function getDashboardData(supabase: SupabaseClient, userId: string) {
-  const [profileResult, connectionResult, ownedGroupResult, cadenceResult, touchpointResult, hangoutResult, inviteResult, acceptedGroupInviteResult] = await Promise.all([
+  const [
+    profileResult,
+    connectionResult,
+    linkedConnectionResult,
+    ownedGroupResult,
+    cadenceResult,
+    touchpointResult,
+    hangoutResult,
+    inviteResult,
+    acceptedGroupInviteResult,
+  ] = await Promise.all([
     supabase.from("profiles").select("id, display_name, first_name, last_name").eq("id", userId).maybeSingle(),
     supabase
       .from("connections")
@@ -264,6 +305,11 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       .eq("owner_user_id", userId)
       .is("archived_at", null)
       .order("display_name"),
+    supabase
+      .from("connections")
+      .select("id")
+      .eq("linked_user_id", userId)
+      .is("archived_at", null),
     supabase
       .from("groups")
       .select("id, name, description, created_at, owner_user_id")
@@ -276,13 +322,13 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       .eq("owner_user_id", userId),
     supabase
       .from("touchpoints")
-      .select("id, target_type, target_id, touchpoint_type, occurred_at, note, activity_label, location_label")
+      .select("id, target_type, target_id, touchpoint_type, occurred_at, note, activity_label, location_label, photo_album_label, photo_album_url")
       .eq("owner_user_id", userId)
       .order("occurred_at", { ascending: false })
       .limit(100),
     supabase
       .from("hangouts")
-      .select("id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, completed_at, created_at")
+      .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, proposal_state, proposal_confirmed_at, photo_album_label, photo_album_url, completed_at, created_at")
       .eq("owner_user_id", userId)
       .order("starts_at"),
     supabase
@@ -302,6 +348,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
 
   assertNoError(profileResult.error, "Failed to load profile");
   assertNoError(connectionResult.error, "Failed to load connections");
+  assertNoError(linkedConnectionResult.error, "Failed to load linked connections");
   assertNoError(ownedGroupResult.error, "Failed to load groups");
   assertNoError(cadenceResult.error, "Failed to load cadence rules");
   assertNoError(touchpointResult.error, "Failed to load touchpoints");
@@ -316,9 +363,26 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   const baseHangouts = (hangoutResult.data ?? []) as HangoutRow[];
   const invites = (inviteResult.data ?? []) as ConnectionInviteRow[];
   const acceptedGroupInvites = (acceptedGroupInviteResult.data ?? []) as AcceptedGroupInviteRow[];
+  const linkedConnectionIds = (linkedConnectionResult.data ?? []).flatMap((connection) => connection.id ? [connection.id] : []);
+
+  let directGroupMemberships: Array<{ group_id: string }> = [];
+
+  if (linkedConnectionIds.length > 0) {
+    const directGroupMembershipResult = await supabase
+      .from("group_memberships")
+      .select("group_id")
+      .in("connection_id", linkedConnectionIds)
+      .is("removed_at", null);
+
+    assertNoError(directGroupMembershipResult.error, "Failed to load direct group memberships");
+    directGroupMemberships = (directGroupMembershipResult.data ?? []) as Array<{ group_id: string }>;
+  }
 
   const ownedGroupIds = new Set(ownedGroups.map((group) => group.id));
-  const joinedGroupIds = [...new Set(acceptedGroupInvites.map((invite) => invite.group_id))].filter((groupId) => !ownedGroupIds.has(groupId));
+  const joinedGroupIds = [...new Set([
+    ...acceptedGroupInvites.map((invite) => invite.group_id),
+    ...directGroupMemberships.map((membership) => membership.group_id),
+  ])].filter((groupId) => !ownedGroupIds.has(groupId));
 
   let joinedGroups: GroupRow[] = [];
   let extraCadenceRules: CadenceRuleRow[] = [];
@@ -340,14 +404,14 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
         .in("target_id", joinedGroupIds),
       supabase
         .from("touchpoints")
-        .select("id, target_type, target_id, touchpoint_type, occurred_at, note, activity_label, location_label")
+        .select("id, target_type, target_id, touchpoint_type, occurred_at, note, activity_label, location_label, photo_album_label, photo_album_url")
         .eq("target_type", "group")
         .in("target_id", joinedGroupIds)
         .order("occurred_at", { ascending: false })
         .limit(100),
       supabase
         .from("hangouts")
-        .select("id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, completed_at, created_at")
+        .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, proposal_state, proposal_confirmed_at, photo_album_label, photo_album_url, completed_at, created_at")
         .eq("target_type", "group")
         .in("target_id", joinedGroupIds)
         .order("starts_at"),
@@ -370,6 +434,17 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     .sort((left, right) => right.occurred_at.localeCompare(left.occurred_at))
     .slice(0, 100);
   const hangouts = [...baseHangouts, ...extraHangouts].sort((left, right) => left.starts_at.localeCompare(right.starts_at));
+  let hangoutParticipants: HangoutParticipantRow[] = [];
+
+  if (hangouts.length > 0) {
+    const participantResult = await supabase
+      .from("hangout_participants")
+      .select("hangout_id, participant_user_id, response_status")
+      .in("hangout_id", hangouts.map((hangout) => hangout.id));
+
+    assertNoError(participantResult.error, "Failed to load hangout participants");
+    hangoutParticipants = (participantResult.data ?? []) as HangoutParticipantRow[];
+  }
 
   let memberships: GroupMembershipRow[] = [];
   let groupInvites: GroupInviteRow[] = [];
@@ -649,25 +724,57 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   });
 
   const targetNames = new Map(relationships.map((relationship) => [`${relationship.targetType}:${relationship.id}`, relationship.title]));
-  const hangoutSummaries: HangoutSummary[] = hangouts.map((hangout) => ({
-    id: hangout.id,
-    targetType: hangout.target_type,
-    targetId: hangout.target_id,
-    targetLabel: targetNames.get(`${hangout.target_type}:${hangout.target_id}`) ?? "Unknown relationship",
-    title: hangout.title,
-    startsAt: hangout.starts_at,
-    endsAt: hangout.ends_at ?? undefined,
-    timezone: hangout.timezone,
-    location: hangout.location ?? undefined,
-    notes: hangout.notes ?? undefined,
-    status: hangout.status,
-    windowLabel: formatHangoutWindow({
+  const hangoutParticipantMap = hangoutParticipants.reduce<Map<string, HangoutParticipantRow[]>>((accumulator, participant) => {
+    const current = accumulator.get(participant.hangout_id) ?? [];
+    current.push(participant);
+    accumulator.set(participant.hangout_id, current);
+    return accumulator;
+  }, new Map());
+  const hangoutSummaries: HangoutSummary[] = hangouts.map((hangout) => {
+    const participants = hangoutParticipantMap.get(hangout.id) ?? [];
+    const viewerParticipant = participants.find((participant) => participant.participant_user_id === userId);
+    let viewerRole: HangoutSummary["viewerRole"] = "observer";
+
+    if (hangout.owner_user_id === userId) {
+      viewerRole = "owner";
+    } else if (viewerParticipant) {
+      viewerRole = "participant";
+    }
+    const responseCounts = countHangoutResponses(participants.map((participant) => participant.response_status));
+    const canManage = viewerRole === "owner";
+    const canRespond = viewerRole === "participant" && hangout.target_type === "group" && hangout.status === "planned" && hangout.proposal_state === "pending";
+    const canExportCalendar = canManage || hangout.target_type === "connection" || viewerParticipant?.response_status === "accepted";
+
+    return {
+      id: hangout.id,
+      targetType: hangout.target_type,
+      targetId: hangout.target_id,
+      targetLabel: targetNames.get(`${hangout.target_type}:${hangout.target_id}`) ?? "Unknown relationship",
+      title: hangout.title,
       startsAt: hangout.starts_at,
       endsAt: hangout.ends_at ?? undefined,
       timezone: hangout.timezone,
-    }),
-    bucketLabel: getHangoutWindowBucket(hangout.starts_at),
-  }));
+      location: hangout.location ?? undefined,
+      notes: hangout.notes ?? undefined,
+      status: hangout.status,
+      proposalState: hangout.proposal_state,
+      proposalConfirmedAt: hangout.proposal_confirmed_at ?? undefined,
+      responseCounts,
+      viewerRole,
+      viewerResponse: viewerParticipant?.response_status,
+      canRespond,
+      canManage,
+      canExportCalendar,
+      photoAlbumLabel: hangout.photo_album_label ?? undefined,
+      photoAlbumUrl: hangout.photo_album_url ?? undefined,
+      windowLabel: formatHangoutWindow({
+        startsAt: hangout.starts_at,
+        endsAt: hangout.ends_at ?? undefined,
+        timezone: hangout.timezone,
+      }),
+      bucketLabel: getHangoutWindowBucket(hangout.starts_at),
+    };
+  });
   const recentTouchpoints: RecentTouchpoint[] = touchpoints.slice(0, 8).map((touchpoint) => ({
     id: touchpoint.id,
     targetType: touchpoint.target_type,
@@ -678,6 +785,8 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     note: touchpoint.note ?? touchpoint.activity_label ?? touchpoint.location_label ?? "No extra context yet",
     activityLabel: touchpoint.activity_label ?? undefined,
     locationLabel: touchpoint.location_label ?? undefined,
+    photoAlbumLabel: touchpoint.photo_album_label ?? undefined,
+    photoAlbumUrl: touchpoint.photo_album_url ?? undefined,
   }));
 
   return {

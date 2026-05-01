@@ -29,6 +29,62 @@ function toLocalDateTimeValue(value: string, timezone: string) {
     .slice(0, 16);
 }
 
+async function loadAuthorizedSavedHangout(hangoutId: string, userId: string) {
+  const supabase = createServerAdminSupabaseClient();
+  const { data, error } = await supabase
+    .from("hangouts")
+    .select("id, owner_user_id, title, starts_at, ends_at, timezone, location, notes")
+    .eq("id", hangoutId)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      status: 500,
+      hangout: null,
+    } as const;
+  }
+
+  if (!data) {
+    return {
+      status: 404,
+      hangout: null,
+    } as const;
+  }
+
+  if (data.owner_user_id === userId) {
+    return {
+      status: 200,
+      hangout: data,
+    } as const;
+  }
+
+  const { data: participant, error: participantError } = await supabase
+    .from("hangout_participants")
+    .select("response_status")
+    .eq("hangout_id", data.id)
+    .eq("participant_user_id", userId)
+    .maybeSingle();
+
+  if (participantError) {
+    return {
+      status: 500,
+      hangout: null,
+    } as const;
+  }
+
+  if (participant?.response_status !== "accepted") {
+    return {
+      status: 404,
+      hangout: null,
+    } as const;
+  }
+
+  return {
+    status: 200,
+    hangout: data,
+  } as const;
+}
+
 export async function GET(request: NextRequest) {
   const params = Object.fromEntries(request.nextUrl.searchParams.entries());
   const savedHangout = savedHangoutSchema.safeParse(params);
@@ -43,21 +99,16 @@ export async function GET(request: NextRequest) {
       return new NextResponse("Unauthorized.", { status: 401 });
     }
 
-    const supabase = createServerAdminSupabaseClient();
-    const { data, error } = await supabase
-      .from("hangouts")
-      .select("id, title, starts_at, ends_at, timezone, location, notes")
-      .eq("id", savedHangout.data.hangoutId)
-      .eq("owner_user_id", user.id)
-      .maybeSingle();
+    const authorized = await loadAuthorizedSavedHangout(savedHangout.data.hangoutId, user.id);
 
-    if (error) {
+    if (authorized.status === 500) {
       return new NextResponse("Failed to load saved plan.", { status: 500 });
     }
 
-    if (!data) {
+    if (!authorized.hangout) {
       return new NextResponse("Saved plan not found.", { status: 404 });
     }
+    const data = authorized.hangout;
 
     const ics = buildIcsEvent({
       title: data.title,

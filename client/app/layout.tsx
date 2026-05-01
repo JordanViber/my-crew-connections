@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Manrope } from "next/font/google";
-import Script from "next/script";
+import { ThemeBootstrap } from "@/components/theme-bootstrap";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -18,21 +18,6 @@ export const metadata: Metadata = {
   description: "A warm relationship app for keeping up with the people and groups that matter most.",
 };
 
-const themeScript = `
-(() => {
-  try {
-    const stored = window.localStorage.getItem("mcc-theme");
-    const theme = stored === "light" || stored === "dark"
-      ? stored
-      : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme;
-  } catch {
-    document.documentElement.dataset.theme = "light";
-  }
-})();
-`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,12 +25,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth" data-theme="light" suppressHydrationWarning>
-      <head>
-        <Script id="mcc-theme" strategy="beforeInteractive">
-          {themeScript}
-        </Script>
-      </head>
       <body className={`${fraunces.variable} ${manrope.variable} antialiased`}>
+        <ThemeBootstrap />
         {children}
       </body>
     </html>

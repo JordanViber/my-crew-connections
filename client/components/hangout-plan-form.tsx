@@ -53,11 +53,23 @@ export function HangoutPlanForm({
           placeholder="Why this plan matters, what to remember, or what to bring up."
         />
       </label>
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="grid gap-2">
+          <span className="field-label">Photo album label</span>
+          <input className="field-input" name="photoAlbumLabel" placeholder="Shared Google Photos album" type="text" />
+        </label>
+        <label className="grid gap-2">
+          <span className="field-label">Photo album link</span>
+          <input className="field-input" name="photoAlbumUrl" placeholder="https://..." type="url" />
+        </label>
+      </div>
       <p className="text-sm leading-6 text-foreground/68">
-        Saving keeps this plan on the dashboard until it is completed, canceled, or exported to calendar.
+        {targetType === "group"
+          ? "Sending this proposal starts the RSVP flow for group members with app access, and accepted members can export it to calendar right away."
+          : "Saving keeps this plan on the dashboard until it is completed, canceled, or exported to calendar."}
       </p>
       <button className="button-primary" type="submit">
-        Save plan
+        {targetType === "group" ? "Send proposal" : "Save plan"}
       </button>
     </form>
   );

@@ -29,7 +29,7 @@ export function ConnectionLinkBadge({
     classes = "bg-mint text-[#214c35]";
     shortLabel = linkedLabel;
   } else if (state.state === "pending") {
-    classes = "bg-[#fff0df] text-[#8b5b2b]";
+    classes = "warning-surface-strong warning-text";
     shortLabel = pendingLabel;
   }
 

@@ -5,7 +5,7 @@ test("landing page highlights the core relationship loop", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: /keep the people you care about close/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /create account|open your dashboard/i }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: /i already have an account|explore the relationship workspace/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /sign in|i already have an account|explore the relationship workspace/i })).toBeVisible();
 });
 
 test("protected dashboard redirects unauthenticated visitors to the auth page", async ({ page }) => {
@@ -14,5 +14,5 @@ test("protected dashboard redirects unauthenticated visitors to the auth page", 
   await expect(page).toHaveURL(/\/auth/);
   await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /password sign-in/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /email sign-in link/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /email sign-in code/i })).toBeVisible();
 });

@@ -32,3 +32,16 @@ export async function findAuthUserByEmail(
 
   return null;
 }
+
+export async function getAuthUserById(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+
+  if (error) {
+    throw new Error(`Failed to load auth user: ${error.message}`);
+  }
+
+  return data.user ?? null;
+}

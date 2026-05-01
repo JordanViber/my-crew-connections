@@ -30,7 +30,7 @@ export function ConnectionLinkSection({
   if (linkState.state === "linked") {
     cardClasses = "border-mint/70 bg-mint/50";
   } else if (linkState.state === "pending") {
-    cardClasses = "border-[#ebc8a8] bg-[#fff0df]";
+    cardClasses = "warning-surface";
   }
 
   return (

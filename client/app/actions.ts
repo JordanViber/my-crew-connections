@@ -18,6 +18,8 @@ import {
   getStringList,
   groupMemberSchema,
   groupSchema,
+  hangoutIdSchema,
+  hangoutResponseSchema,
   hangoutSchema,
   inviteEmailSchema,
   parseTargetReference,
@@ -28,10 +30,34 @@ import {
 } from "@/lib/validations";
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
 import { findAuthUserByEmail } from "@/lib/auth-users";
+import { formatHangoutWindow } from "@/lib/hangouts";
+import { notifyHangoutProposalParticipant } from "@/lib/hangout-notifications";
 import { notifyConnectionInvite } from "@/lib/connection-invites";
 import { notifyGroupInvite } from "@/lib/group-invites";
 import { buildConnectionInvitePath, buildGroupInvitePath, normalizeInviteEmail } from "@/lib/invites";
 import { canCreateConnection, canCreateGroup } from "@/lib/entitlements";
+
+type GroupHangoutMembershipRow = {
+  connection_id: string | null;
+  user_id: string | null;
+  role: string;
+};
+
+type GroupHangoutConnectionRow = {
+  id: string;
+  linked_user_id: string | null;
+};
+
+type AcceptedGroupInviteRecipientRow = {
+  connection_id: string;
+  accepted_by_user_id: string | null;
+  accepted_at: string;
+};
+
+type GroupHangoutParticipantCandidate = {
+  connectionId: string | null;
+  participantUserId: string;
+};
 
 type ConnectionEmailConflict = {
   kind: "saved" | "linked" | "pending";
@@ -342,7 +368,7 @@ async function addConnectionsToGroup(
   for (const connection of availableConnections) {
     const inviteEmail = await resolveConnectionContactEmail(supabase, ownerUserId, connection);
 
-    if (!inviteEmail) {
+    if (connection.linked_user_id || !inviteEmail) {
       membershipRows.push({
         group_id: groupId,
         connection_id: connection.id,
@@ -419,6 +445,127 @@ function withFeedback(path: string, feedback: string) {
   const separator = basePath.includes("?") ? "&" : "?";
   const hashSuffix = hash ? `#${hash}` : "";
   return `${basePath}${separator}feedback=${feedback}${hashSuffix}`;
+}
+
+function withSearchParam(path: string, key: string, value: string) {
+  const url = new URL(path, "https://mycrewconnections.local");
+  url.searchParams.set(key, value);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+async function assertCanManageHangoutTarget(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  userId: string,
+  targetType: "connection" | "group",
+  targetId: string,
+) {
+  if (targetType === "connection") {
+    const { data, error } = await supabase
+      .from("connections")
+      .select("id")
+      .eq("id", targetId)
+      .eq("owner_user_id", userId)
+      .is("archived_at", null)
+      .maybeSingle();
+
+    assertMutation(error, "Failed to load connection for hangout");
+
+    if (!data) {
+      throw new Error("Failed to save hangout plan: connection not found.");
+    }
+
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("groups")
+    .select("id, name")
+    .eq("id", targetId)
+    .eq("owner_user_id", userId)
+    .is("archived_at", null)
+    .maybeSingle();
+
+  assertMutation(error, "Failed to load group for hangout");
+
+  if (!data) {
+    throw new Error("Failed to save hangout plan: group not found.");
+  }
+
+  return data;
+}
+
+async function getGroupHangoutParticipants(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  groupId: string,
+  ownerUserId: string,
+) {
+  const { data: memberships, error: membershipsError } = await supabase
+    .from("group_memberships")
+    .select("connection_id, user_id, role")
+    .eq("group_id", groupId)
+    .is("removed_at", null);
+
+  assertMutation(membershipsError, "Failed to load group memberships for hangout");
+
+  const membershipRows = (memberships ?? []) as GroupHangoutMembershipRow[];
+  const connectionIds = membershipRows.flatMap((membership) => membership.connection_id ? [membership.connection_id] : []);
+
+  let connectionRows: GroupHangoutConnectionRow[] = [];
+  let acceptedInviteRows: AcceptedGroupInviteRecipientRow[] = [];
+
+  if (connectionIds.length > 0) {
+    const [{ data: connections, error: connectionsError }, { data: acceptedInvites, error: acceptedInvitesError }] = await Promise.all([
+      supabase
+        .from("connections")
+        .select("id, linked_user_id")
+        .in("id", connectionIds),
+      supabase
+        .from("group_invites")
+        .select("connection_id, accepted_by_user_id, accepted_at")
+        .eq("group_id", groupId)
+        .in("connection_id", connectionIds)
+        .not("accepted_at", "is", null)
+        .is("revoked_at", null)
+        .order("accepted_at", { ascending: false }),
+    ]);
+
+    assertMutation(connectionsError, "Failed to load connection links for hangout");
+    assertMutation(acceptedInvitesError, "Failed to load accepted group invites for hangout");
+
+    connectionRows = (connections ?? []) as GroupHangoutConnectionRow[];
+    acceptedInviteRows = (acceptedInvites ?? []) as AcceptedGroupInviteRecipientRow[];
+  }
+
+  const connectionMap = new Map(connectionRows.map((connection) => [connection.id, connection]));
+  const acceptedInviteMap = acceptedInviteRows.reduce<Map<string, string>>((accumulator, invite) => {
+    if (!invite.accepted_by_user_id || accumulator.has(invite.connection_id)) {
+      return accumulator;
+    }
+
+    accumulator.set(invite.connection_id, invite.accepted_by_user_id);
+    return accumulator;
+  }, new Map());
+  const participants = new Map<string, GroupHangoutParticipantCandidate>();
+
+  for (const membership of membershipRows) {
+    if (membership.role === "owner") {
+      continue;
+    }
+
+    const participantUserId = membership.user_id
+      ?? (membership.connection_id ? connectionMap.get(membership.connection_id)?.linked_user_id ?? acceptedInviteMap.get(membership.connection_id) : undefined);
+
+    if (!participantUserId || participantUserId === ownerUserId || participants.has(participantUserId)) {
+      continue;
+    }
+
+    participants.set(participantUserId, {
+      connectionId: membership.connection_id,
+      participantUserId,
+    });
+  }
+
+  return [...participants.values()];
 }
 
 async function getBillingStatusProfile(
@@ -1047,6 +1194,8 @@ export async function createTouchpointAction(formData: FormData) {
     note: getString(formData, "note"),
     activityLabel: getString(formData, "activityLabel"),
     locationLabel: getString(formData, "locationLabel"),
+    photoAlbumLabel: getString(formData, "photoAlbumLabel"),
+    photoAlbumUrl: getString(formData, "photoAlbumUrl"),
   });
 
   const { error } = await supabase.from("touchpoints").insert({
@@ -1058,6 +1207,8 @@ export async function createTouchpointAction(formData: FormData) {
     note: payload.note || null,
     activity_label: payload.activityLabel || null,
     location_label: payload.locationLabel || null,
+    photo_album_label: payload.photoAlbumLabel || null,
+    photo_album_url: payload.photoAlbumUrl || null,
   });
 
   assertMutation(error, "Failed to create touchpoint");
@@ -1085,9 +1236,12 @@ export async function createHangoutAction(formData: FormData) {
     timezone: getString(formData, "timezone"),
     location: getString(formData, "location"),
     notes: getString(formData, "notes"),
+    photoAlbumLabel: getString(formData, "photoAlbumLabel"),
+    photoAlbumUrl: getString(formData, "photoAlbumUrl"),
   });
 
-  const { error } = await supabase.from("hangouts").insert({
+  const group = await assertCanManageHangoutTarget(supabase, user.id, payload.targetType, payload.targetId);
+  const { data: hangout, error } = await supabase.from("hangouts").insert({
     owner_user_id: user.id,
     target_type: payload.targetType,
     target_id: payload.targetId,
@@ -1097,12 +1251,146 @@ export async function createHangoutAction(formData: FormData) {
     timezone: payload.timezone,
     location: payload.location || null,
     notes: payload.notes || null,
-  });
+    proposal_state: payload.targetType === "group" ? "pending" : "confirmed",
+    proposal_confirmed_at: payload.targetType === "group" ? null : new Date().toISOString(),
+    photo_album_label: payload.photoAlbumLabel || null,
+    photo_album_url: payload.photoAlbumUrl || null,
+  }).select("id, starts_at, ends_at, timezone").single();
 
   assertMutation(error, "Failed to save hangout plan");
+
+  if (payload.targetType === "group" && hangout && group) {
+    const participants = await getGroupHangoutParticipants(supabase, payload.targetId, user.id);
+
+    if (participants.length > 0) {
+      const { error: participantError } = await supabase.from("hangout_participants").insert(
+        participants.map((participant) => ({
+          hangout_id: hangout.id,
+          connection_id: participant.connectionId,
+          participant_user_id: participant.participantUserId,
+        })),
+      );
+
+      assertMutation(participantError, "Failed to create hangout participants");
+
+      const whenLabel = formatHangoutWindow({
+        startsAt: hangout.starts_at,
+        endsAt: hangout.ends_at ?? undefined,
+        timezone: hangout.timezone,
+      });
+
+      await Promise.allSettled(
+        participants.map((participant) => notifyHangoutProposalParticipant(
+          supabase,
+          participant.participantUserId,
+          payload.targetId,
+          group.name,
+          hangout.id,
+          payload.title,
+          whenLabel,
+          payload.location || null,
+          user.user_metadata?.display_name ?? user.email,
+        )),
+      );
+    }
+  }
+
   revalidateHangoutPaths(payload.targetType, payload.targetId);
   const fallbackPath = payload.targetType === "connection" ? `/connections/${payload.targetId}` : `/groups/${payload.targetId}`;
-  const target = await resolveRedirectTarget(formData, fallbackPath, "hangout-saved");
+  const feedbackKey = payload.targetType === "group" ? "hangout-proposal-created" : "hangout-saved";
+  const target = await resolveRedirectTarget(formData, fallbackPath, feedbackKey);
+  redirect(target);
+}
+
+export async function respondToHangoutProposalAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const payload = hangoutResponseSchema.parse({
+    hangoutId: getString(formData, "hangoutId"),
+    responseStatus: getString(formData, "responseStatus"),
+    downloadCalendar: getString(formData, "downloadCalendar"),
+  });
+
+  const { data: participant, error: participantError } = await supabase
+    .from("hangout_participants")
+    .select("id")
+    .eq("hangout_id", payload.hangoutId)
+    .eq("participant_user_id", user.id)
+    .maybeSingle();
+
+  assertMutation(participantError, "Failed to load hangout participant");
+
+  if (!participant) {
+    throw new Error("Failed to respond to hangout: participant not found.");
+  }
+
+  const { data: hangout, error: hangoutError } = await supabase
+    .from("hangouts")
+    .select("id, target_type, target_id, status, proposal_state")
+    .eq("id", payload.hangoutId)
+    .maybeSingle();
+
+  assertMutation(hangoutError, "Failed to load hangout for response");
+
+  if (!hangout || hangout.target_type !== "group" || hangout.status !== "planned" || hangout.proposal_state !== "pending") {
+    throw new Error("Failed to respond to hangout: proposal is no longer open.");
+  }
+
+  const { error: updateError } = await supabase
+    .from("hangout_participants")
+    .update({
+      response_status: payload.responseStatus,
+      responded_at: new Date().toISOString(),
+    })
+    .eq("id", participant.id);
+
+  assertMutation(updateError, "Failed to save hangout response");
+  revalidateHangoutPaths("group", hangout.target_id);
+  const fallbackPath = `/groups/${hangout.target_id}`;
+  const feedbackKey = payload.responseStatus === "accepted" ? "hangout-response-accepted" : "hangout-response-declined";
+  let target = await resolveRedirectTarget(formData, fallbackPath, feedbackKey);
+
+  if (payload.responseStatus === "accepted" && payload.downloadCalendar === "true") {
+    target = withSearchParam(target, "exportHangoutId", hangout.id);
+  }
+
+  redirect(target);
+}
+
+export async function confirmHangoutProposalAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const payload = hangoutIdSchema.parse({
+    hangoutId: getString(formData, "hangoutId"),
+  });
+  const { data: hangout, error: hangoutError } = await supabase
+    .from("hangouts")
+    .select("id, target_type, target_id, proposal_state")
+    .eq("id", payload.hangoutId)
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+
+  assertMutation(hangoutError, "Failed to load hangout proposal");
+
+  if (!hangout || hangout.target_type !== "group") {
+    throw new Error("Failed to confirm hangout proposal: plan not found.");
+  }
+
+  if (hangout.proposal_state === "confirmed") {
+    const target = await resolveRedirectTarget(formData, `/groups/${hangout.target_id}`, "hangout-proposal-confirmed");
+    redirect(target);
+  }
+
+  const { error: updateError } = await supabase
+    .from("hangouts")
+    .update({
+      proposal_state: "confirmed",
+      proposal_confirmed_at: new Date().toISOString(),
+    })
+    .eq("id", hangout.id)
+    .eq("owner_user_id", user.id);
+
+  assertMutation(updateError, "Failed to confirm hangout proposal");
+  revalidateHangoutPaths("group", hangout.target_id);
+  const target = await resolveRedirectTarget(formData, `/groups/${hangout.target_id}`, "hangout-proposal-confirmed");
   redirect(target);
 }
 
@@ -1460,11 +1748,13 @@ export async function declineGroupInviteAction(formData: FormData) {
 
 export async function completeHangoutAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
-  const hangoutId = getString(formData, "hangoutId");
+  const payload = hangoutIdSchema.parse({
+    hangoutId: getString(formData, "hangoutId"),
+  });
   const { data: hangout, error: hangoutError } = await supabase
     .from("hangouts")
-    .select("id, owner_user_id, target_type, target_id, title, starts_at, location, notes, status")
-    .eq("id", hangoutId)
+    .select("id, owner_user_id, target_type, target_id, title, starts_at, location, notes, status, proposal_state, photo_album_label, photo_album_url")
+    .eq("id", payload.hangoutId)
     .eq("owner_user_id", user.id)
     .maybeSingle();
 
@@ -1472,6 +1762,10 @@ export async function completeHangoutAction(formData: FormData) {
 
   if (!hangout) {
     throw new Error("Failed to complete hangout: plan not found.");
+  }
+
+  if (hangout.target_type === "group" && hangout.proposal_state !== "confirmed") {
+    throw new Error("Failed to complete hangout: confirm the proposal before logging it as completed.");
   }
 
   const occurredAt = new Date(Math.min(Date.now(), new Date(hangout.starts_at).getTime())).toISOString();
@@ -1486,6 +1780,8 @@ export async function completeHangoutAction(formData: FormData) {
     note,
     activity_label: hangout.title,
     location_label: hangout.location || null,
+    photo_album_label: hangout.photo_album_label || null,
+    photo_album_url: hangout.photo_album_url || null,
   });
 
   assertMutation(touchpointError, "Failed to log completed hangout");
@@ -1508,11 +1804,13 @@ export async function completeHangoutAction(formData: FormData) {
 
 export async function cancelHangoutAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
-  const hangoutId = getString(formData, "hangoutId");
+  const payload = hangoutIdSchema.parse({
+    hangoutId: getString(formData, "hangoutId"),
+  });
   const { data: hangout, error: hangoutError } = await supabase
     .from("hangouts")
     .select("id, target_type, target_id")
-    .eq("id", hangoutId)
+    .eq("id", payload.hangoutId)
     .eq("owner_user_id", user.id)
     .maybeSingle();
 
@@ -1527,7 +1825,7 @@ export async function cancelHangoutAction(formData: FormData) {
     .update({
       status: "canceled",
     })
-    .eq("id", hangoutId)
+    .eq("id", payload.hangoutId)
     .eq("owner_user_id", user.id);
 
   assertMutation(error, "Failed to cancel hangout");

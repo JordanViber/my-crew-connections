@@ -5,6 +5,22 @@ export const cadenceUnitSchema = z.enum(["days", "weeks", "months"]);
 export const targetTypeSchema = z.enum(["connection", "group"]);
 const uuidSchema = z.uuid();
 
+function isValidHttpUrl(value: string) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+const optionalPhotoAlbumUrlSchema = z.string().trim().max(500).optional().default("").refine(
+  (value) => !value || isValidHttpUrl(value),
+  { message: "Enter a valid http or https link." },
+);
+const optionalPhotoAlbumLabelSchema = z.string().trim().max(120).optional().default("");
+export const hangoutResponseStatusSchema = z.enum(["pending", "accepted", "declined"]);
+
 export const magicLinkSchema = z.object({
   email: z.email(),
 });
@@ -58,6 +74,17 @@ export const hangoutSchema = z.object({
   timezone: z.string().trim().min(1).max(100),
   location: z.string().trim().max(200).optional().default(""),
   notes: z.string().trim().max(1000).optional().default(""),
+  photoAlbumLabel: optionalPhotoAlbumLabelSchema,
+  photoAlbumUrl: optionalPhotoAlbumUrlSchema,
+});
+
+export const hangoutIdSchema = z.object({
+  hangoutId: uuidSchema,
+});
+
+export const hangoutResponseSchema = hangoutIdSchema.extend({
+  responseStatus: hangoutResponseStatusSchema,
+  downloadCalendar: z.enum(["", "true"]).optional().default(""),
 });
 
 export const touchpointSchema = z.object({
@@ -68,6 +95,8 @@ export const touchpointSchema = z.object({
   note: z.string().trim().max(500).optional().default(""),
   activityLabel: z.string().trim().max(120).optional().default(""),
   locationLabel: z.string().trim().max(120).optional().default(""),
+  photoAlbumLabel: optionalPhotoAlbumLabelSchema,
+  photoAlbumUrl: optionalPhotoAlbumUrlSchema,
 });
 
 export const accountProfileSchema = z.object({

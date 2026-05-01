@@ -7,14 +7,18 @@ import { EditableDetailsForm } from "@/components/editable-details-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { HangoutPlansPanel } from "@/components/hangout-plans-panel";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
+import { PhotoAlbumFields } from "@/components/photo-album-fields";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
+import { TouchpointTimeline } from "@/components/touchpoint-timeline";
 import {
   archiveConnectionAction,
   cancelHangoutAction,
   completeHangoutAction,
+  confirmHangoutProposalAction,
   createHangoutAction,
   createTouchpointAction,
+  respondToHangoutProposalAction,
   updateConnectionAction,
 } from "@/app/actions";
 import { getFeedback } from "@/lib/feedback";
@@ -94,7 +98,7 @@ export default async function ConnectionDetailPage({
   searchParams,
 }: Readonly<{
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ feedback?: string }>;
+  searchParams: Promise<{ feedback?: string; exportHangoutId?: string }>;
 }>) {
   const { id } = await params;
   const query = await searchParams;
@@ -144,7 +148,7 @@ export default async function ConnectionDetailPage({
       ) : null}
 
       <MobileSectionTabs
-        initialSectionId="manage"
+        initialSectionId={query.exportHangoutId ? "plans" : "manage"}
         sections={[
           {
             id: "manage",
@@ -306,6 +310,7 @@ export default async function ConnectionDetailPage({
                     <span className="field-label">Note</span>
                     <textarea className="field-input min-h-28" name="note" placeholder="What mattered? Anything to remember for the next invite?" />
                   </label>
+                  <PhotoAlbumFields />
                   <p className="text-sm leading-6 text-foreground/68">
                     After save, this page will refresh with the new timeline entry and updated reminder timing.
                   </p>
@@ -323,13 +328,16 @@ export default async function ConnectionDetailPage({
               <HangoutPlansPanel
                 hangouts={plannedHangouts}
                 emptyCopy="No saved plans yet. The next good invite can live here before it becomes a touchpoint."
+                confirmAction={confirmHangoutProposalAction}
                 completeAction={completeHangoutAction}
                 cancelAction={cancelHangoutAction}
                 createAction={createHangoutAction}
+                respondAction={respondToHangoutProposalAction}
                 subjectLabel={connection.title}
                 targetType="connection"
                 targetId={connection.id}
                 redirectTo={`/connections/${connection.id}`}
+                autoExportHangoutId={query.exportHangoutId}
               />
             ),
           },
@@ -338,28 +346,10 @@ export default async function ConnectionDetailPage({
             label: "History",
             content: (
               <SectionCard title="Recent timeline" description={`Last touchpoint: ${connection.lastTouchpointLabel}`}>
-                <div className="grid gap-3">
-                  {timeline.length === 0 ? (
-                    <p className="text-sm leading-7 text-foreground/68">No timeline entries yet. Log a first touchpoint to make this view useful.</p>
-                  ) : (
-                    timeline.map((touchpoint) => (
-                      <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
-                            {touchpoint.activityLabel || touchpoint.locationLabel ? (
-                              <p className="mt-2 text-sm font-medium text-foreground/70">
-                                {[touchpoint.activityLabel, touchpoint.locationLabel].filter(Boolean).join(" at ")}
-                              </p>
-                            ) : null}
-                            <p className="mt-2 text-sm leading-7 text-foreground/72">{touchpoint.note}</p>
-                          </div>
-                          <p className="text-sm text-foreground/60">{touchpoint.occurredAtLabel}</p>
-                        </div>
-                      </article>
-                    ))
-                  )}
-                </div>
+                <TouchpointTimeline
+                  touchpoints={timeline}
+                  emptyCopy="No timeline entries yet. Log a first touchpoint to make this view useful."
+                />
               </SectionCard>
             ),
           },
@@ -478,6 +468,7 @@ export default async function ConnectionDetailPage({
                 <span className="field-label">Note</span>
                 <textarea className="field-input min-h-28" name="note" placeholder="What mattered? Anything to remember for the next invite?" />
               </label>
+              <PhotoAlbumFields />
               <p className="text-sm leading-6 text-foreground/68">
                 After save, this page will refresh with the new timeline entry and updated reminder timing.
               </p>
@@ -528,38 +519,23 @@ export default async function ConnectionDetailPage({
           <HangoutPlansPanel
             hangouts={plannedHangouts}
             emptyCopy="No saved plans yet. The next good invite can live here before it becomes a touchpoint."
+            confirmAction={confirmHangoutProposalAction}
             completeAction={completeHangoutAction}
             cancelAction={cancelHangoutAction}
             createAction={createHangoutAction}
+            respondAction={respondToHangoutProposalAction}
             subjectLabel={connection.title}
             targetType="connection"
             targetId={connection.id}
             redirectTo={`/connections/${connection.id}`}
+            autoExportHangoutId={query.exportHangoutId}
           />
 
           <SectionCard title="Recent timeline" description={`Last touchpoint: ${connection.lastTouchpointLabel}`}>
-            <div className="grid gap-3">
-              {timeline.length === 0 ? (
-                <p className="text-sm leading-7 text-foreground/68">No timeline entries yet. Log a first touchpoint to make this view useful.</p>
-              ) : (
-                timeline.map((touchpoint) => (
-                  <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
-                        {touchpoint.activityLabel || touchpoint.locationLabel ? (
-                          <p className="mt-2 text-sm font-medium text-foreground/70">
-                            {[touchpoint.activityLabel, touchpoint.locationLabel].filter(Boolean).join(" at ")}
-                          </p>
-                        ) : null}
-                        <p className="mt-2 text-sm leading-7 text-foreground/72">{touchpoint.note}</p>
-                      </div>
-                      <p className="text-sm text-foreground/60">{touchpoint.occurredAtLabel}</p>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
+            <TouchpointTimeline
+              touchpoints={timeline}
+              emptyCopy="No timeline entries yet. Log a first touchpoint to make this view useful."
+            />
           </SectionCard>
         </div>
       </div>

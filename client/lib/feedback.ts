@@ -104,6 +104,26 @@ const feedbackMessages = {
     title: "Plan saved",
     body: "This hangout now stays visible on the dashboard until you complete or cancel it.",
   },
+  "hangout-proposal-created": {
+    tone: "success",
+    title: "Proposal sent",
+    body: "The group plan is live now. Members with app access can accept or decline it, and accepted members can export it to calendar right away.",
+  },
+  "hangout-proposal-confirmed": {
+    tone: "success",
+    title: "Proposal confirmed",
+    body: "This group plan is now locked in as the next hangout instead of just waiting on responses.",
+  },
+  "hangout-response-accepted": {
+    tone: "success",
+    title: "Plan accepted",
+    body: "Your RSVP is saved, and the calendar export is ready for this hangout.",
+  },
+  "hangout-response-declined": {
+    tone: "success",
+    title: "Plan declined",
+    body: "Your RSVP is saved, so the organizer can see that this time does not work for you.",
+  },
   "hangout-completed": {
     tone: "success",
     title: "Plan completed",

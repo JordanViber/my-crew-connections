@@ -7,10 +7,11 @@ import { HangoutList } from "@/components/hangout-list";
 import { IncomingConnectionInvites } from "@/components/incoming-connection-invites";
 import { IncomingGroupInvites } from "@/components/incoming-group-invites";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
+import { PhotoAlbumFields } from "@/components/photo-album-fields";
 import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { UpgradePrompt } from "@/components/upgrade-prompt";
-import { cancelHangoutAction, completeHangoutAction, createTouchpointAction } from "@/app/actions";
+import { cancelHangoutAction, completeHangoutAction, confirmHangoutProposalAction, createTouchpointAction, respondToHangoutProposalAction } from "@/app/actions";
 import { canCreateConnection, canCreateGroup, getFreeTierUsageLabel, hasPremiumAccess } from "@/lib/entitlements";
 import { getIncomingConnectionInvites } from "@/lib/connection-invites";
 import { getIncomingGroupInvites } from "@/lib/group-invites";
@@ -306,7 +307,7 @@ function getNextStepCard(
 export default async function DashboardPage({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ feedback?: string }>;
+  searchParams: Promise<{ feedback?: string; exportHangoutId?: string }>;
 }>) {
   const params = await searchParams;
   const authSupabase = await createServerSupabaseClient();
@@ -373,7 +374,7 @@ export default async function DashboardPage({
       </div>
 
       <MobileSectionTabs
-        initialSectionId="focus"
+        initialSectionId={params.exportHangoutId ? "plans" : "focus"}
         sections={[
           {
             id: "focus",
@@ -499,6 +500,7 @@ export default async function DashboardPage({
                     <span className="field-label">Note</span>
                     <textarea className="field-input min-h-24" name="note" placeholder="What mattered, what to remember, or what to plan next." />
                   </label>
+                  <PhotoAlbumFields />
                   <p className="text-sm leading-6 text-foreground/68">
                     Saving this refreshes your history and reminder timing right away.
                   </p>
@@ -539,9 +541,12 @@ export default async function DashboardPage({
                   <HangoutList
                     hangouts={data.upcomingHangouts}
                     emptyCopy="No saved plans yet. Create one from a person or group detail page and it will stay visible here."
+                    confirmAction={confirmHangoutProposalAction}
                     completeAction={completeHangoutAction}
                     cancelAction={cancelHangoutAction}
+                    respondAction={respondToHangoutProposalAction}
                     redirectTo="/dashboard"
+                    autoExportHangoutId={params.exportHangoutId}
                     showTargetLabel
                   />
                 </section>
@@ -617,9 +622,12 @@ export default async function DashboardPage({
             <HangoutList
               hangouts={data.upcomingHangouts}
               emptyCopy="No saved plans yet. Create one from a person or group detail page and it will show up here."
+              confirmAction={confirmHangoutProposalAction}
               completeAction={completeHangoutAction}
               cancelAction={cancelHangoutAction}
+              respondAction={respondToHangoutProposalAction}
               redirectTo="/dashboard"
+              autoExportHangoutId={params.exportHangoutId}
               showTargetLabel
             />
           </SectionCard>
@@ -682,6 +690,7 @@ export default async function DashboardPage({
                 <span className="field-label">Note</span>
                 <textarea className="field-input min-h-28" name="note" placeholder="What mattered, what to remember, or what to plan next." />
               </label>
+              <PhotoAlbumFields />
               <p className="text-sm leading-6 text-foreground/68">
                 After save, the reminder queue and recent history will refresh right away.
               </p>
