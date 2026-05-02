@@ -99,6 +99,11 @@ const feedbackMessages = {
     title: "Touchpoint logged",
     body: "Your history is updated and reminder timing has been recalculated.",
   },
+  "touchpoint-updated": {
+    tone: "success",
+    title: "Touchpoint updated",
+    body: "The history details were updated successfully.",
+  },
   "hangout-saved": {
     tone: "success",
     title: "Plan saved",

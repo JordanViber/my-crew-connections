@@ -42,7 +42,11 @@ function ConnectionSection({
         <p className="mt-1 text-sm leading-6 text-foreground/68">{description}</p>
       </div>
       {items.map((connection) => (
-        <article key={connection.id} className="rounded-lg border border-border/90 bg-white/82 p-3.5">
+        <Link
+          key={connection.id}
+          className="group block rounded-lg border border-border/90 bg-white/82 p-3.5 transition hover:border-accent/45 hover:bg-white/90"
+          href={`/connections/${connection.id}`}
+        >
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-accent-strong">{connection.subtitle}</p>
@@ -59,12 +63,10 @@ function ConnectionSection({
             </div>
             <div className="flex flex-col items-start gap-3 md:items-end">
               <StatusPill health={connection.health} />
-              <Link className="button-secondary" href={`/connections/${connection.id}`}>
-                Open person
-              </Link>
+              <p className="text-sm font-semibold text-accent-strong">Open details</p>
             </div>
           </div>
-        </article>
+        </Link>
       ))}
     </div>
   );

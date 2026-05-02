@@ -25,6 +25,7 @@ import {
   parseTargetReference,
   parseCommaSeparatedList,
   touchpointSchema,
+  touchpointUpdateSchema,
   updateConnectionSchema,
   updateGroupSchema,
 } from "@/lib/validations";
@@ -1454,6 +1455,56 @@ export async function createTouchpointAction(formData: FormData) {
   }
 
   const target = await resolveRedirectTarget(formData, fallbackPath, "touchpoint-saved");
+  redirect(target);
+}
+
+export async function updateTouchpointAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const payload = touchpointUpdateSchema.parse({
+    touchpointId: getString(formData, "touchpointId"),
+    touchpointType: getString(formData, "touchpointType"),
+    occurredAt: getString(formData, "occurredAt"),
+    note: getString(formData, "note"),
+    activityLabel: getString(formData, "activityLabel"),
+    locationLabel: getString(formData, "locationLabel"),
+    photoAlbumLabel: getString(formData, "photoAlbumLabel"),
+    photoAlbumUrl: getString(formData, "photoAlbumUrl"),
+  });
+
+  const { data: touchpoint, error: touchpointError } = await supabase
+    .from("touchpoints")
+    .select("id, target_type, target_id")
+    .eq("id", payload.touchpointId)
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+
+  assertMutation(touchpointError, "Failed to load touchpoint for update");
+
+  if (!touchpoint) {
+    throw new Error("Failed to update touchpoint: touchpoint not found.");
+  }
+
+  const { error: updateError } = await supabase
+    .from("touchpoints")
+    .update({
+      touchpoint_type: payload.touchpointType,
+      occurred_at: new Date(payload.occurredAt).toISOString(),
+      note: payload.note || null,
+      activity_label: payload.activityLabel || null,
+      location_label: payload.locationLabel || null,
+      photo_album_label: payload.photoAlbumLabel || null,
+      photo_album_url: payload.photoAlbumUrl || null,
+    })
+    .eq("id", payload.touchpointId)
+    .eq("owner_user_id", user.id);
+
+  assertMutation(updateError, "Failed to update touchpoint");
+
+  revalidateRelationshipPaths(touchpoint.target_type, touchpoint.target_id);
+  revalidatePath("/dashboard");
+  revalidatePath(`/touchpoints/${payload.touchpointId}`);
+
+  const target = await resolveRedirectTarget(formData, `/touchpoints/${payload.touchpointId}`, "touchpoint-updated");
   redirect(target);
 }
 

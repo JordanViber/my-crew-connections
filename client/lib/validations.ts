@@ -108,6 +108,17 @@ export const touchpointSchema = z.object({
   photoAlbumUrl: optionalPhotoAlbumUrlSchema,
 });
 
+export const touchpointUpdateSchema = z.object({
+  touchpointId: uuidSchema,
+  touchpointType: z.enum(["check-in", "message", "call", "hangout"]),
+  occurredAt: z.string().min(1),
+  note: z.string().trim().max(500).optional().default(""),
+  activityLabel: z.string().trim().max(120).optional().default(""),
+  locationLabel: z.string().trim().max(120).optional().default(""),
+  photoAlbumLabel: optionalPhotoAlbumLabelSchema,
+  photoAlbumUrl: optionalPhotoAlbumUrlSchema,
+});
+
 export const accountProfileSchema = z.object({
   firstName: nameFieldSchema,
   lastName: nameFieldSchema,

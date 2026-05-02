@@ -572,7 +572,7 @@ test("free-tier recipient cannot claim a connection invite after using their onl
   await inviteePage.goto("/connections");
   await inviteePage.getByRole("button", { name: "Active" }).click();
   await expect(inviteePage.getByRole("heading", { name: "Already Using Free Slot" }).first()).toBeVisible();
-  await expect(inviteePage.getByRole("link", { name: "Open person" })).toHaveCount(1);
+  await expect(inviteePage.getByRole("heading", { name: "Already Using Free Slot" }).first()).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Invite pending" })).toBeVisible();

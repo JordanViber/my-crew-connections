@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { RecentTouchpoint } from "@/lib/mvp-data";
 
 export function TouchpointTimeline({
@@ -14,8 +15,13 @@ export function TouchpointTimeline({
   return (
     <div className="grid gap-3">
       {touchpoints.map((touchpoint) => (
-        <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
-          <div className="flex items-start justify-between gap-4">
+        <article key={touchpoint.id} className="group relative rounded-lg border border-border/85 bg-white/78 p-3.5 transition hover:border-accent/45 hover:bg-white/90">
+          <Link
+            aria-label={`Open touchpoint details for ${touchpoint.targetLabel}`}
+            className="absolute inset-0 rounded-lg"
+            href={`/touchpoints/${touchpoint.id}`}
+          />
+          <div className="pointer-events-none relative z-10 flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
               {touchpoint.activityLabel || touchpoint.locationLabel ? (
@@ -27,11 +33,19 @@ export function TouchpointTimeline({
               {touchpoint.photoAlbumUrl ? (
                 <p className="mt-2 text-sm text-foreground/68">
                   Shared photo album:{" "}
-                  <a className="font-medium text-accent-strong underline underline-offset-2" href={touchpoint.photoAlbumUrl} target="_blank" rel="noreferrer">
+                  <a
+                    className="pointer-events-auto font-medium text-accent-strong underline underline-offset-2"
+                    href={touchpoint.photoAlbumUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     {touchpoint.photoAlbumLabel || "Open album"}
                   </a>
                 </p>
-              ) : null}
+              ) : (
+                <p className="mt-2 text-sm text-foreground/62">No photo album linked yet</p>
+              )}
+              <p className="mt-2 text-sm font-semibold text-accent-strong">Open touchpoint details</p>
             </div>
             <p className="text-sm text-foreground/60">{touchpoint.occurredAtLabel}</p>
           </div>

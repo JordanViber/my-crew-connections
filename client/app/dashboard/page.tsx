@@ -62,9 +62,14 @@ function MobileRelationshipRail({
         <div className="grid gap-3">
           {items.map((item) => {
             const groupMembershipSummary = getGroupMembershipSummary(item);
+            const itemHref = `/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`;
 
             return (
-              <article key={`${item.targetType}:${item.id}`} className="rounded-lg border border-border/85 bg-white/82 p-3.5">
+              <Link
+                key={`${item.targetType}:${item.id}`}
+                className="group block rounded-lg border border-border/85 bg-white/82 p-3.5 transition hover:border-accent/45 hover:bg-white/90"
+                href={itemHref}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-accent-strong">{item.targetType}</p>
@@ -85,10 +90,8 @@ function MobileRelationshipRail({
                   {item.targetType === "group" && groupMembershipSummary ? <p>{groupMembershipSummary}</p> : null}
                 </div>
 
-                <Link className="button-secondary mt-3 inline-flex" href={`/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`}>
-                  Open details
-                </Link>
-              </article>
+                <p className="mt-3 text-sm font-semibold text-accent-strong">Open details</p>
+              </Link>
             );
           })}
         </div>
@@ -140,8 +143,13 @@ function MobileRecentHistory({
       ) : (
         <div className="grid gap-3">
           {touchpoints.slice(0, 4).map((touchpoint) => (
-            <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
-              <div className="flex items-start justify-between gap-4">
+            <article key={touchpoint.id} className="group relative rounded-lg border border-border/85 bg-white/78 p-3.5 transition hover:border-accent/45 hover:bg-white/90">
+              <Link
+                aria-label={`Open touchpoint details for ${touchpoint.targetLabel}`}
+                className="absolute inset-0 rounded-lg"
+                href={`/touchpoints/${touchpoint.id}`}
+              />
+              <div className="pointer-events-none relative z-10 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
                   <h3 className="mt-2 text-lg font-semibold text-foreground">{touchpoint.targetLabel}</h3>
@@ -149,6 +157,20 @@ function MobileRecentHistory({
                 <p className="text-sm text-foreground/60">{touchpoint.occurredAtLabel}</p>
               </div>
               <p className="mt-3 text-sm leading-6 text-foreground/72">{touchpoint.note}</p>
+              {touchpoint.photoAlbumUrl ? (
+                <p className="relative z-10 mt-2 text-sm text-foreground/68">
+                  Shared photo album:{" "}
+                  <a
+                    className="pointer-events-auto font-medium text-accent-strong underline underline-offset-2"
+                    href={touchpoint.photoAlbumUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {touchpoint.photoAlbumLabel || "Open album"}
+                  </a>
+                </p>
+              ) : null}
+              <p className="mt-2 text-sm font-semibold text-accent-strong">Open touchpoint details</p>
             </article>
           ))}
         </div>
@@ -183,11 +205,9 @@ function NextStepCard({
 function RelationshipList({
   items,
   emptyCopy,
-  ctaLabel = "Open details",
 }: Readonly<{
   items: Awaited<ReturnType<typeof getDashboardData>>["relationships"];
   emptyCopy: string;
-  ctaLabel?: string;
 }>) {
   if (items.length === 0) {
     return <p className="text-sm leading-7 text-foreground/68">{emptyCopy}</p>;
@@ -197,9 +217,14 @@ function RelationshipList({
     <div className="grid gap-4">
       {items.map((item) => {
         const groupMembershipSummary = getGroupMembershipSummary(item);
+        const itemHref = `/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`;
 
         return (
-          <article key={`${item.targetType}:${item.id}`} className="rounded-lg border border-border/90 bg-white/80 p-3.5">
+          <Link
+            key={`${item.targetType}:${item.id}`}
+            className="group block rounded-lg border border-border/90 bg-white/80 p-3.5 transition hover:border-accent/45 hover:bg-white/90"
+            href={itemHref}
+          >
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-accent-strong">{item.targetType}</p>
@@ -222,12 +247,10 @@ function RelationshipList({
               <div className="flex flex-col items-start gap-3 md:items-end">
                 <StatusPill health={item.health} />
                 <p className="max-w-xs text-sm text-foreground/65">{item.health.summary}</p>
-                <Link className="button-secondary" href={`/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`}>
-                  {ctaLabel}
-                </Link>
+                <p className="text-sm font-semibold text-accent-strong">Open details</p>
               </div>
             </div>
-          </article>
+          </Link>
         );
       })}
     </div>
@@ -435,7 +458,6 @@ export default async function DashboardPage({
                   <RelationshipList
                     items={needsAttention.slice(0, 3)}
                     emptyCopy={reminderQueueEmptyCopy}
-                    ctaLabel="Take action"
                   />
                 </section>
               </div>
@@ -604,7 +626,6 @@ export default async function DashboardPage({
             <RelationshipList
               items={needsAttention}
               emptyCopy={reminderQueueEmptyCopy}
-              ctaLabel="Take action"
             />
           </SectionCard>
 
@@ -612,7 +633,7 @@ export default async function DashboardPage({
             title="Needs attention"
             description="The people and groups most likely to slip if nothing happens next."
           >
-            <RelationshipList items={needsAttention} emptyCopy={needsAttentionEmptyCopy} ctaLabel="Open details" />
+            <RelationshipList items={needsAttention} emptyCopy={needsAttentionEmptyCopy} />
           </SectionCard>
 
           <SectionCard
@@ -709,8 +730,13 @@ export default async function DashboardPage({
                 <p className="text-sm leading-7 text-foreground/68">{recentHistoryEmptyCopy}</p>
               ) : (
                 data.recentTouchpoints.map((touchpoint) => (
-                  <article key={touchpoint.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
-                    <div className="flex items-start justify-between gap-4">
+                  <article key={touchpoint.id} className="group relative rounded-lg border border-border/85 bg-white/78 p-3.5 transition hover:border-accent/45 hover:bg-white/90">
+                    <Link
+                      aria-label={`Open touchpoint details for ${touchpoint.targetLabel}`}
+                      className="absolute inset-0 rounded-lg"
+                      href={`/touchpoints/${touchpoint.id}`}
+                    />
+                    <div className="pointer-events-none relative z-10 flex items-start justify-between gap-4">
                       <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-accent-strong">{touchpoint.touchpointType}</p>
                         <h3 className="mt-2 text-lg font-semibold text-foreground">{touchpoint.targetLabel}</h3>
@@ -718,6 +744,20 @@ export default async function DashboardPage({
                       </div>
                       <p className="text-sm text-foreground/60">{touchpoint.occurredAtLabel}</p>
                     </div>
+                    {touchpoint.photoAlbumUrl ? (
+                      <p className="relative z-10 mt-2 text-sm text-foreground/68">
+                        Shared photo album:{" "}
+                        <a
+                          className="pointer-events-auto font-medium text-accent-strong underline underline-offset-2"
+                          href={touchpoint.photoAlbumUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {touchpoint.photoAlbumLabel || "Open album"}
+                        </a>
+                      </p>
+                    ) : null}
+                    <p className="mt-2 text-sm font-semibold text-accent-strong">Open touchpoint details</p>
                   </article>
                 ))
               )}

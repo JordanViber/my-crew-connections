@@ -5,6 +5,7 @@ import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ConnectionIdentityFields } from "@/components/connection-identity-fields";
 import { ConnectionLinkSection } from "@/components/connection-link-section";
 import { EditableDetailsForm } from "@/components/editable-details-form";
+import { DesktopSectionSwitcher } from "@/components/desktop-section-switcher";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { HangoutPlansPanel } from "@/components/hangout-plans-panel";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
@@ -362,7 +363,17 @@ export default async function ConnectionDetailPage({
         ]}
       />
 
+      <DesktopSectionSwitcher
+        sections={[
+          { id: "manage", label: "Manage" },
+          { id: "log", label: "Log" },
+          { id: "plans", label: "Plans" },
+          { id: "history", label: "History" },
+        ]}
+      />
+
       <div className="hidden gap-5 xl:grid-cols-[0.95fr_1.05fr] md:grid">
+        <section id="manage" className="scroll-mt-24">
         <SectionCard title="Connection profile" description={connection.subtitle}>
           <div className="mb-5 flex items-center justify-between gap-4">
             <StatusPill health={connection.health} />
@@ -438,8 +449,10 @@ export default async function ConnectionDetailPage({
             </ConfirmSubmitButton>
           </form>
         </SectionCard>
+        </section>
 
         <div className="grid gap-5">
+          <section id="log" className="scroll-mt-24">
           <SectionCard title="Log a touchpoint" description="Keep it quick. Even a two-minute update is enough to keep the dashboard honest.">
             <form action={createTouchpointAction} className="grid gap-3">
               <input type="hidden" name="targetType" value="connection" />
@@ -483,6 +496,7 @@ export default async function ConnectionDetailPage({
               </button>
             </form>
           </SectionCard>
+          </section>
 
           <SectionCard
             title="Next plan context"
@@ -522,6 +536,7 @@ export default async function ConnectionDetailPage({
             />
           </SectionCard>
 
+          <section id="plans" className="scroll-mt-24">
           <HangoutPlansPanel
             hangouts={plannedHangouts}
             emptyCopy="No saved plans yet. The next good invite can live here before it becomes a touchpoint."
@@ -538,13 +553,16 @@ export default async function ConnectionDetailPage({
             allowShareWithLinkedUser={connection.linkState === "linked"}
             shareWithLinkedUserLabel={linkedUserLabel ?? undefined}
           />
+          </section>
 
+          <section id="history" className="scroll-mt-24">
           <SectionCard title="Recent timeline" description={`Last touchpoint: ${connection.lastTouchpointLabel}`}>
             <TouchpointTimeline
               touchpoints={timeline}
               emptyCopy="No timeline entries yet. Log a first touchpoint to make this view useful."
             />
           </SectionCard>
+          </section>
         </div>
       </div>
     </AppShell>

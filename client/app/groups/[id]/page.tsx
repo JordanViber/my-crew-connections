@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ConnectionLinkBadge } from "@/components/connection-link-badge";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { DesktopSectionSwitcher } from "@/components/desktop-section-switcher";
 import { EditableDetailsForm } from "@/components/editable-details-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { HangoutPlansPanel } from "@/components/hangout-plans-panel";
@@ -471,8 +472,17 @@ export default async function GroupDetailPage({
         ]}
       />
 
+      <DesktopSectionSwitcher
+        sections={[
+          { id: "manage", label: "Manage" },
+          { id: "log", label: "Log" },
+          { id: "plans", label: "Plans" },
+          { id: "history", label: "History" },
+        ]}
+      />
+
       <div className="hidden gap-5 xl:grid-cols-[0.95fr_1.05fr] md:grid">
-        <div className="grid gap-5">
+        <div id="manage" className="grid gap-5 scroll-mt-24">
           <SectionCard title="Members" description={getGroupMembershipSummary(acceptedMemberCount, group.pendingMemberCount)}>
             <div className="grid gap-3">
               <AcceptedGroupMemberNamesList
@@ -619,6 +629,7 @@ export default async function GroupDetailPage({
         </div>
 
         <div className="grid gap-5">
+          <section id="log" className="scroll-mt-24">
           <SectionCard title="Log a group touchpoint" description="Use this for dinners, hikes, game nights, or any shared check-in worth remembering.">
             <form action={createTouchpointAction} className="grid gap-3">
               <input type="hidden" name="targetType" value="group" />
@@ -662,6 +673,7 @@ export default async function GroupDetailPage({
               </button>
             </form>
           </SectionCard>
+          </section>
 
           <SectionCard
             title="Next plan context"
@@ -689,6 +701,7 @@ export default async function GroupDetailPage({
             )}
           </SectionCard>
 
+          <section id="plans" className="scroll-mt-24">
           <HangoutPlansPanel
             hangouts={plannedHangouts}
             emptyCopy="No saved plans yet. The next dinner, hike, or game night can live here before it becomes history."
@@ -704,13 +717,16 @@ export default async function GroupDetailPage({
             autoExportHangoutId={query.exportHangoutId}
             canCreate={canManageGroup}
           />
+          </section>
 
+          <section id="history" className="scroll-mt-24">
           <SectionCard title="Recent timeline" description={`Last touchpoint: ${group.lastTouchpointLabel}`}>
             <TouchpointTimeline
               touchpoints={timeline}
               emptyCopy="No group touchpoints yet. Log one event and the timeline becomes the memory surface."
             />
           </SectionCard>
+          </section>
         </div>
       </div>
     </AppShell>
