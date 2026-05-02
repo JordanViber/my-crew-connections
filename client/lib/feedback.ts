@@ -109,6 +109,11 @@ const feedbackMessages = {
     title: "Proposal sent",
     body: "The group plan is live now. Members with app access can accept or decline it, and accepted members can export it to calendar right away.",
   },
+  "hangout-share-pending": {
+    tone: "success",
+    title: "Shared plan sent",
+    body: "Your linked connection can now choose Join plan or Pass for now from their side.",
+  },
   "hangout-proposal-confirmed": {
     tone: "success",
     title: "Proposal confirmed",
@@ -123,6 +128,16 @@ const feedbackMessages = {
     tone: "success",
     title: "Plan declined",
     body: "Your RSVP is saved, so the organizer can see that this time does not work for you.",
+  },
+  "hangout-share-accepted": {
+    tone: "success",
+    title: "Plan joined",
+    body: "Your response was saved and this shared plan is now confirmed.",
+  },
+  "hangout-share-declined": {
+    tone: "success",
+    title: "Passed for now",
+    body: "Your response was saved and the organizer can create a new plan when timing is better.",
   },
   "hangout-completed": {
     tone: "success",

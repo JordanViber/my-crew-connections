@@ -1,4 +1,4 @@
-export type HangoutProposalState = "pending" | "confirmed";
+export type HangoutProposalState = "pending" | "confirmed" | "declined";
 export type HangoutResponseStatus = "pending" | "accepted" | "declined";
 
 export type HangoutResponseCounts = {

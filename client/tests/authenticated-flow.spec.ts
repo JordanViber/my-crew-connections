@@ -273,7 +273,7 @@ test("group proposals can be accepted, exported, and confirmed", async ({ page, 
   expect(path).toBeTruthy();
   expect(download.suggestedFilename()).toContain("dinner-with-ics-group");
   await expect(memberPage).toHaveURL(/feedback=hangout-response-accepted/, { timeout: 15000 });
-  await expect(memberPage.getByText(/your response: accepted/i).first()).toBeVisible();
+  await expect(memberPage.getByText(/your response: (accepted|joined)/i).first()).toBeVisible();
 
   await page.reload();
   await page.getByRole("button", { name: "Plans" }).click();

@@ -12,12 +12,16 @@ export function HangoutPlanForm({
   targetType,
   targetId,
   redirectTo,
+  allowShareWithLinkedUser = false,
+  shareWithLinkedUserLabel,
 }: Readonly<{
   action: (formData: FormData) => void | Promise<void>;
   subjectLabel: string;
   targetType: "connection" | "group";
   targetId: string;
   redirectTo: string;
+  allowShareWithLinkedUser?: boolean;
+  shareWithLinkedUserLabel?: string;
 }>) {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
@@ -63,6 +67,17 @@ export function HangoutPlanForm({
           <input className="field-input" name="photoAlbumUrl" placeholder="https://..." type="url" />
         </label>
       </div>
+      {targetType === "connection" && allowShareWithLinkedUser ? (
+        <label className="inline-flex items-start gap-2 rounded-md border border-border/80 bg-white/70 px-3 py-2.5 text-sm text-foreground/75">
+          <input className="mt-1" name="shareWithLinkedUser" type="checkbox" value="true" />
+          <span>
+            Share this plan with {shareWithLinkedUserLabel || "the linked user"} now.
+            <span className="mt-1 block text-xs text-foreground/58">
+              They can choose Join plan or Pass for now before this becomes a shared plan.
+            </span>
+          </span>
+        </label>
+      ) : null}
       <p className="text-sm leading-6 text-foreground/68">
         {targetType === "group"
           ? "Sending this proposal starts the RSVP flow for group members with app access, and accepted members can export it to calendar right away."

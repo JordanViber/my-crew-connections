@@ -342,6 +342,8 @@ export default async function ConnectionDetailPage({
                 targetId={connection.id}
                 redirectTo={`/connections/${connection.id}`}
                 autoExportHangoutId={query.exportHangoutId}
+                allowShareWithLinkedUser={connection.linkState === "linked"}
+                shareWithLinkedUserLabel={linkedUserLabel ?? undefined}
               />
             ),
           },
@@ -533,6 +535,8 @@ export default async function ConnectionDetailPage({
             targetId={connection.id}
             redirectTo={`/connections/${connection.id}`}
             autoExportHangoutId={query.exportHangoutId}
+            allowShareWithLinkedUser={connection.linkState === "linked"}
+            shareWithLinkedUserLabel={linkedUserLabel ?? undefined}
           />
 
           <SectionCard title="Recent timeline" description={`Last touchpoint: ${connection.lastTouchpointLabel}`}>

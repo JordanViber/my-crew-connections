@@ -84,6 +84,7 @@ export const hangoutSchema = z.object({
   notes: z.string().trim().max(1000).optional().default(""),
   photoAlbumLabel: optionalPhotoAlbumLabelSchema,
   photoAlbumUrl: optionalPhotoAlbumUrlSchema,
+  shareWithLinkedUser: z.enum(["", "true"]).optional().default(""),
 });
 
 export const hangoutIdSchema = z.object({

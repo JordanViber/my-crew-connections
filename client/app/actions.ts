@@ -65,10 +65,23 @@ type GroupHangoutParticipantCandidate = {
   participantUserId: string;
 };
 
+type ConnectionHangoutTargetRow = {
+  id: string;
+  display_name: string;
+  linked_user_id: string | null;
+};
+
+type GroupHangoutTargetRow = {
+  id: string;
+  name: string;
+};
+
 type ConnectionEmailConflict = {
   kind: "saved" | "linked" | "pending";
   connectionId: string;
 };
+
+type HangoutProposalResponseStatus = "pending" | "accepted" | "declined";
 
 async function getAuthenticatedSession() {
   const authSupabase = await createServerSupabaseClient();
@@ -497,16 +510,167 @@ function withSearchParam(path: string, key: string, value: string) {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+function getHangoutPath(targetType: "connection" | "group", targetId: string) {
+  return targetType === "connection" ? `/connections/${targetId}` : `/groups/${targetId}`;
+}
+
+function getHangoutCreateFeedbackKey(targetType: "connection" | "group", shouldShareWithLinkedUser: boolean) {
+  if (targetType === "group") {
+    return "hangout-proposal-created";
+  }
+
+  if (shouldShareWithLinkedUser) {
+    return "hangout-share-pending";
+  }
+
+  return "hangout-saved";
+}
+
+function getHangoutResponseFeedbackKey(
+  targetType: "connection" | "group",
+  responseStatus: HangoutProposalResponseStatus,
+) {
+  if (targetType === "group") {
+    return responseStatus === "accepted" ? "hangout-response-accepted" : "hangout-response-declined";
+  }
+
+  return responseStatus === "accepted" ? "hangout-share-accepted" : "hangout-share-declined";
+}
+
+async function createSharedConnectionHangoutParticipant(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  ownerUserId: string,
+  hangoutId: string,
+  sourceConnection: ConnectionHangoutTargetRow,
+) {
+  if (!sourceConnection.linked_user_id) {
+    throw new Error("Failed to share hangout plan: linked account not found.");
+  }
+
+  const { data: reciprocalConnection, error: reciprocalConnectionError } = await supabase
+    .from("connections")
+    .select("id")
+    .eq("owner_user_id", sourceConnection.linked_user_id)
+    .eq("linked_user_id", ownerUserId)
+    .is("archived_at", null)
+    .maybeSingle();
+
+  assertMutation(reciprocalConnectionError, "Failed to load linked connection for shared hangout");
+
+  if (!reciprocalConnection) {
+    throw new Error("Failed to share hangout plan: linked account connection is not ready.");
+  }
+
+  const { error: participantError } = await supabase.from("hangout_participants").insert({
+    hangout_id: hangoutId,
+    connection_id: sourceConnection.id,
+    participant_user_id: sourceConnection.linked_user_id,
+    participant_connection_id: reciprocalConnection.id,
+  });
+
+  assertMutation(participantError, "Failed to create shared hangout participant");
+
+  return {
+    participantUserId: sourceConnection.linked_user_id,
+    participantConnectionId: reciprocalConnection.id,
+  };
+}
+
+async function notifySharedConnectionHangoutParticipant(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  participantUserId: string,
+  participantConnectionId: string,
+  title: string,
+  ownerUser: { email?: string | null; user_metadata?: Record<string, unknown> },
+  hangoutId: string,
+) {
+  await sendPushToUser(supabase, participantUserId, {
+    title: "New shared plan",
+    body: `${getCurrentUserLabel(ownerUser)} shared a plan with you: ${title}.`,
+    url: `/connections/${participantConnectionId}`,
+    tag: `shared-hangout-request-${hangoutId}`,
+  }).catch(() => ({ sent: 0 }));
+}
+
+function isOpenHangoutProposal(
+  hangout?: {
+    status: string;
+    proposal_state: string;
+    target_type: string;
+  } | null,
+) {
+  if (hangout?.status !== "planned" || hangout?.proposal_state !== "pending") {
+    return false;
+  }
+
+  return hangout.target_type === "group" || hangout.target_type === "connection";
+}
+
+async function finalizeConnectionHangoutResponse(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  hangoutId: string,
+  responseStatus: HangoutProposalResponseStatus,
+) {
+  const proposalState = responseStatus === "accepted" ? "confirmed" : "declined";
+
+  const { error: proposalUpdateError } = await supabase
+    .from("hangouts")
+    .update({
+      proposal_state: proposalState,
+      proposal_confirmed_at: responseStatus === "accepted" ? new Date().toISOString() : null,
+    })
+    .eq("id", hangoutId);
+
+  assertMutation(proposalUpdateError, "Failed to finalize shared hangout response");
+}
+
+async function notifyHangoutOwnerResponse(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  args: {
+    ownerUserId: string;
+    responderUserId: string;
+    targetType: "connection" | "group";
+    targetId: string;
+    responseStatus: HangoutProposalResponseStatus;
+    responder: { email?: string | null; user_metadata?: Record<string, unknown> };
+    hangoutTitle: string;
+    hangoutId: string;
+  },
+) {
+  if (args.ownerUserId === args.responderUserId || (args.responseStatus !== "accepted" && args.targetType === "group")) {
+    return;
+  }
+
+  if (args.targetType === "group") {
+    await sendPushToUser(supabase, args.ownerUserId, {
+      title: "Hangout proposal accepted",
+      body: `${getCurrentUserLabel(args.responder)} accepted your ${args.hangoutTitle} proposal.`,
+      url: `/groups/${args.targetId}`,
+      tag: `hangout-proposal-accepted-${args.hangoutId}`,
+    }).catch(() => ({ sent: 0 }));
+    return;
+  }
+
+  await sendPushToUser(supabase, args.ownerUserId, {
+    title: args.responseStatus === "accepted" ? "Shared plan joined" : "Shared plan passed",
+    body: args.responseStatus === "accepted"
+      ? `${getCurrentUserLabel(args.responder)} joined your shared plan: ${args.hangoutTitle}.`
+      : `${getCurrentUserLabel(args.responder)} passed for now on your shared plan: ${args.hangoutTitle}.`,
+    url: `/connections/${args.targetId}`,
+    tag: `shared-hangout-response-${args.hangoutId}`,
+  }).catch(() => ({ sent: 0 }));
+}
+
 async function assertCanManageHangoutTarget(
   supabase: ReturnType<typeof createServerAdminSupabaseClient>,
   userId: string,
   targetType: "connection" | "group",
   targetId: string,
-) {
+): Promise<ConnectionHangoutTargetRow | GroupHangoutTargetRow> {
   if (targetType === "connection") {
     const { data, error } = await supabase
       .from("connections")
-      .select("id")
+      .select("id, display_name, linked_user_id")
       .eq("id", targetId)
       .eq("owner_user_id", userId)
       .is("archived_at", null)
@@ -518,7 +682,7 @@ async function assertCanManageHangoutTarget(
       throw new Error("Failed to save hangout plan: connection not found.");
     }
 
-    return null;
+    return data as ConnectionHangoutTargetRow;
   }
 
   const { data, error } = await supabase
@@ -535,7 +699,7 @@ async function assertCanManageHangoutTarget(
     throw new Error("Failed to save hangout plan: group not found.");
   }
 
-  return data;
+  return data as GroupHangoutTargetRow;
 }
 
 async function getGroupHangoutParticipants(
@@ -1306,9 +1470,11 @@ export async function createHangoutAction(formData: FormData) {
     notes: getString(formData, "notes"),
     photoAlbumLabel: getString(formData, "photoAlbumLabel"),
     photoAlbumUrl: getString(formData, "photoAlbumUrl"),
+    shareWithLinkedUser: getString(formData, "shareWithLinkedUser"),
   });
 
-  const group = await assertCanManageHangoutTarget(supabase, user.id, payload.targetType, payload.targetId);
+  const target = await assertCanManageHangoutTarget(supabase, user.id, payload.targetType, payload.targetId);
+  const shouldShareWithLinkedUser = payload.targetType === "connection" && payload.shareWithLinkedUser === "true";
   const { data: hangout, error } = await supabase.from("hangouts").insert({
     owner_user_id: user.id,
     target_type: payload.targetType,
@@ -1319,15 +1485,16 @@ export async function createHangoutAction(formData: FormData) {
     timezone: payload.timezone,
     location: payload.location || null,
     notes: payload.notes || null,
-    proposal_state: payload.targetType === "group" ? "pending" : "confirmed",
-    proposal_confirmed_at: payload.targetType === "group" ? null : new Date().toISOString(),
+    proposal_state: payload.targetType === "group" || shouldShareWithLinkedUser ? "pending" : "confirmed",
+    proposal_confirmed_at: payload.targetType === "group" || shouldShareWithLinkedUser ? null : new Date().toISOString(),
     photo_album_label: payload.photoAlbumLabel || null,
     photo_album_url: payload.photoAlbumUrl || null,
   }).select("id, starts_at, ends_at, timezone").single();
 
   assertMutation(error, "Failed to save hangout plan");
 
-  if (payload.targetType === "group" && hangout && group) {
+  if (payload.targetType === "group" && hangout) {
+    const group = target as GroupHangoutTargetRow;
     const participants = await getGroupHangoutParticipants(supabase, payload.targetId, user.id);
 
     if (participants.length > 0) {
@@ -1363,11 +1530,26 @@ export async function createHangoutAction(formData: FormData) {
     }
   }
 
+  if (payload.targetType === "connection" && hangout && shouldShareWithLinkedUser) {
+    const connection = target as ConnectionHangoutTargetRow;
+
+    const participant = await createSharedConnectionHangoutParticipant(supabase, user.id, hangout.id, connection);
+    await notifySharedConnectionHangoutParticipant(
+      supabase,
+      participant.participantUserId,
+      participant.participantConnectionId,
+      payload.title,
+      user,
+      hangout.id,
+    );
+    revalidateHangoutPaths("connection", participant.participantConnectionId);
+  }
+
   revalidateHangoutPaths(payload.targetType, payload.targetId);
-  const fallbackPath = payload.targetType === "connection" ? `/connections/${payload.targetId}` : `/groups/${payload.targetId}`;
-  const feedbackKey = payload.targetType === "group" ? "hangout-proposal-created" : "hangout-saved";
-  const target = await resolveRedirectTarget(formData, fallbackPath, feedbackKey);
-  redirect(target);
+  const fallbackPath = getHangoutPath(payload.targetType, payload.targetId);
+  const feedbackKey = getHangoutCreateFeedbackKey(payload.targetType, shouldShareWithLinkedUser);
+  const redirectTarget = await resolveRedirectTarget(formData, fallbackPath, feedbackKey);
+  redirect(redirectTarget);
 }
 
 export async function respondToHangoutProposalAction(formData: FormData) {
@@ -1380,7 +1562,7 @@ export async function respondToHangoutProposalAction(formData: FormData) {
 
   const { data: participant, error: participantError } = await supabase
     .from("hangout_participants")
-    .select("id")
+    .select("id, response_status, participant_connection_id")
     .eq("hangout_id", payload.hangoutId)
     .eq("participant_user_id", user.id)
     .maybeSingle();
@@ -1399,8 +1581,12 @@ export async function respondToHangoutProposalAction(formData: FormData) {
 
   assertMutation(hangoutError, "Failed to load hangout for response");
 
-  if (hangout?.target_type !== "group" || hangout?.status !== "planned" || hangout?.proposal_state !== "pending") {
+  if (!hangout || !isOpenHangoutProposal(hangout)) {
     throw new Error("Failed to respond to hangout: proposal is no longer open.");
+  }
+
+  if (participant.response_status === "declined") {
+    throw new Error("Failed to respond to hangout: response already finalized.");
   }
 
   const { error: updateError } = await supabase
@@ -1413,18 +1599,32 @@ export async function respondToHangoutProposalAction(formData: FormData) {
 
   assertMutation(updateError, "Failed to save hangout response");
 
-  if (payload.responseStatus === "accepted" && hangout.owner_user_id !== user.id) {
-    await sendPushToUser(supabase, hangout.owner_user_id, {
-      title: "Hangout proposal accepted",
-      body: `${getCurrentUserLabel(user)} accepted your ${hangout.title} proposal.`,
-      url: `/groups/${hangout.target_id}`,
-      tag: `hangout-proposal-accepted-${hangout.id}`,
-    }).catch(() => ({ sent: 0 }));
+  if (hangout.target_type === "connection") {
+    await finalizeConnectionHangoutResponse(supabase, hangout.id, payload.responseStatus);
   }
 
-  revalidateHangoutPaths("group", hangout.target_id);
-  const fallbackPath = `/groups/${hangout.target_id}`;
-  const feedbackKey = payload.responseStatus === "accepted" ? "hangout-response-accepted" : "hangout-response-declined";
+  await notifyHangoutOwnerResponse(
+    supabase,
+    {
+      ownerUserId: hangout.owner_user_id,
+      responderUserId: user.id,
+      targetType: hangout.target_type,
+      targetId: hangout.target_id,
+      responseStatus: payload.responseStatus,
+      responder: user,
+      hangoutTitle: hangout.title,
+      hangoutId: hangout.id,
+    },
+  );
+
+  revalidateHangoutPaths(hangout.target_type, hangout.target_id);
+
+  if (hangout.target_type === "connection" && participant.participant_connection_id) {
+    revalidateHangoutPaths("connection", participant.participant_connection_id);
+  }
+
+  const fallbackPath = getHangoutPath(hangout.target_type, hangout.target_id);
+  const feedbackKey = getHangoutResponseFeedbackKey(hangout.target_type, payload.responseStatus);
   let target = await resolveRedirectTarget(formData, fallbackPath, feedbackKey);
 
   if (payload.responseStatus === "accepted" && payload.downloadCalendar === "true") {

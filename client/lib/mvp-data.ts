@@ -80,6 +80,7 @@ export type HangoutRow = {
 type HangoutParticipantRow = {
   hangout_id: string;
   participant_user_id: string;
+  participant_connection_id: string | null;
   response_status: HangoutResponseStatus;
 };
 
@@ -389,6 +390,17 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   const acceptedGroupInvites = (acceptedGroupInviteResult.data ?? []) as AcceptedGroupInviteRow[];
   const linkedConnectionIds = (linkedConnectionResult.data ?? []).flatMap((connection) => connection.id ? [connection.id] : []);
 
+  const participantConnectionRowsResult = await supabase
+    .from("hangout_participants")
+    .select("hangout_id, participant_user_id, participant_connection_id, response_status")
+    .eq("participant_user_id", userId);
+
+  assertNoError(participantConnectionRowsResult.error, "Failed to load shared connection hangout participants");
+  const participantConnectionRows = (participantConnectionRowsResult.data ?? []) as HangoutParticipantRow[];
+  const participantConnectionHangoutIds = [...new Set(
+    participantConnectionRows.map((participant) => participant.hangout_id),
+  )];
+
   let directGroupMemberships: Array<{ group_id: string }> = [];
 
   if (linkedConnectionIds.length > 0) {
@@ -412,6 +424,19 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   let extraCadenceRules: CadenceRuleRow[] = [];
   let extraTouchpoints: TouchpointRow[] = [];
   let extraHangouts: HangoutRow[] = [];
+  let participantConnectionHangouts: HangoutRow[] = [];
+
+  if (participantConnectionHangoutIds.length > 0) {
+    const participantConnectionHangoutResult = await supabase
+      .from("hangouts")
+      .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, proposal_state, proposal_confirmed_at, photo_album_label, photo_album_url, completed_at, created_at")
+      .eq("target_type", "connection")
+      .in("id", participantConnectionHangoutIds)
+      .order("starts_at");
+
+    assertNoError(participantConnectionHangoutResult.error, "Failed to load shared connection hangouts");
+    participantConnectionHangouts = (participantConnectionHangoutResult.data ?? []) as HangoutRow[];
+  }
 
   if (joinedGroupIds.length > 0) {
     const [joinedGroupResult, joinedCadenceResult, joinedTouchpointResult, joinedHangoutResult] = await Promise.all([
@@ -457,13 +482,19 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   const touchpoints = [...baseTouchpoints, ...extraTouchpoints]
     .sort((left, right) => right.occurred_at.localeCompare(left.occurred_at))
     .slice(0, 100);
-  const hangouts = [...baseHangouts, ...extraHangouts].sort((left, right) => left.starts_at.localeCompare(right.starts_at));
+  const dedupedHangoutsById = new Map<string, HangoutRow>();
+
+  for (const hangout of [...baseHangouts, ...extraHangouts, ...participantConnectionHangouts]) {
+    dedupedHangoutsById.set(hangout.id, hangout);
+  }
+
+  const hangouts = [...dedupedHangoutsById.values()].sort((left, right) => left.starts_at.localeCompare(right.starts_at));
   let hangoutParticipants: HangoutParticipantRow[] = [];
 
   if (hangouts.length > 0) {
     const participantResult = await supabase
       .from("hangout_participants")
-      .select("hangout_id, participant_user_id, response_status")
+      .select("hangout_id, participant_user_id, participant_connection_id, response_status")
       .in("hangout_id", hangouts.map((hangout) => hangout.id));
 
     assertNoError(participantResult.error, "Failed to load hangout participants");
@@ -759,14 +790,27 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     }
     const responseCounts = countHangoutResponses(participants.map((participant) => participant.response_status));
     const canManage = viewerRole === "owner";
-    const canRespond = viewerRole === "participant" && hangout.target_type === "group" && hangout.status === "planned" && hangout.proposal_state === "pending";
-    const canExportCalendar = canManage || hangout.target_type === "connection" || viewerParticipant?.response_status === "accepted";
+    const canRespond =
+      viewerRole === "participant"
+      && hangout.status === "planned"
+      && hangout.proposal_state === "pending"
+      && (hangout.target_type === "group" || hangout.target_type === "connection");
+    const canExportCalendar =
+      canManage
+      || (hangout.target_type === "connection" && viewerRole === "owner")
+      || viewerParticipant?.response_status === "accepted";
+    const effectiveTargetId =
+      hangout.target_type === "connection"
+      && viewerRole === "participant"
+      && viewerParticipant?.participant_connection_id
+        ? viewerParticipant.participant_connection_id
+        : hangout.target_id;
 
     return {
       id: hangout.id,
       targetType: hangout.target_type,
-      targetId: hangout.target_id,
-      targetLabel: targetNames.get(`${hangout.target_type}:${hangout.target_id}`) ?? "Unknown relationship",
+      targetId: effectiveTargetId,
+      targetLabel: targetNames.get(`${hangout.target_type}:${effectiveTargetId}`) ?? "Unknown relationship",
       title: hangout.title,
       startsAt: hangout.starts_at,
       endsAt: hangout.ends_at ?? undefined,

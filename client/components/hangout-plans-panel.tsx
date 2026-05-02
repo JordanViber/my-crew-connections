@@ -20,6 +20,8 @@ export function HangoutPlansPanel({
   redirectTo,
   autoExportHangoutId,
   canCreate = true,
+  allowShareWithLinkedUser = false,
+  shareWithLinkedUserLabel,
 }: Readonly<{
   hangouts: HangoutSummary[];
   emptyCopy: string;
@@ -34,6 +36,8 @@ export function HangoutPlansPanel({
   redirectTo: string;
   autoExportHangoutId?: string;
   canCreate?: boolean;
+  allowShareWithLinkedUser?: boolean;
+  shareWithLinkedUserLabel?: string;
 }>) {
   const [isPlanning, setIsPlanning] = useState(false);
 
@@ -77,6 +81,8 @@ export function HangoutPlansPanel({
             targetType={targetType}
             targetId={targetId}
             redirectTo={redirectTo}
+            allowShareWithLinkedUser={allowShareWithLinkedUser}
+            shareWithLinkedUserLabel={shareWithLinkedUserLabel}
           />
         </SectionCard>
       ) : null}
