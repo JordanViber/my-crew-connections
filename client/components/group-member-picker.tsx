@@ -42,7 +42,7 @@ export function GroupMemberPicker({
 
   function getJoinModeLabel(connection: RelationshipSummary) {
     if (connection.linkedUserId) {
-      return "App account connected; joins immediately.";
+      return "App account connected; still needs to accept the group invite.";
     }
 
     if (connection.pendingInviteEmail) {
@@ -64,7 +64,7 @@ export function GroupMemberPicker({
       ) : (
         <>
           <p className="text-sm leading-6 text-foreground/68">
-            Search your current people, then check the ones that belong in this crew. Saved emails become pending invites. Local-only people join immediately.
+            Search your current people, then check the ones that belong in this crew. People with app accounts or saved emails are invited and stay pending until they respond. Local-only people join immediately.
           </p>
           <label className="grid gap-2">
             <span className="field-label">Search existing people</span>

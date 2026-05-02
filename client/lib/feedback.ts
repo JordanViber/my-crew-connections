@@ -44,6 +44,11 @@ const feedbackMessages = {
     title: "Group created",
     body: "This crew is now tracked on the dashboard with its own cadence.",
   },
+  "group-minimum-members": {
+    tone: "error",
+    title: "Add at least three people",
+    body: "A group needs at least three total people (including you). Add at least two other people before creating it.",
+  },
   "group-created-with-invites": {
     tone: "success",
     title: "Group created and invites started",

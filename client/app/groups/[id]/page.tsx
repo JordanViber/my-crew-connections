@@ -62,7 +62,7 @@ function AcceptedGroupMembersList({
   }
 
   return members.map((member) => (
-    <article key={member.id} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
+    <Link key={member.id} className="group block rounded-lg border border-border/85 bg-white/78 p-3.5 transition hover:border-accent/45 hover:bg-white/90" href={`/connections/${member.id}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold text-foreground">{member.title}</p>
@@ -76,12 +76,8 @@ function AcceptedGroupMembersList({
           unlinkedLabel="Local person"
         />
       </div>
-      <div className="mt-3">
-        <Link className="button-secondary inline-flex" href={`/connections/${member.id}`}>
-          Open person
-        </Link>
-      </div>
-    </article>
+      <p className="mt-3 text-sm font-semibold text-accent-strong">Open details</p>
+    </Link>
   ));
 }
 
@@ -115,7 +111,7 @@ function PendingGroupInviteList({
   }
 
   return members.map((member) => (
-    <article key={member.connectionId} className="warning-surface rounded-lg border p-3.5">
+    <Link key={member.connectionId} className="group warning-surface block rounded-lg border p-3.5 transition hover:border-accent/45" href={`/connections/${member.connectionId}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold text-foreground">{member.name}</p>
@@ -123,12 +119,8 @@ function PendingGroupInviteList({
         </div>
         <span className="warning-surface-strong warning-text rounded-full px-3 py-1.5 text-xs font-semibold">Pending acceptance</span>
       </div>
-      <div className="mt-3">
-        <Link className="button-secondary inline-flex" href={`/connections/${member.connectionId}`}>
-          Open person
-        </Link>
-      </div>
-    </article>
+      <p className="mt-3 text-sm font-semibold text-accent-strong">Open details</p>
+    </Link>
   ));
 }
 
@@ -586,7 +578,7 @@ export default async function GroupDetailPage({
                 <input type="hidden" name="groupId" value={group.id} />
                 <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
                 <p className="text-sm leading-6 text-foreground/68">
-                  Connected app users join immediately. People with a pending person invite can be selected once here, then stay pending in this group until they accept.
+                  People with app accounts or saved emails are invited and stay pending until they accept or decline. Local-only people are added immediately.
                 </p>
                 <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
                   <legend className="field-label px-2">Add existing connections</legend>
@@ -696,7 +688,7 @@ export default async function GroupDetailPage({
               </div>
             ) : (
               <p className="text-sm leading-7 text-foreground/68">
-                Log one group touchpoint with an activity or place and this section becomes a lightweight planning shortcut.
+                People with app accounts or saved emails are invited and stay pending until they accept or decline. Local-only people are added immediately.
               </p>
             )}
           </SectionCard>

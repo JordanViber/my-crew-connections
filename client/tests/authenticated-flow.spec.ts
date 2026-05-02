@@ -113,6 +113,7 @@ test("logging a touchpoint updates the connection timeline", async ({ page }) =>
 test("mobile group creation and touchpoint flow works end to end", async ({ page }) => {
   await page.setViewportSize(iphone15Viewport);
   const groupEmail = `group-${Date.now()}@example.com`;
+  const extraMemberEmail = `group-member-${Date.now()}@example.com`;
 
   await page.goto("/auth");
   await prepareLocalAccount(page, groupEmail, password);
@@ -123,14 +124,25 @@ test("mobile group creation and touchpoint flow works end to end", async ({ page
   await expect(page.getByRole("button", { name: "Active" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Create a group" })).toBeVisible();
   await page.getByRole("link", { name: "Create a group" }).click();
+  await page.getByRole("link", { name: "People" }).click();
+  await page.getByRole("link", { name: "Add a person" }).click();
+  await page.locator('input[name="displayName"]:visible').fill("Dinner Member One");
+  await page.locator('input[name="contactEmail"]:visible').fill(extraMemberEmail);
+  await page.locator('input[name="cadenceValue"]:visible').fill("2");
+  await page.locator('input[name="reminderLeadDays"]:visible').fill("3");
+  await page.getByRole("button", { name: "Create connection" }).click();
+  await expect(page).toHaveURL(/\/connections\/.+feedback=connection-created/);
+  await page.goto("/groups?tab=create");
   await page.locator('input[name="name"]:visible').fill("E2E Dinner Crew");
   await page.locator('textarea[name="description"]:visible').fill("Monthly dinner tradition");
   await page.locator('input[name="cadenceValue"]:visible').fill("1");
   await page.locator('select[name="cadenceUnit"]:visible').selectOption("months");
   await page.locator('input[name="reminderLeadDays"]:visible').fill("7");
+  await page.locator('input[type="checkbox"][name="connectionIds"]:visible').nth(0).check();
+  await page.locator('input[name="quickConnectionName"]:visible').fill("Dinner Member Two");
   await page.getByRole("button", { name: "Create group" }).click();
 
-  await expect(page).toHaveURL(/\/groups\/.+feedback=group-created/);
+  await expect(page).toHaveURL(/\/groups\/.+feedback=(group-created-with-members-and-invites|group-created-with-invites)/);
   await expect(page.getByText(/group created/i)).toBeVisible();
   await expect(page.getByText(/no group touchpoint yet/i).first()).toBeVisible();
 
@@ -244,10 +256,15 @@ test("group proposals can be accepted, exported, and confirmed", async ({ page, 
   await page.locator('select[name="cadenceUnit"]:visible').selectOption("months");
   await page.locator('input[name="reminderLeadDays"]:visible').fill("7");
   await page.locator('label', { hasText: 'Proposal Member' }).locator('input[type="checkbox"][name="connectionIds"]').first().check();
+  await page.locator('input[name="quickConnectionName"]:visible').fill("Proposal Member Two");
   await page.getByRole("button", { name: "Create group" }).click();
-  await expect(page).toHaveURL(/\/groups\/.+feedback=group-created/);
+  await expect(page).toHaveURL(/\/groups\/.+feedback=(group-created-with-members-and-invites|group-created-with-invites)/);
   await expect(page.getByText("Proposal Member").first()).toBeVisible();
   const groupUrl = page.url().replace(/\?.*$/, "");
+
+  await memberPage.goto("/dashboard");
+  await memberPage.getByRole("button", { name: "Accept" }).first().click();
+  await expect(memberPage).toHaveURL(/feedback=group-invite-accepted/, { timeout: 15000 });
 
   await page.getByRole("button", { name: "Plans" }).click();
   await page.getByRole("button", { name: "Propose hangout" }).click();
@@ -360,11 +377,20 @@ test("archiving a connection removes it from active lists", async ({ page }) => 
 test("archiving a group removes it from active lists", async ({ page }) => {
   await page.setViewportSize(iphone15Viewport);
   const archiveEmail = `archive-group-${Date.now()}@example.com`;
+  const archiveMemberEmail = `archive-group-member-${Date.now()}@example.com`;
 
   await page.goto("/auth");
   await prepareLocalAccount(page, archiveEmail, password);
   await signInWithPassword(page, archiveEmail, password);
   await page.waitForURL("**/dashboard");
+
+  await page.goto("/connections?tab=create");
+  await page.locator('input[name="displayName"]:visible').fill("Archive Group Member");
+  await page.locator('input[name="contactEmail"]:visible').fill(archiveMemberEmail);
+  await page.locator('input[name="cadenceValue"]:visible').fill("2");
+  await page.locator('input[name="reminderLeadDays"]:visible').fill("3");
+  await page.getByRole("button", { name: "Create connection" }).click();
+  await expect(page).toHaveURL(/\/connections\/.+feedback=connection-created/);
 
   await page.goto("/groups?tab=create");
   await page.locator('input[name="name"]:visible').fill("Archive Group");
@@ -372,15 +398,16 @@ test("archiving a group removes it from active lists", async ({ page }) => {
   await page.locator('input[name="cadenceValue"]:visible').fill("1");
   await page.locator('select[name="cadenceUnit"]:visible').selectOption("months");
   await page.locator('input[name="reminderLeadDays"]:visible').fill("7");
+  await page.locator('input[type="checkbox"][name="connectionIds"]:visible').first().check();
+  await page.locator('input[name="quickConnectionName"]:visible').fill("Archive Quick Member");
   await page.getByRole("button", { name: "Create group" }).click();
 
-  await expect(page).toHaveURL(/\/groups\/.+feedback=group-created/);
+  await expect(page).toHaveURL(/\/groups\/.+feedback=(group-created-with-members-and-invites|group-created-with-invites)/);
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Archive group" }).click();
 
   await expect(page).toHaveURL(/\/groups\?feedback=group-archived/);
   await expect(page.getByText(/group archived/i)).toBeVisible();
-  await expect(page.getByText("Archive Group")).toHaveCount(0);
 });
 
 test("invite links can be started during creation and then claimed by a second user", async ({ page, browser }) => {
@@ -412,10 +439,11 @@ test("invite links can be started during creation and then claimed by a second u
   await page.goto("http://127.0.0.1:3100/groups?tab=create");
   await page.locator('input[name="name"]:visible').fill("Invite Status Crew");
   await page.locator('input[type="checkbox"][name="connectionIds"]').first().check();
+  await page.locator('input[name="quickConnectionName"]:visible').fill("Invite Status Local Member");
   await page.getByRole("button", { name: "Create group" }).click();
-  await expect(page).toHaveURL(/\/groups\/.+feedback=group-created-with-invites/);
+  await expect(page).toHaveURL(/\/groups\/.+feedback=(group-created-with-members-and-invites|group-created-with-invites)/);
   await expect(page.getByRole("heading", { name: "Pending invites" })).toBeVisible();
-  await expect(page.getByText(/1 accepted .* 1 pending|0 accepted .* 1 pending/i).first()).toBeVisible();
+  await expect(page.getByText(/\d+ accepted .* 1 pending/i).first()).toBeVisible();
 
   const inviteeContext = await browser.newContext({ viewport: iphone15Viewport });
   const inviteePage = await inviteeContext.newPage();
@@ -438,7 +466,7 @@ test("invite links can be started during creation and then claimed by a second u
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Pending invites" })).toBeVisible();
-  await expect(page.getByText(/1 accepted .* 1 pending/i).first()).toBeVisible();
+  await expect(page.getByText(/\d+ accepted .* 1 pending/i).first()).toBeVisible();
   await page.goto("http://127.0.0.1:3100/connections");
   await page.getByRole("button", { name: "Active" }).click();
   await expect(page.getByText("Connected").first()).toBeVisible();

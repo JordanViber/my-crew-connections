@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { getHangoutStatusLabel } from "@/lib/hangouts";
@@ -47,28 +48,28 @@ function HangoutActions({
   return (
     <div className="mt-3 flex flex-wrap gap-2">
       {hangout.canExportCalendar ? (
-        <a className="button-secondary" href={`/plan.ics?hangoutId=${hangout.id}`}>
+        <a className="button-secondary button-compact" href={`/plan.ics?hangoutId=${hangout.id}`}>
           Export to calendar
         </a>
       ) : null}
 
       {hangout.canRespond ? (
         <>
-          <form action={respondAction}>
+          <form action={respondAction} className="inline-flex">
             <input type="hidden" name="hangoutId" value={hangout.id} />
             <input type="hidden" name="responseStatus" value="accepted" />
             <input type="hidden" name="downloadCalendar" value="true" />
             <input type="hidden" name="redirectTo" value={redirectTo} />
-            <button className="button-primary" type="submit">
+            <button className="button-primary button-compact" type="submit">
               {hangout.targetType === "connection" ? "Join plan" : "Accept and export calendar"}
             </button>
           </form>
 
-          <form action={respondAction}>
+          <form action={respondAction} className="inline-flex">
             <input type="hidden" name="hangoutId" value={hangout.id} />
             <input type="hidden" name="responseStatus" value="declined" />
             <input type="hidden" name="redirectTo" value={redirectTo} />
-            <button className="button-secondary" type="submit">
+            <button className="button-secondary button-compact" type="submit">
               {hangout.targetType === "connection" ? "Pass for now" : "Decline"}
             </button>
           </form>
@@ -76,10 +77,10 @@ function HangoutActions({
       ) : null}
 
       {hangout.status === "planned" && hangout.canManage && hangout.targetType === "group" && hangout.proposalState === "pending" ? (
-        <form action={confirmAction}>
+        <form action={confirmAction} className="inline-flex">
           <input type="hidden" name="hangoutId" value={hangout.id} />
           <input type="hidden" name="redirectTo" value={redirectTo} />
-          <button className="button-primary" type="submit">
+          <button className="button-primary button-compact" type="submit">
             Keep plan
           </button>
         </form>
@@ -87,18 +88,18 @@ function HangoutActions({
 
       {hangout.status === "planned" && hangout.canManage && (hangout.targetType !== "group" || hangout.proposalState === "confirmed") ? (
         <>
-          <form action={completeAction}>
+          <form action={completeAction} className="inline-flex">
             <input type="hidden" name="hangoutId" value={hangout.id} />
             <input type="hidden" name="redirectTo" value={redirectTo} />
-            <button className="button-secondary" type="submit">
+            <button className="button-secondary button-compact" type="submit">
               Log as completed
             </button>
           </form>
 
-          <form action={cancelAction}>
+          <form action={cancelAction} className="inline-flex">
             <input type="hidden" name="hangoutId" value={hangout.id} />
             <input type="hidden" name="redirectTo" value={redirectTo} />
-            <ConfirmSubmitButton confirmMessage="Cancel this saved plan?">
+            <ConfirmSubmitButton className="button-secondary button-compact" confirmMessage="Cancel this saved plan?">
               Cancel plan
             </ConfirmSubmitButton>
           </form>
@@ -106,10 +107,10 @@ function HangoutActions({
       ) : null}
 
       {hangout.status === "planned" && hangout.canManage && hangout.targetType === "group" && hangout.proposalState === "pending" ? (
-        <form action={cancelAction}>
+        <form action={cancelAction} className="inline-flex">
           <input type="hidden" name="hangoutId" value={hangout.id} />
           <input type="hidden" name="redirectTo" value={redirectTo} />
-          <ConfirmSubmitButton confirmMessage="Delete this proposal instead of keeping it?">
+          <ConfirmSubmitButton className="button-secondary button-compact" confirmMessage="Delete this proposal instead of keeping it?">
             Delete proposal
           </ConfirmSubmitButton>
         </form>
@@ -136,8 +137,13 @@ function HangoutListItem({
   showTargetLabel: boolean;
 }>) {
   return (
-    <article className="rounded-lg border border-border/85 bg-white/80 p-3.5">
-      <div className="flex items-start justify-between gap-4">
+    <article className="group relative rounded-lg border border-border/85 bg-white/80 p-3.5 transition hover:border-accent/45 hover:bg-white/90">
+      <Link
+        aria-label={`Open plan details for ${hangout.title}`}
+        className="absolute inset-0 rounded-lg"
+        href={`/hangouts/${hangout.id}`}
+      />
+      <div className="pointer-events-none relative z-10 flex items-start justify-between gap-4">
         <div>
           <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-accent-strong">
             {hangout.bucketLabel} / {getHangoutStatusLabel(hangout.status)}
@@ -169,21 +175,24 @@ function HangoutListItem({
       {hangout.location ? <p className="mt-3 text-sm text-foreground/68">Location: {hangout.location}</p> : null}
       {hangout.notes ? <p className="mt-2 text-sm leading-6 text-foreground/72">{hangout.notes}</p> : null}
       {hangout.photoAlbumUrl ? (
-        <p className="mt-2 text-sm text-foreground/68">
+        <p className="relative z-10 mt-2 text-sm text-foreground/68">
           Shared photo album:{" "}
-          <a className="font-medium text-accent-strong underline underline-offset-2" href={hangout.photoAlbumUrl} target="_blank" rel="noreferrer">
+          <a className="pointer-events-auto font-medium text-accent-strong underline underline-offset-2" href={hangout.photoAlbumUrl} target="_blank" rel="noreferrer">
             {hangout.photoAlbumLabel || "Open album"}
           </a>
         </p>
       ) : null}
-      <HangoutActions
-        hangout={hangout}
-        confirmAction={confirmAction}
-        completeAction={completeAction}
-        cancelAction={cancelAction}
-        respondAction={respondAction}
-        redirectTo={redirectTo}
-      />
+      <div className="pointer-events-auto relative z-10">
+        <HangoutActions
+          hangout={hangout}
+          confirmAction={confirmAction}
+          completeAction={completeAction}
+          cancelAction={cancelAction}
+          respondAction={respondAction}
+          redirectTo={redirectTo}
+        />
+      </div>
+      <p className="relative z-10 mt-2 text-sm font-semibold text-accent-strong">Open plan details</p>
     </article>
   );
 }
