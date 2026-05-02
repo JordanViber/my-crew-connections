@@ -113,9 +113,6 @@ export default async function GroupsPage({
 
         <SectionCard title="Active groups" description="Open a group to adjust cadence, members, plans, and shared history.">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <Link className={canAddGroup ? "button-secondary" : "button-primary"} href={addGroupHref}>
-              {addGroupLabel}
-            </Link>
             {!hasPremium ? (
               <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold text-foreground/64">
                 {groupUsageLabel}

@@ -1,5 +1,6 @@
 import { createConnectionAction } from "@/app/actions";
 import { ConnectionIdentityFields } from "@/components/connection-identity-fields";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 
 const cadenceOptions = [
   { value: "weeks", label: "Weeks" },
@@ -45,9 +46,7 @@ export function ConnectionCreateForm() {
         <textarea className="field-input min-h-24" name="notes" placeholder="Anything useful to remember later." />
       </label>
       <p className="text-sm leading-6 text-foreground/64">Saving an email prevents duplicate people and keeps the invite address ready even if you do not send it yet.</p>
-      <button className="button-primary" type="submit">
-        Create connection
-      </button>
+      <PendingSubmitButton className="button-primary" idleLabel="Create connection" pendingLabel="Creating connection..." />
     </form>
   );
 }

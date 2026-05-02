@@ -120,9 +120,6 @@ export default async function ConnectionsPage({
 
         <SectionCard title="Current people" description="Search, filter, and open a person to update cadence, notes, plans, or recent touchpoints.">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <Link className={canAddConnection ? "button-secondary" : "button-primary"} href={addPersonHref}>
-              {addPersonLabel}
-            </Link>
             {!hasPremium ? (
               <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold text-foreground/64">
                 {connectionUsageLabel}

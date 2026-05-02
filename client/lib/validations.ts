@@ -62,6 +62,8 @@ export const groupSchema = baseCadenceSchema.extend({
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().max(300).optional().default(""),
   connectionIds: z.array(uuidSchema).default([]),
+  quickConnectionName: z.string().trim().max(80).optional().default(""),
+  quickConnectionEmail: z.email().optional().or(z.literal("")).default(""),
 });
 
 export const updateGroupSchema = groupSchema.extend({

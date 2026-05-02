@@ -1289,7 +1289,94 @@ export async function createGroupAction(formData: FormData) {
     cadenceUnit: getString(formData, "cadenceUnit"),
     reminderLeadDays: getString(formData, "reminderLeadDays"),
     connectionIds: getStringList(formData, "connectionIds"),
+    quickConnectionName: getString(formData, "quickConnectionName"),
+    quickConnectionEmail: getString(formData, "quickConnectionEmail"),
   });
+  const selectedConnectionIds = new Set(payload.connectionIds);
+  const normalizedQuickConnectionEmail = payload.quickConnectionEmail
+    ? normalizeInviteEmail(payload.quickConnectionEmail)
+    : null;
+  const hasQuickConnectionInput = Boolean(payload.quickConnectionName || normalizedQuickConnectionEmail);
+
+  if (hasQuickConnectionInput) {
+    const quickConnectionName = payload.quickConnectionName || getFallbackDisplayNameFromEmail(normalizedQuickConnectionEmail);
+
+    if (!quickConnectionName) {
+      throw new Error("Failed to create group: enter a name for the quick-added person.");
+    }
+
+    if (normalizedQuickConnectionEmail) {
+      const conflict = await findConnectionEmailConflict(supabase, user.id, normalizedQuickConnectionEmail);
+
+      if (conflict) {
+        selectedConnectionIds.add(conflict.connectionId);
+      } else {
+        const { data: quickConnection, error: quickConnectionError } = await supabase
+          .from("connections")
+          .insert({
+            owner_user_id: user.id,
+            display_name: quickConnectionName,
+            prefers_profile_name: false,
+            contact_email: normalizedQuickConnectionEmail,
+            tags: [],
+            notes: null,
+            preferred_activities: null,
+          })
+          .select("id")
+          .single();
+
+        assertMutation(quickConnectionError, "Failed to quick-add connection for group creation");
+
+        if (!quickConnection) {
+          throw new Error("Failed to quick-add connection for group creation.");
+        }
+
+        const { error: quickCadenceError } = await supabase.from("cadence_rules").insert({
+          owner_user_id: user.id,
+          target_type: "connection",
+          target_id: quickConnection.id,
+          cadence_value: 3,
+          cadence_unit: "weeks",
+          reminder_lead_days: 5,
+        });
+
+        assertMutation(quickCadenceError, "Failed to create quick-added connection cadence");
+        selectedConnectionIds.add(quickConnection.id);
+      }
+    } else {
+      const { data: quickConnection, error: quickConnectionError } = await supabase
+        .from("connections")
+        .insert({
+          owner_user_id: user.id,
+          display_name: quickConnectionName,
+          prefers_profile_name: false,
+          contact_email: null,
+          tags: [],
+          notes: null,
+          preferred_activities: null,
+        })
+        .select("id")
+        .single();
+
+      assertMutation(quickConnectionError, "Failed to quick-add connection for group creation");
+
+      if (!quickConnection) {
+        throw new Error("Failed to quick-add connection for group creation.");
+      }
+
+      const { error: quickCadenceError } = await supabase.from("cadence_rules").insert({
+        owner_user_id: user.id,
+        target_type: "connection",
+        target_id: quickConnection.id,
+        cadence_value: 3,
+        cadence_unit: "weeks",
+        reminder_lead_days: 5,
+      });
+
+      assertMutation(quickCadenceError, "Failed to create quick-added connection cadence");
+      selectedConnectionIds.add(quickConnection.id);
+    }
+  }
 
   const { data: group, error: groupError } = await supabase
     .from("groups")
@@ -1331,7 +1418,7 @@ export async function createGroupAction(formData: FormData) {
     user.user_metadata?.display_name ?? user.email,
     group.id,
     payload.name,
-    payload.connectionIds,
+    [...selectedConnectionIds],
   );
 
   revalidateRelationshipPaths("group", group.id);

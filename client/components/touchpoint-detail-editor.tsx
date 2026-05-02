@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 
 type TouchpointDetailEditorProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -33,14 +34,16 @@ function toInputDateTime(value: string) {
 function SummaryRow({
   label,
   value,
+  emptyCopy = "Not set",
 }: Readonly<{
   label: string;
-  value?: string;
+  value?: React.ReactNode;
+  emptyCopy?: string;
 }>) {
   return (
     <div className="rounded-lg border border-border/80 bg-white/70 px-3.5 py-3">
       <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-foreground/52">{label}</p>
-      <p className="mt-1.5 text-sm font-medium leading-6 text-foreground">{value || "Not set"}</p>
+      <div className="mt-1.5 text-sm font-medium leading-6 text-foreground">{value || emptyCopy}</div>
     </div>
   );
 }
@@ -130,15 +133,23 @@ export function TouchpointDetailEditor({
             <SummaryRow label="Activity" value={activityLabel} />
             <SummaryRow label="Location" value={locationLabel} />
             <SummaryRow label="Note" value={note} />
-            <SummaryRow label="Photo album label" value={photoAlbumLabel} />
-            <SummaryRow label="Photo album URL" value={photoAlbumUrl} />
+            <SummaryRow
+              label="Photo album"
+              value={
+                photoAlbumUrl ? (
+                  <a className="font-medium text-accent-strong underline underline-offset-2" href={photoAlbumUrl} rel="noreferrer" target="_blank">
+                    {photoAlbumLabel || "Open album"}
+                  </a>
+                ) : undefined
+              }
+            />
           </div>
         </div>
       )}
 
       {isEditing ? (
         <div className="flex flex-col gap-3 sm:flex-row">
-          <button className="button-primary w-full sm:w-auto" type="submit">Save touchpoint</button>
+          <PendingSubmitButton className="button-primary w-full sm:w-auto" idleLabel="Save touchpoint" pendingLabel="Saving touchpoint..." />
           <button className="button-secondary w-full sm:w-auto" onClick={handleCancel} type="button">Cancel</button>
         </div>
       ) : null}
