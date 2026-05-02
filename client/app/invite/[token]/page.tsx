@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { claimConnectionInviteAction, signOutToPathAction } from "@/app/actions";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { SectionCard } from "@/components/section-card";
+import { getFallbackDisplayNameFromEmail } from "@/lib/connection-display";
 import { normalizeInviteEmail } from "@/lib/invites";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -23,6 +24,32 @@ function InviteTerminalActions({
       Sign in
     </Link>
   );
+}
+
+async function resolveInviterName(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  ownerUserId: string,
+) {
+  const { data: inviterProfile, error: inviterProfileError } = await supabase
+    .from("profiles")
+    .select("display_name, first_name, last_name")
+    .eq("id", ownerUserId)
+    .maybeSingle();
+
+  if (inviterProfileError) {
+    throw new Error(`Failed to load inviter profile: ${inviterProfileError.message}`);
+  }
+
+  const inviterAuthResult = await supabase.auth.admin.getUserById(ownerUserId);
+
+  if (inviterAuthResult.error) {
+    throw new Error(`Failed to load inviter account: ${inviterAuthResult.error.message}`);
+  }
+
+  const inviterFullName = `${inviterProfile?.first_name ?? ""} ${inviterProfile?.last_name ?? ""}`.trim();
+  return inviterProfile?.display_name?.trim()
+    || inviterFullName
+    || getFallbackDisplayNameFromEmail(inviterAuthResult.data.user?.email);
 }
 
 export default async function InviteClaimPage({
@@ -60,12 +87,14 @@ export default async function InviteClaimPage({
     notFound();
   }
 
+  const inviterName = await resolveInviterName(supabase, connection.owner_user_id);
+
   const isClaimed = Boolean(invite.claimed_at);
   const invitePath = `/invite/${token}`;
   const signInHref = `/auth?next=${encodeURIComponent(invitePath)}`;
   const inviteHeading = connection.prefers_profile_name
-    ? "Claim the connection waiting for you."
-    : `Claim your connection with ${connection.display_name}.`;
+    ? `Accept your connection invite from ${inviterName}.`
+    : `Claim your connection with ${connection.display_name} from ${inviterName}.`;
 
   if (invite.revoked_at) {
     return (

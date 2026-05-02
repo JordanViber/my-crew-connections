@@ -228,7 +228,7 @@ test("group proposals can be accepted, exported, and confirmed", async ({ page, 
   await signInWithPassword(memberPage, memberEmail, password);
   await memberPage.waitForURL("**/dashboard");
   await memberPage.goto(inviteUrl);
-  await expect(memberPage.getByRole("heading", { name: /claim your connection/i })).toBeVisible();
+  await expect(memberPage.getByRole("heading", { name: /claim your connection|accept your connection invite from/i })).toBeVisible();
   await memberPage.getByRole("button", { name: "Claim connection" }).click();
   await memberPage.waitForURL(/\/invite\/.*claimed=1/);
   await memberPage.goto("/dashboard");
@@ -516,7 +516,7 @@ test("existing account can claim an invite and receive the reciprocal connection
   await inviteePage.waitForURL("**/dashboard");
 
   await inviteePage.goto(inviteUrl);
-  await expect(inviteePage.getByRole("heading", { name: /claim your connection/i })).toBeVisible();
+  await expect(inviteePage.getByRole("heading", { name: /claim your connection|accept your connection invite from/i })).toBeVisible();
   await inviteePage.getByRole("button", { name: "Claim connection" }).click();
   await inviteePage.waitForURL(/\/invite\/.*claimed=1/);
   await expect(inviteePage.getByText(/invite claimed/i).first()).toBeVisible();
@@ -564,7 +564,7 @@ test("free-tier recipient cannot claim a connection invite after using their onl
   const inviteUrl = await page.locator('input[readonly]:visible').inputValue();
 
   await inviteePage.goto(inviteUrl);
-  await expect(inviteePage.getByRole("heading", { name: /claim your connection/i })).toBeVisible();
+  await expect(inviteePage.getByRole("heading", { name: /claim your connection|accept your connection invite from/i })).toBeVisible();
   await inviteePage.getByRole("button", { name: "Claim connection" }).click();
   await expect(inviteePage.getByText(/already used your free person slot/i)).toBeVisible();
   await expect(inviteePage.getByRole("button", { name: "Claim connection" })).toBeVisible();

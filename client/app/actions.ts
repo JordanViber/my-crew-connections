@@ -41,6 +41,7 @@ import { notifyConnectionInvite } from "@/lib/connection-invites";
 import { notifyGroupInvite } from "@/lib/group-invites";
 import { buildConnectionInvitePath, buildGroupInvitePath, normalizeInviteEmail } from "@/lib/invites";
 import { canCreateConnection, canCreateGroup } from "@/lib/entitlements";
+import { sendPushToUser } from "@/lib/push";
 
 type GroupHangoutMembershipRow = {
   connection_id: string | null;
@@ -103,6 +104,21 @@ function buildDisplayName(firstName: string, lastName: string, email?: string | 
   }
 
   return getFallbackDisplayNameFromEmail(email);
+}
+
+function getCurrentUserLabel(user: { email?: string | null; user_metadata?: Record<string, unknown> }) {
+  const displayName = typeof user.user_metadata?.display_name === "string"
+    ? user.user_metadata.display_name.trim()
+    : "";
+
+  if (displayName) {
+    return displayName;
+  }
+
+  const firstName = typeof user.user_metadata?.first_name === "string" ? user.user_metadata.first_name : "";
+  const lastName = typeof user.user_metadata?.last_name === "string" ? user.user_metadata.last_name : "";
+
+  return buildDisplayName(firstName, lastName, user.email ?? null);
 }
 
 async function resolveAutomaticConnectionDisplayName(
@@ -1377,13 +1393,13 @@ export async function respondToHangoutProposalAction(formData: FormData) {
 
   const { data: hangout, error: hangoutError } = await supabase
     .from("hangouts")
-    .select("id, target_type, target_id, status, proposal_state")
+    .select("id, owner_user_id, target_type, target_id, title, status, proposal_state")
     .eq("id", payload.hangoutId)
     .maybeSingle();
 
   assertMutation(hangoutError, "Failed to load hangout for response");
 
-  if (!hangout || hangout.target_type !== "group" || hangout.status !== "planned" || hangout.proposal_state !== "pending") {
+  if (hangout?.target_type !== "group" || hangout?.status !== "planned" || hangout?.proposal_state !== "pending") {
     throw new Error("Failed to respond to hangout: proposal is no longer open.");
   }
 
@@ -1396,6 +1412,16 @@ export async function respondToHangoutProposalAction(formData: FormData) {
     .eq("id", participant.id);
 
   assertMutation(updateError, "Failed to save hangout response");
+
+  if (payload.responseStatus === "accepted" && hangout.owner_user_id !== user.id) {
+    await sendPushToUser(supabase, hangout.owner_user_id, {
+      title: "Hangout proposal accepted",
+      body: `${getCurrentUserLabel(user)} accepted your ${hangout.title} proposal.`,
+      url: `/groups/${hangout.target_id}`,
+      tag: `hangout-proposal-accepted-${hangout.id}`,
+    }).catch(() => ({ sent: 0 }));
+  }
+
   revalidateHangoutPaths("group", hangout.target_id);
   const fallbackPath = `/groups/${hangout.target_id}`;
   const feedbackKey = payload.responseStatus === "accepted" ? "hangout-response-accepted" : "hangout-response-declined";
@@ -1422,7 +1448,7 @@ export async function confirmHangoutProposalAction(formData: FormData) {
 
   assertMutation(hangoutError, "Failed to load hangout proposal");
 
-  if (!hangout || hangout.target_type !== "group") {
+  if (hangout?.target_type !== "group") {
     throw new Error("Failed to confirm hangout proposal: plan not found.");
   }
 
@@ -1666,6 +1692,14 @@ export async function claimConnectionInviteAction(formData: FormData) {
     .eq("id", invite.id);
 
   assertMutation(claimError, "Failed to claim invite");
+
+  await sendPushToUser(supabase, sourceConnection.owner_user_id, {
+    title: "Connection invite accepted",
+    body: `${getCurrentUserLabel(user)} accepted your connection invite.`,
+    url: `/connections/${invite.connection_id}`,
+    tag: `connection-invite-accepted-${invite.id}`,
+  }).catch(() => ({ sent: 0 }));
+
   revalidatePath("/dashboard");
   revalidatePath("/connections");
   revalidatePath(`/connections/${invite.connection_id}`);

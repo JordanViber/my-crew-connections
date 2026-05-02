@@ -25,27 +25,23 @@ type TestPushResult = {
 };
 
 function getPrimaryButtonLabel(state: NotificationState) {
-  if (state === "enabled") {
-    return "Enabled";
-  }
-
   if (state === "saving") {
-    return "Saving";
+    return "Saving...";
   }
 
   if (state === "testing") {
-    return "Testing";
+    return "Testing...";
   }
 
-  return "Turn on";
+  return "Enable push on this device";
 }
 
 function getStatusLabel(state: NotificationState) {
   return {
-    unsupported: "Not supported on this browser",
-    "install-required": "Install app first",
-    default: "Off",
-    denied: "Blocked",
+    unsupported: "Unavailable in this browser",
+    "install-required": "Install required",
+    default: "Setup needed",
+    denied: "Permission blocked",
     enabled: "On",
     saving: "Saving",
     testing: "Testing",
@@ -73,6 +69,18 @@ function getFeedbackClassName(feedbackTone: "neutral" | "success" | "error") {
   }
 
   return "text-foreground/58";
+}
+
+function getInstallInstruction(environment: ReturnType<typeof getPushEnvironment>) {
+  if (environment.deviceFamily === "ios") {
+    return "Install My Crew Connections to your Home Screen, open the app icon, then return here to enable push.";
+  }
+
+  if (environment.deviceFamily === "android") {
+    return "Install this app from your browser menu for a smoother Android push experience, then return here to enable push.";
+  }
+
+  return "Install the app first, then return here to enable push notifications for this device.";
 }
 
 async function fetchSubscriptionStatus() {
@@ -162,6 +170,10 @@ export function NotificationSettingRow() {
     }
   }
 
+  function refreshLocalState() {
+    setState(getNotificationState());
+  }
+
   async function enableNotifications() {
     setState("saving");
     setFeedbackMessage(null);
@@ -215,29 +227,32 @@ export function NotificationSettingRow() {
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
+      <div className="grow">
         <p className="font-medium text-foreground">Push notifications</p>
         <p className="mt-0.5 text-sm leading-6 text-foreground/58">
-          Get reminders for upcoming hangouts and relationships that need attention.
+          Delivery is per device. Turn this on from the device where you want alerts.
         </p>
+
+        {state === "install-required" ? (
+          <p className="mt-2 rounded-lg border border-border/80 bg-white/70 px-3 py-2.5 text-sm leading-6 text-foreground/72">{getInstallInstruction(environment)}</p>
+        ) : null}
+
         {state === "default" ? (
           <p className="mt-1 text-sm text-foreground/58">
-            {environment.deviceFamily === "android"
-              ? "Tap Turn on and your browser will ask for permission. Installing the app first usually gives Android the smoothest experience."
-              : "Tap Turn on and your browser will ask for permission."}
+            Enable push and accept the browser permission prompt to start receiving reminders on this device.
           </p>
         ) : null}
-        {state === "install-required" ? (
-          <p className="mt-1 text-sm text-foreground/58">
-            On iPhone and iPad, push only works from the installed Home Screen app. Add My Crew Connections to your Home Screen, open that app icon, then come back here and tap Turn on.
-          </p>
-        ) : null}
+
         {state === "denied" ? (
-          <p className="mt-1 text-sm text-accent-strong">Notifications are blocked. Open browser site settings, allow notifications for this app, then return here.</p>
+          <p className="mt-2 rounded-lg border border-accent/35 bg-accent-soft px-3 py-2.5 text-sm leading-6 text-accent-strong">
+            Notifications are blocked in browser settings. Re-enable notifications for this site, then tap Check status.
+          </p>
         ) : null}
+
         {state === "unsupported" ? (
-          <p className="mt-1 text-sm text-foreground/58">Push works best from the installed app or a browser with web push support.</p>
+          <p className="mt-1 text-sm text-foreground/58">This browser/device combination does not support web push for this app.</p>
         ) : null}
+
         {statusSummary ? (
           <p className="mt-1 text-sm text-foreground/58">Saved for {statusSummary}.</p>
         ) : null}
@@ -251,26 +266,42 @@ export function NotificationSettingRow() {
           <p className={`mt-1 text-sm ${feedbackClassName}`}>{feedbackMessage}</p>
         ) : null}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
+
+      <div className="flex shrink-0 flex-wrap items-center gap-2 self-start">
         <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold text-foreground/64">
           {statusLabel}
         </span>
-        <button
-          className="button-secondary button-compact"
-          disabled={state === "unsupported" || state === "install-required" || state === "denied" || state === "saving" || state === "testing" || state === "enabled"}
-          onClick={enableNotifications}
-          type="button"
-        >
-          {buttonLabel}
-        </button>
-        <button
-          className="button-secondary button-compact"
-          disabled={state !== "enabled"}
-          onClick={sendTestPush}
-          type="button"
-        >
-          Send test
-        </button>
+
+        {(state === "default" || state === "error") ? (
+          <button
+            className="button-primary button-compact"
+            onClick={enableNotifications}
+            type="button"
+          >
+            {buttonLabel}
+          </button>
+        ) : null}
+
+        {state === "enabled" ? (
+          <button
+            className="button-secondary button-compact"
+            disabled={state !== "enabled"}
+            onClick={sendTestPush}
+            type="button"
+          >
+            Send test notification
+          </button>
+        ) : null}
+
+        {(state === "install-required" || state === "denied" || state === "unsupported") ? (
+          <button
+            className="button-secondary button-compact"
+            onClick={refreshLocalState}
+            type="button"
+          >
+            Check status
+          </button>
+        ) : null}
       </div>
     </div>
   );
