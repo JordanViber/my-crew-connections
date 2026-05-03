@@ -68,7 +68,7 @@ export function HangoutPlanForm({
         <label className="grid gap-2">
           <span className="field-label inline-flex items-center gap-2">
             Photo album link
-            <ExternalLink className="text-xs font-semibold normal-case tracking-normal" href="https://photos.google.com">
+            <ExternalLink className="text-xs font-semibold normal-case tracking-normal" href="https://photos.google.com/albums">
               Open Google Photos
             </ExternalLink>
           </span>

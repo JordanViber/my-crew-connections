@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { FeedbackBanner } from "@/components/feedback-banner";
 import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { PrefetchLink } from "@/components/prefetch-link";
 import { clearInAppNotificationsAction, markInAppNotificationReadAction } from "@/app/actions";
+import { getFeedback } from "@/lib/feedback";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type ProfileRow = {
@@ -45,7 +47,12 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 });
 
-export default async function NotificationsPage() {
+export default async function NotificationsPage({
+  searchParams,
+}: Readonly<{
+  searchParams: Promise<{ feedback?: string }>;
+}>) {
+  const params = await searchParams;
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -78,6 +85,7 @@ export default async function NotificationsPage() {
   const unreadLabel = unreadCount === 1
     ? "1 unread notification"
     : `${unreadCount} unread notifications`;
+  const feedback = getFeedback(params.feedback);
 
   return (
     <AppShell
@@ -88,6 +96,10 @@ export default async function NotificationsPage() {
       displayName={displayName}
     >
       <div className="mx-auto grid max-w-4xl gap-4">
+        {feedback ? (
+          <FeedbackBanner title={feedback.title} body={feedback.body} tone={feedback.tone} />
+        ) : null}
+
         <section className="rounded-lg border border-border bg-surface-strong p-4 shadow-(--shadow-tight)">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm font-medium text-foreground/72">

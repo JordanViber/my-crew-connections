@@ -159,6 +159,11 @@ const feedbackMessages = {
     title: "Plan canceled",
     body: "This saved hangout was removed from the upcoming queue.",
   },
+  "hangout-unavailable": {
+    tone: "error",
+    title: "Plan no longer available",
+    body: "That notification points to a plan that was deleted or is no longer accessible.",
+  },
   "invite-created": {
     tone: "success",
     title: "Invite ready",

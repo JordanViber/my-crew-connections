@@ -17,5 +17,6 @@ describe("feedback helpers", () => {
     expect(getFeedback("hangout-share-pending")?.title).toBe("Shared plan sent");
     expect(getFeedback("hangout-share-accepted")?.title).toBe("Plan joined");
     expect(getFeedback("hangout-share-declined")?.title).toBe("Passed for now");
+    expect(getFeedback("hangout-unavailable")?.title).toBe("Plan no longer available");
   });
 });

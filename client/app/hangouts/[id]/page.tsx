@@ -81,7 +81,7 @@ export default async function HangoutDetailPage({
   }
 
   if (!hangout) {
-    notFound();
+    redirect("/notifications?feedback=hangout-unavailable");
   }
 
   const parsedHangout = hangout as HangoutDetailRow;
