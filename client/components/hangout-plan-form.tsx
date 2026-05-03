@@ -1,5 +1,8 @@
 "use client";
 
+import { ExternalLink } from "@/components/external-link";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
+
 function toDateTimeLocalValue(hoursFromNow = 72) {
   const now = new Date(Date.now() + hoursFromNow * 60 * 60 * 1000);
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -63,7 +66,12 @@ export function HangoutPlanForm({
           <input className="field-input" name="photoAlbumLabel" placeholder="Shared Google Photos album" type="text" />
         </label>
         <label className="grid gap-2">
-          <span className="field-label">Photo album link</span>
+          <span className="field-label inline-flex items-center gap-2">
+            Photo album link
+            <ExternalLink className="text-xs font-semibold normal-case tracking-normal" href="https://photos.google.com">
+              Open Google Photos
+            </ExternalLink>
+          </span>
           <input className="field-input" name="photoAlbumUrl" placeholder="https://..." type="url" />
         </label>
       </div>
@@ -83,9 +91,10 @@ export function HangoutPlanForm({
           ? "Sending this proposal starts the RSVP flow for group members with app access, and accepted members can export it to calendar right away."
           : "Saving keeps this plan on the dashboard until it is completed, canceled, or exported to calendar."}
       </p>
-      <button className="button-primary" type="submit">
-        {targetType === "group" ? "Send proposal" : "Save plan"}
-      </button>
+      <PendingSubmitButton
+        idleLabel={targetType === "group" ? "Send proposal" : "Save plan"}
+        pendingLabel={targetType === "group" ? "Sending proposal..." : "Saving plan..."}
+      />
     </form>
   );
 }

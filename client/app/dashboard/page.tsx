@@ -389,7 +389,7 @@ export default async function DashboardPage({
 
       <div className="mb-4 grid gap-3">
         <IncomingGroupInvites invites={incomingGroupInvites} />
-        <IncomingConnectionInvites invites={incomingConnectionInvites} />
+        <IncomingConnectionInvites invites={incomingConnectionInvites} redirectTo="/dashboard" />
       </div>
 
       <MobileSectionTabs

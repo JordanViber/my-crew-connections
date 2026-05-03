@@ -4,6 +4,7 @@ import { DesktopNav } from "@/components/desktop-nav";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { NotificationsBellLink } from "@/components/notifications-bell-link";
 import { PwaInstallBanner } from "@/components/pwa-install-banner";
+import { RealtimeRefresh } from "@/components/realtime-refresh";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const navigation = [
@@ -49,6 +50,7 @@ export async function AppShell({
 
   return (
     <div className="shell px-2 py-2 md:px-5 md:py-4">
+      {user ? <RealtimeRefresh userId={user.id} email={user.email} /> : null}
       <PwaInstallBanner />
       <div className="glass-panel mx-auto max-w-7xl px-3 py-3 md:px-5 md:py-5">
         <header className="border-b border-border/70 pb-3 md:pb-4">

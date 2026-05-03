@@ -1949,6 +1949,7 @@ export async function createConnectionInviteAction(formData: FormData) {
 export async function claimConnectionInviteAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
   const token = getString(formData, "token");
+  const redirectTo = getString(formData, "redirectTo");
   const fallbackPath = buildConnectionInvitePath(token);
   const normalizedUserEmail = normalizeInviteEmail(user.email ?? "");
 
@@ -1969,6 +1970,10 @@ export async function claimConnectionInviteAction(formData: FormData) {
   }
 
   if (invite.claimed_at) {
+    if (redirectTo) {
+      redirect(withFeedback(redirectTo, "connection-linked"));
+    }
+
     redirect(`${fallbackPath}?claimed=1`);
   }
 
@@ -2113,6 +2118,11 @@ export async function claimConnectionInviteAction(formData: FormData) {
   revalidatePath("/connections");
   revalidatePath(`/connections/${invite.connection_id}`);
   revalidatePath(`/connections/${reciprocalConnectionId}`);
+
+  if (redirectTo) {
+    redirect(withFeedback(redirectTo, "connection-linked"));
+  }
+
   redirect(`${fallbackPath}?claimed=1`);
 }
 

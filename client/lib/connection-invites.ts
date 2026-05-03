@@ -149,7 +149,7 @@ export async function notifyConnectionInvite(
     await createInAppNotification(supabase, recipient.id, {
       category: "connection-invite",
       title: "New connection invite",
-      body: `${connectionName} is waiting for you in My Crew Connections. Open the app to review it.`,
+      body: `${connectionName} is waiting for you in My Crew Connections. Review it in your dashboard.`,
       href: "/dashboard",
       metadata: { token },
     }).catch(() => undefined);

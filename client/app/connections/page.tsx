@@ -61,7 +61,7 @@ export default async function ConnectionsPage({
       ) : null}
 
       <div className="mb-4">
-        <IncomingConnectionInvites invites={incomingInvites} />
+        <IncomingConnectionInvites invites={incomingInvites} redirectTo="/connections" />
       </div>
 
       <MobileSectionTabs

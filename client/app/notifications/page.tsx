@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { PrefetchLink } from "@/components/prefetch-link";
 import { clearInAppNotificationsAction, markInAppNotificationReadAction } from "@/app/actions";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -12,12 +13,25 @@ type ProfileRow = {
 
 type NotificationRow = {
   id: string;
+  category: string | null;
   title: string;
   body: string;
   href: string | null;
   read_at: string | null;
   created_at: string;
 };
+
+function getNotificationCenterBody(notification: NotificationRow) {
+  const normalizedCategory = (notification.category ?? "").replaceAll("_", "-");
+
+  if (normalizedCategory.startsWith("connection-invite")) {
+    return notification.body
+      .replace("Open the app to review it.", "Review it in your dashboard.")
+      .replace("Open the app to review the invite and choose what to do next.", "Review it in your dashboard.");
+  }
+
+  return notification.body;
+}
 
 function getDisplayName(profile: ProfileRow | null, email?: string | null) {
   return profile?.display_name
@@ -49,7 +63,7 @@ export default async function NotificationsPage() {
 
   const { data: notifications, error } = await supabase
     .from("in_app_notifications")
-    .select("id, title, body, href, read_at, created_at")
+    .select("id, category, title, body, href, read_at, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -82,7 +96,7 @@ export default async function NotificationsPage() {
             <form action={clearInAppNotificationsAction}>
               <input name="redirectTo" type="hidden" value="/notifications" />
               <button className="button-secondary" type="submit" disabled={unreadCount === 0}>
-                Clear all unread
+                Clear all read
               </button>
             </form>
           </div>
@@ -107,7 +121,7 @@ export default async function NotificationsPage() {
                         ) : null}
                         <h2 className="text-base font-semibold text-foreground">{notification.title}</h2>
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-foreground/72">{notification.body}</p>
+                      <p className="mt-2 text-sm leading-6 text-foreground/72">{getNotificationCenterBody(notification)}</p>
                       <p className="mt-2 text-xs text-foreground/54">{dateFormatter.format(new Date(notification.created_at))}</p>
                     </div>
 
@@ -115,7 +129,11 @@ export default async function NotificationsPage() {
                       <form action={markInAppNotificationReadAction}>
                         <input name="notificationId" type="hidden" value={notification.id} />
                         <input name="redirectTo" type="hidden" value="/notifications" />
-                        <button className="button-secondary button-compact" type="submit">Mark read</button>
+                        <PendingSubmitButton
+                          className="button-secondary button-compact"
+                          idleLabel="Mark read"
+                          pendingLabel="Marking..."
+                        />
                       </form>
                     ) : null}
                   </div>
