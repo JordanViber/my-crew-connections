@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ConnectionLinkBadge } from "@/components/connection-link-badge";
+import { ExternalLink } from "@/components/external-link";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { HangoutList } from "@/components/hangout-list";
 import { IncomingConnectionInvites } from "@/components/incoming-connection-invites";
@@ -160,14 +161,9 @@ function MobileRecentHistory({
               {touchpoint.photoAlbumUrl ? (
                 <p className="relative z-10 mt-2 text-sm text-foreground/68">
                   Shared photo album:{" "}
-                  <a
-                    className="pointer-events-auto font-medium text-accent-strong underline underline-offset-2"
-                    href={touchpoint.photoAlbumUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
+                  <ExternalLink className="pointer-events-auto inline-flex items-center gap-1.5 font-medium text-accent-strong underline underline-offset-2" href={touchpoint.photoAlbumUrl}>
                     {touchpoint.photoAlbumLabel || "Open album"}
-                  </a>
+                  </ExternalLink>
                 </p>
               ) : null}
               <p className="mt-2 text-sm font-semibold text-accent-strong">Open touchpoint details</p>
@@ -747,14 +743,9 @@ export default async function DashboardPage({
                     {touchpoint.photoAlbumUrl ? (
                       <p className="relative z-10 mt-2 text-sm text-foreground/68">
                         Shared photo album:{" "}
-                        <a
-                          className="pointer-events-auto font-medium text-accent-strong underline underline-offset-2"
-                          href={touchpoint.photoAlbumUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
+                        <ExternalLink className="pointer-events-auto inline-flex items-center gap-1.5 font-medium text-accent-strong underline underline-offset-2" href={touchpoint.photoAlbumUrl}>
                           {touchpoint.photoAlbumLabel || "Open album"}
-                        </a>
+                        </ExternalLink>
                       </p>
                     ) : null}
                     <p className="mt-2 text-sm font-semibold text-accent-strong">Open touchpoint details</p>

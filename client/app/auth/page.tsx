@@ -39,6 +39,7 @@ function AuthOptionCards() {
   const options = [
     ...(appleAuthEnabled ? [{ title: "Apple", body: "Fast on supported devices." }] : []),
     { title: "Password", body: phoneAuthEnabled ? "Use email or phone with your password." : "Use your email with your password." },
+    { title: "Passkey", body: "After setup in Settings, Face ID/Touch ID prompts appear after password sign-in." },
     { title: "Email code", body: "Enter the code from your inbox, or use the sign-in link as a fallback." },
     ...(phoneAuthEnabled ? [{ title: "Phone code", body: "Use a verified phone number to sign in by text." }] : []),
   ];

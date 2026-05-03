@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { ExternalLink } from "@/components/external-link";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { SectionCard } from "@/components/section-card";
 import { TouchpointDetailEditor } from "@/components/touchpoint-detail-editor";
@@ -91,9 +92,9 @@ export default async function TouchpointDetailPage({
             {touchpoint.photo_album_url ? (
               <p className="text-sm text-foreground/68">
                 Shared photo album:{" "}
-                <a className="font-medium text-accent-strong underline underline-offset-2" href={touchpoint.photo_album_url} target="_blank" rel="noreferrer">
+                <ExternalLink href={touchpoint.photo_album_url}>
                   {touchpoint.photo_album_label || "Open album"}
-                </a>
+                </ExternalLink>
               </p>
             ) : (
               <p className="text-sm text-foreground/62">No photo album link has been added yet.</p>

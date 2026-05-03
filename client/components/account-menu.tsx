@@ -24,6 +24,7 @@ export function AccountMenu({
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const initial = getInitial(firstName, displayName, email);
   const accountName = displayName || firstName || email;
+  const menuItemClass = "block w-full cursor-pointer rounded-md px-3 py-2 text-left font-medium text-foreground/78 transition hover:bg-surface-muted";
 
   return (
     <div className="relative">
@@ -54,14 +55,14 @@ export function AccountMenu({
             <p className="mt-0.5 truncate text-xs text-foreground/58">{email}</p>
           </div>
 
-          <Link className="block rounded-md px-3 py-2 font-medium text-foreground/78 hover:bg-surface-muted" href="/settings" onClick={() => setIsOpen(false)} role="menuitem">
+          <Link className={menuItemClass} href="/settings" onClick={() => setIsOpen(false)} role="menuitem">
             Settings
           </Link>
-          <Link className="block rounded-md px-3 py-2 font-medium text-foreground/78 hover:bg-surface-muted" href="/settings#billing" onClick={() => setIsOpen(false)} role="menuitem">
+          <Link className={menuItemClass} href="/settings#billing" onClick={() => setIsOpen(false)} role="menuitem">
             Billing
           </Link>
           <button
-            className="w-full rounded-md px-3 py-2 text-left font-medium text-foreground/78 hover:bg-surface-muted"
+            className={menuItemClass}
             onClick={() => {
               setIsOpen(false);
               setIsFeedbackOpen(true);
@@ -71,8 +72,8 @@ export function AccountMenu({
           >
             Send feedback
           </button>
-          <form action={signOutAction} className="border-t border-border/70 pt-1.5">
-            <button className="w-full rounded-md px-3 py-2 text-left font-semibold text-accent-strong hover:bg-accent-soft" role="menuitem" type="submit">
+          <form action={signOutAction} className="pt-1">
+            <button className={menuItemClass} role="menuitem" type="submit">
               Sign out
             </button>
           </form>

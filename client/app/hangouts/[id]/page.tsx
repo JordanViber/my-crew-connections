@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { ExternalLink } from "@/components/external-link";
 import { SectionCard } from "@/components/section-card";
 import { formatHangoutWindow, getHangoutStatusLabel } from "@/lib/hangouts";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -211,9 +212,9 @@ export default async function HangoutDetailPage({
             {parsedHangout.photo_album_url ? (
               <p>
                 <span className="font-semibold text-foreground">Photo album:</span>{" "}
-                <a className="font-medium text-accent-strong underline underline-offset-2" href={parsedHangout.photo_album_url} target="_blank" rel="noreferrer">
+                <ExternalLink href={parsedHangout.photo_album_url}>
                   {parsedHangout.photo_album_label || "Open album"}
-                </a>
+                </ExternalLink>
               </p>
             ) : null}
           </div>

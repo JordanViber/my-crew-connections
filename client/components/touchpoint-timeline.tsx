@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExternalLink } from "@/components/external-link";
 import type { RecentTouchpoint } from "@/lib/mvp-data";
 
 export function TouchpointTimeline({
@@ -33,14 +34,9 @@ export function TouchpointTimeline({
               {touchpoint.photoAlbumUrl ? (
                 <p className="mt-2 text-sm text-foreground/68">
                   Shared photo album:{" "}
-                  <a
-                    className="pointer-events-auto font-medium text-accent-strong underline underline-offset-2"
-                    href={touchpoint.photoAlbumUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
+                  <ExternalLink className="pointer-events-auto inline-flex items-center gap-1.5 font-medium text-accent-strong underline underline-offset-2" href={touchpoint.photoAlbumUrl}>
                     {touchpoint.photoAlbumLabel || "Open album"}
-                  </a>
+                  </ExternalLink>
                 </p>
               ) : (
                 <p className="mt-2 text-sm text-foreground/62">No photo album linked yet</p>

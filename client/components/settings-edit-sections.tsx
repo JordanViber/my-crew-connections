@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AddressFields } from "@/components/address-fields";
 import { PasswordInput } from "@/components/password-input";
 import { PhoneNumberInput } from "@/components/phone-number-input";
@@ -203,6 +203,8 @@ export function SecuritySettingsEditor({
         ) : null}
       </div>
 
+      <PasskeySignInSettingsRow />
+
       {phoneAuthEnabled ? (
         <PhoneSignInSettingsRow
           authPhoneConfirmedAt={authPhoneConfirmedAt}
@@ -233,6 +235,156 @@ export function SecuritySettingsEditor({
           </form>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function PasskeySignInSettingsRow() {
+  const router = useRouter();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPending, setIsPending] = useState(false);
+  const [factorCount, setFactorCount] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  const supportsPasskeys = globalThis.window !== undefined && "PublicKeyCredential" in globalThis.window;
+
+  async function refreshFactors() {
+    const supabase = createBrowserSupabaseClient();
+    const { data, error } = await supabase.auth.mfa.listFactors();
+
+    if (error) {
+      setErrorMessage(error.message);
+      setIsLoading(false);
+      return;
+    }
+
+    const verifiedPasskeys = (data?.all ?? []).filter((factor) => factor.factor_type === "webauthn" && factor.status === "verified");
+    setFactorCount(verifiedPasskeys.length);
+    setIsLoading(false);
+  }
+
+  useEffect(() => {
+    void refreshFactors();
+  }, []);
+
+  async function enablePasskey() {
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    if (!supportsPasskeys) {
+      setErrorMessage("This browser or device does not support passkeys.");
+      return;
+    }
+
+    setIsPending(true);
+
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const friendlyName = `Passkey ${new Date().toLocaleDateString()}`;
+      const { error } = await supabase.auth.mfa.webauthn.register({
+        friendlyName,
+      });
+
+      if (error) {
+        setErrorMessage(error.message);
+        return;
+      }
+
+      setStatusMessage("Passkey enabled. You can now use Face ID or Touch ID prompts on supported devices.");
+      await refreshFactors();
+      router.refresh();
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  async function removePasskeys() {
+    setErrorMessage(null);
+    setStatusMessage(null);
+    setIsPending(true);
+
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const { data, error } = await supabase.auth.mfa.listFactors();
+
+      if (error) {
+        setErrorMessage(error.message);
+        return;
+      }
+
+      const webauthnFactors = (data?.all ?? []).filter((factor) => factor.factor_type === "webauthn");
+
+      for (const factor of webauthnFactors) {
+        const { error: removeError } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+
+        if (removeError) {
+          setErrorMessage(removeError.message);
+          return;
+        }
+      }
+
+      setStatusMessage("Passkey sign-in was removed for this account.");
+      await refreshFactors();
+      router.refresh();
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  let passkeyLabel = "No passkey configured";
+
+  if (isLoading) {
+    passkeyLabel = "Checking passkey status...";
+  } else if (factorCount > 0) {
+    passkeyLabel = `${factorCount} passkey${factorCount === 1 ? "" : "s"} enabled`;
+  }
+
+  return (
+    <div className="grid gap-3 py-4 first:pt-0 last:pb-0">
+      <div className="flex items-start justify-between gap-4">
+        <SummaryLine label="Passkey sign-in" value={passkeyLabel} />
+        <IconEditButton label="Manage passkeys" onClick={() => setIsEditing((value) => !value)} />
+      </div>
+
+      {isEditing ? (
+        <div className="grid gap-3 sm:max-w-xl">
+          <p className="text-sm leading-6 text-foreground/62">
+            Enable passkeys to use Face ID, Touch ID, or your device biometrics after password sign-in on supported browsers.
+          </p>
+
+          {statusMessage ? (
+            <p className="rounded-lg bg-mint px-3 py-2.5 text-sm font-medium text-[#214c35]">{statusMessage}</p>
+          ) : null}
+
+          {errorMessage ? (
+            <p className="rounded-lg bg-[#f8d2ca] px-3 py-2.5 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2">
+            {factorCount > 0 ? (
+              <button className="button-primary" disabled={isPending || isLoading} onClick={() => void enablePasskey()} type="button">
+                Add another passkey
+              </button>
+            ) : (
+              <button className="button-primary" disabled={isPending || isLoading} onClick={() => void enablePasskey()} type="button">
+                Enable passkey
+              </button>
+            )}
+
+            {factorCount > 0 ? (
+              <button className="button-secondary" disabled={isPending || isLoading} onClick={() => void removePasskeys()} type="button">
+                Remove passkeys
+              </button>
+            ) : null}
+
+            <button className="button-secondary" disabled={isPending} onClick={() => setIsEditing(false)} type="button">
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

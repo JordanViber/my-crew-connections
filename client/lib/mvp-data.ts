@@ -260,13 +260,47 @@ function getProfileName(profile?: ProfileRow) {
   return profile?.display_name?.trim() || fullName || "Someone";
 }
 
+function resolveGroupMemberName({
+  membership,
+  connectionMap,
+  profiles,
+  viewerUserId,
+  viewerProfileName,
+}: Readonly<{
+  membership: GroupMembershipRow;
+  connectionMap: Map<string, GroupConnectionRow>;
+  profiles: Map<string, ProfileRow>;
+  viewerUserId: string;
+  viewerProfileName: string;
+}>) {
+  if (membership.user_id) {
+    return membership.user_id === viewerUserId
+      ? viewerProfileName
+      : getProfileName(profiles.get(membership.user_id));
+  }
+
+  if (!membership.connection_id) {
+    return null;
+  }
+
+  const connection = connectionMap.get(membership.connection_id);
+
+  if (!connection) {
+    return null;
+  }
+
+  return connection.linked_user_id === viewerUserId ? viewerProfileName : connection.display_name;
+}
+
 function buildGroupMemberMap(
   groups: GroupRow[],
   memberships: GroupMembershipRow[],
   groupConnections: GroupConnectionRow[],
   profiles: Map<string, ProfileRow>,
+  viewerUserId: string,
+  viewerProfileName: string,
 ) {
-  const connectionNameMap = new Map(groupConnections.map((connection) => [connection.id, connection.display_name]));
+  const connectionMap = new Map(groupConnections.map((connection) => [connection.id, connection]));
   const memberMap = new Map<string, string[]>();
 
   groups.forEach((group) => memberMap.set(group.id, []));
@@ -278,17 +312,16 @@ function buildGroupMemberMap(
       continue;
     }
 
-    if (membership.user_id) {
-      names.push(getProfileName(profiles.get(membership.user_id)));
-      continue;
-    }
+    const memberName = resolveGroupMemberName({
+      membership,
+      connectionMap,
+      profiles,
+      viewerUserId,
+      viewerProfileName,
+    });
 
-    if (membership.connection_id) {
-      const displayName = connectionNameMap.get(membership.connection_id);
-
-      if (displayName) {
-        names.push(displayName);
-      }
+    if (memberName) {
+      names.push(memberName);
     }
   }
 
@@ -380,6 +413,8 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   assertNoError(hangoutResult.error, "Failed to load hangouts");
   assertNoError(inviteResult.error, "Failed to load connection invites");
   assertNoError(acceptedGroupInviteResult.error, "Failed to load accepted group invites");
+
+  const viewerProfileName = getProfileName((profileResult.data ?? undefined) as ProfileRow | undefined);
 
   const connections = (connectionResult.data ?? []) as ConnectionRow[];
   const ownedGroups = (ownedGroupResult.data ?? []) as GroupRow[];
@@ -579,7 +614,14 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
 
   const cadenceMap = new Map(allCadenceRules.map((rule) => [`${rule.target_type}:${rule.target_id}`, rule]));
   const latestTouchpoints = latestTouchpointMap(touchpoints);
-  const groupMemberMap = buildGroupMemberMap(groups, memberships, groupConnections, groupProfiles);
+  const groupMemberMap = buildGroupMemberMap(
+    groups,
+    memberships,
+    groupConnections,
+    groupProfiles,
+    userId,
+    viewerProfileName,
+  );
   const groupPendingInviteMap = buildGroupPendingInviteMap(groupInvites, groupConnections);
   const groupMemberIdsMap = memberships.reduce<Map<string, string[]>>((accumulator, membership) => {
     if (!membership.connection_id) {

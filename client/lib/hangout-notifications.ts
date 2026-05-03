@@ -1,6 +1,7 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { getAuthUserById } from "@/lib/auth-users";
 import { sendHangoutProposalEmail, type HangoutEmailDeliveryStatus } from "@/lib/hangout-email";
+import { createInAppNotification } from "@/lib/in-app-notifications";
 import { sendPushToUser } from "@/lib/push";
 
 export type HangoutNotificationResult = {
@@ -34,6 +35,14 @@ export async function notifyHangoutProposalParticipant(
       errorMessage: "Participant account could not be loaded for hangout notification.",
     };
   }
+
+  await createInAppNotification(supabase, participantUserId, {
+    category: "hangout-proposal",
+    title: "New hangout proposal",
+    body: `${inviterName?.trim() || "Someone"} proposed ${hangoutTitle} for ${whenLabel}. Open the app to RSVP.`,
+    href: `/groups/${groupId}`,
+    metadata: { hangoutId, groupId, groupName, location },
+  }).catch(() => undefined);
 
   const pushResult = await sendPushToUser(supabase, participantUserId, {
     title: "New hangout proposal",

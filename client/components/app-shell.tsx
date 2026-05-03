@@ -3,6 +3,7 @@ import { AccountMenu } from "@/components/account-menu";
 import { DesktopNav } from "@/components/desktop-nav";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { PwaInstallBanner } from "@/components/pwa-install-banner";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard" },
@@ -10,7 +11,7 @@ const navigation = [
   { href: "/groups", label: "Groups" },
 ];
 
-export function AppShell({
+export async function AppShell({
   title,
   subtitle,
   email,
@@ -29,6 +30,22 @@ export function AppShell({
   backLabel?: string;
   children: React.ReactNode;
 }>) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let unreadNotifications = 0;
+
+  if (user) {
+    const { count } = await supabase
+      .from("in_app_notifications")
+      .select("id", { head: true, count: "exact" })
+      .eq("user_id", user.id)
+      .is("read_at", null);
+
+    unreadNotifications = count ?? 0;
+  }
+
   return (
     <div className="shell px-2 py-2 md:px-5 md:py-4">
       <PwaInstallBanner />
@@ -41,6 +58,19 @@ export function AppShell({
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+                <Link
+                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface-muted text-foreground/72 transition hover:border-accent/25 hover:bg-surface-strong"
+                  href="/notifications"
+                  aria-label="Open notifications"
+                >
+                  <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9" viewBox="0 0 24 24">
+                    <path d="M15 17h5l-1.4-1.4c-.4-.4-.6-.9-.6-1.4V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5" />
+                    <path d="M9.5 19a2.5 2.5 0 0 0 5 0" />
+                  </svg>
+                  {unreadNotifications > 0 ? (
+                    <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-[#2a74ff]" />
+                  ) : null}
+                </Link>
                 <AccountMenu displayName={displayName} email={email} firstName={firstName} />
               </div>
             </div>

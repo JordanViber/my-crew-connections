@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { ExternalLink } from "@/components/external-link";
 import { PendingSubmitButton } from "@/components/pending-submit-button";
 
 type TouchpointDetailEditorProps = {
@@ -137,9 +138,9 @@ export function TouchpointDetailEditor({
               label="Photo album"
               value={
                 photoAlbumUrl ? (
-                  <a className="font-medium text-accent-strong underline underline-offset-2" href={photoAlbumUrl} rel="noreferrer" target="_blank">
+                  <ExternalLink href={photoAlbumUrl}>
                     {photoAlbumLabel || "Open album"}
-                  </a>
+                  </ExternalLink>
                 ) : undefined
               }
             />

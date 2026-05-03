@@ -41,6 +41,7 @@ import {
 import { notifyConnectionInvite } from "@/lib/connection-invites";
 import { notifyGroupInvite } from "@/lib/group-invites";
 import { buildConnectionInvitePath, buildGroupInvitePath, normalizeInviteEmail } from "@/lib/invites";
+import { createInAppNotification } from "@/lib/in-app-notifications";
 import { canCreateConnection, canCreateGroup } from "@/lib/entitlements";
 import { sendPushToUser } from "@/lib/push";
 
@@ -640,6 +641,14 @@ async function notifySharedConnectionHangoutParticipant(
   ownerUser: { email?: string | null; user_metadata?: Record<string, unknown> },
   hangoutId: string,
 ) {
+  await createInAppNotification(supabase, participantUserId, {
+    category: "shared-plan",
+    title: "New shared plan",
+    body: `${getCurrentUserLabel(ownerUser)} shared a plan with you: ${title}.`,
+    href: `/connections/${participantConnectionId}`,
+    metadata: { hangoutId, participantConnectionId },
+  }).catch(() => undefined);
+
   await sendPushToUser(supabase, participantUserId, {
     title: "New shared plan",
     body: `${getCurrentUserLabel(ownerUser)} shared a plan with you: ${title}.`,
@@ -698,6 +707,14 @@ async function notifyHangoutOwnerResponse(
   }
 
   if (args.targetType === "group") {
+    await createInAppNotification(supabase, args.ownerUserId, {
+      category: "hangout-response",
+      title: "Hangout proposal accepted",
+      body: `${getCurrentUserLabel(args.responder)} accepted your ${args.hangoutTitle} proposal.`,
+      href: `/groups/${args.targetId}`,
+      metadata: { hangoutId: args.hangoutId, responseStatus: args.responseStatus },
+    }).catch(() => undefined);
+
     await sendPushToUser(supabase, args.ownerUserId, {
       title: "Hangout proposal accepted",
       body: `${getCurrentUserLabel(args.responder)} accepted your ${args.hangoutTitle} proposal.`,
@@ -706,6 +723,16 @@ async function notifyHangoutOwnerResponse(
     }).catch(() => ({ sent: 0 }));
     return;
   }
+
+  await createInAppNotification(supabase, args.ownerUserId, {
+    category: "shared-plan-response",
+    title: args.responseStatus === "accepted" ? "Shared plan joined" : "Shared plan passed",
+    body: args.responseStatus === "accepted"
+      ? `${getCurrentUserLabel(args.responder)} joined your shared plan: ${args.hangoutTitle}.`
+      : `${getCurrentUserLabel(args.responder)} passed for now on your shared plan: ${args.hangoutTitle}.`,
+    href: `/connections/${args.targetId}`,
+    metadata: { hangoutId: args.hangoutId, responseStatus: args.responseStatus },
+  }).catch(() => undefined);
 
   await sendPushToUser(supabase, args.ownerUserId, {
     title: args.responseStatus === "accepted" ? "Shared plan joined" : "Shared plan passed",
@@ -2067,6 +2094,14 @@ export async function claimConnectionInviteAction(formData: FormData) {
 
   assertMutation(claimError, "Failed to claim invite");
 
+  await createInAppNotification(supabase, sourceConnection.owner_user_id, {
+    category: "connection-invite-accepted",
+    title: "Connection invite accepted",
+    body: `${getCurrentUserLabel(user)} accepted your connection invite.`,
+    href: `/connections/${invite.connection_id}`,
+    metadata: { inviteId: invite.id, connectionId: invite.connection_id },
+  }).catch(() => undefined);
+
   await sendPushToUser(supabase, sourceConnection.owner_user_id, {
     title: "Connection invite accepted",
     body: `${getCurrentUserLabel(user)} accepted your connection invite.`,
@@ -2313,10 +2348,35 @@ export async function archiveConnectionAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
   const connectionId = getString(formData, "connectionId");
 
+  const { data: connection, error: loadError } = await supabase
+    .from("connections")
+    .select("id, linked_user_id")
+    .eq("id", connectionId)
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+
+  assertMutation(loadError, "Failed to load connection before archiving");
+
+  if (!connection) {
+    throw new Error("Failed to archive connection: person not found.");
+  }
+
+  if (connection.linked_user_id) {
+    const { error: unlinkPeerError } = await supabase
+      .from("connections")
+      .update({ linked_user_id: null })
+      .eq("owner_user_id", connection.linked_user_id)
+      .eq("linked_user_id", user.id)
+      .is("archived_at", null);
+
+    assertMutation(unlinkPeerError, "Failed to unlink reciprocal connection");
+  }
+
   const { error } = await supabase
     .from("connections")
     .update({
       archived_at: new Date().toISOString(),
+      linked_user_id: null,
     })
     .eq("id", connectionId)
     .eq("owner_user_id", user.id);
@@ -2343,4 +2403,38 @@ export async function archiveGroupAction(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/groups");
   redirect(withFeedback("/groups", "group-archived"));
+}
+
+export async function markInAppNotificationReadAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const notificationId = getString(formData, "notificationId");
+  const redirectTo = getString(formData, "redirectTo") || "/notifications";
+
+  const { error } = await supabase
+    .from("in_app_notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", notificationId)
+    .eq("user_id", user.id)
+    .is("read_at", null);
+
+  assertMutation(error, "Failed to mark notification as read");
+  revalidatePath("/notifications");
+  revalidatePath(redirectTo);
+  redirect(redirectTo);
+}
+
+export async function clearInAppNotificationsAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const redirectTo = getString(formData, "redirectTo") || "/notifications";
+
+  const { error } = await supabase
+    .from("in_app_notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .is("read_at", null);
+
+  assertMutation(error, "Failed to clear notifications");
+  revalidatePath("/notifications");
+  revalidatePath(redirectTo);
+  redirect(redirectTo);
 }

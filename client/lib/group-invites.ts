@@ -5,6 +5,7 @@ import {
   type InviteEmailDeliveryStatus,
   type InviteEmailResult,
 } from "@/lib/invite-email";
+import { createInAppNotification } from "@/lib/in-app-notifications";
 import { normalizeInviteEmail } from "@/lib/invites";
 import { sendPushToUser } from "@/lib/push";
 
@@ -161,6 +162,14 @@ export async function notifyGroupInvite(
   const recipient = await findAuthUserByEmail(supabase, normalizedEmail);
 
   if (recipient) {
+    await createInAppNotification(supabase, recipient.id, {
+      category: "group-invite",
+      title: "New group invite",
+      body: `${inviterName?.trim() || "Someone"} invited you to join ${groupName}. Open the app to respond.`,
+      href: "/dashboard",
+      metadata: { token, groupName, connectionName },
+    }).catch(() => undefined);
+
     const pushResult = await sendPushToUser(supabase, recipient.id, {
       title: "New group invite",
       body: `${inviterName?.trim() || "Someone"} invited you to join ${groupName}. Open the app to respond.`,

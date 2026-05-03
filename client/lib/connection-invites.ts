@@ -7,6 +7,7 @@ import {
   type InviteEmailDeliveryStatus,
   type InviteEmailResult,
 } from "@/lib/invite-email";
+import { createInAppNotification } from "@/lib/in-app-notifications";
 import { sendPushToUser } from "@/lib/push";
 
 type IncomingInviteRow = {
@@ -145,6 +146,14 @@ export async function notifyConnectionInvite(
   const recipient = await findAuthUserByEmail(supabase, normalizedEmail);
 
   if (recipient) {
+    await createInAppNotification(supabase, recipient.id, {
+      category: "connection-invite",
+      title: "New connection invite",
+      body: `${connectionName} is waiting for you in My Crew Connections. Open the app to review it.`,
+      href: "/dashboard",
+      metadata: { token },
+    }).catch(() => undefined);
+
     const pushResult = await sendPushToUser(supabase, recipient.id, {
       title: "New connection invite",
       body: `${connectionName} is waiting for you in My Crew Connections. Open the app to review it.`,
