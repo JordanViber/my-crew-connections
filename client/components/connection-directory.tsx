@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { ConnectionLinkBadge } from "@/components/connection-link-badge";
 import { StatusPill } from "@/components/status-pill";
 import { filterConnections, type ConnectionDirectoryFilter } from "@/lib/connection-directory";
@@ -42,7 +42,7 @@ function ConnectionSection({
         <p className="mt-1 text-sm leading-6 text-foreground/68">{description}</p>
       </div>
       {items.map((connection) => (
-        <Link
+        <PrefetchLink
           key={connection.id}
           className="group block rounded-lg border border-border/90 bg-white/82 p-3.5 transition hover:border-accent/45 hover:bg-white/90"
           href={`/connections/${connection.id}`}
@@ -66,7 +66,7 @@ function ConnectionSection({
               <p className="text-sm font-semibold text-accent-strong">Open details</p>
             </div>
           </div>
-        </Link>
+        </PrefetchLink>
       ))}
     </div>
   );

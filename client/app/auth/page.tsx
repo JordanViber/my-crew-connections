@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { redirect } from "next/navigation";
 import { AppleAuthButton } from "@/components/apple-auth-button";
 import { FeedbackBanner } from "@/components/feedback-banner";
@@ -118,12 +118,12 @@ export default async function AuthPage({
           </p>
           {params.invite ? <InviteNotice inviteEmail={params.inviteEmail} inviteName={params.inviteName} /> : null}
           <div className="flex flex-wrap gap-3">
-            <Link className="button-primary" href={createAccountHref}>
+            <PrefetchLink className="button-primary" href={createAccountHref}>
               Create account
-            </Link>
-            <Link className="button-secondary" href="/">
+            </PrefetchLink>
+            <PrefetchLink className="button-secondary" href="/">
               Back to home
-            </Link>
+            </PrefetchLink>
           </div>
           <AuthOptionCards />
         </section>
@@ -190,7 +190,7 @@ export default async function AuthPage({
             <MagicLinkForm stackAvailable={stackStatus.available} nextPath={nextPath} />
           </div>
 
-          <details className="section-card p-3.5 md:p-4">
+          <details className="section-card p-3.5 md:p-4" open={Boolean(params.prepared)}>
             <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
               Local recovery tools
             </summary>

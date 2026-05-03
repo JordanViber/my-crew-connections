@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState, useTransition } from "react";
 import { AddressFields } from "@/components/address-fields";
@@ -58,11 +58,6 @@ export function CreateAccountForm({
     startTransition(async () => {
       setErrorMessage(null);
 
-      if (!stackAvailable) {
-        setErrorMessage("Account creation is temporarily unavailable. Try again when the sign-in service is reachable.");
-        return;
-      }
-
       const firstName = getValue(formData, "firstName");
       const lastName = getValue(formData, "lastName");
       const phoneNumber = normalizePhoneNumberForStorage(getValue(formData, "phoneNumber"));
@@ -116,7 +111,12 @@ export function CreateAccountForm({
           const result = (await response.json()) as { error?: string };
 
           if (!response.ok) {
-            setErrorMessage(result.error ?? "Failed to create the account on this local stack.");
+            setErrorMessage(
+              result.error
+                ?? (stackAvailable
+                  ? "Failed to create the account on this local stack."
+                  : "Account creation failed because local services appear offline."),
+            );
             return;
           }
 
@@ -135,7 +135,11 @@ export function CreateAccountForm({
           router.refresh();
           return;
         } catch {
-          setErrorMessage("Could not reach the local account service. Make sure the local stack is running, then try again.");
+          setErrorMessage(
+            stackAvailable
+              ? "Could not reach the local account service. Make sure the local stack is running, then try again."
+              : "Local services look offline. Start the local stack, then try again.",
+          );
           return;
         }
       }
@@ -243,9 +247,9 @@ export function CreateAccountForm({
         <button className="button-primary" type="submit" disabled={isPending}>
           {isPending ? "Creating account..." : "Create account"}
         </button>
-        <Link className="button-secondary" href={signInHref}>
+        <PrefetchLink className="button-secondary" href={signInHref}>
           Sign in instead
-        </Link>
+        </PrefetchLink>
       </div>
     </form>
   );

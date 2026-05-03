@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -66,18 +66,18 @@ export default async function Home({
             </div>
 
             <div className="grid gap-2 sm:flex sm:flex-wrap">
-              <Link
+              <PrefetchLink
                 className="button-primary"
                 href="/auth/create"
               >
                 Create account
-              </Link>
-              <Link
+              </PrefetchLink>
+              <PrefetchLink
                 className="button-secondary"
                 href="/auth"
               >
                 Sign in
-              </Link>
+              </PrefetchLink>
             </div>
           </div>
 

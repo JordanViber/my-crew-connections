@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { useEffect, useRef } from "react";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ExternalLink } from "@/components/external-link";
@@ -139,7 +139,7 @@ function HangoutListItem({
 }>) {
   return (
     <article className="group relative rounded-lg border border-border/85 bg-white/80 p-3.5 transition hover:border-accent/45 hover:bg-white/90">
-      <Link
+      <PrefetchLink
         aria-label={`Open plan details for ${hangout.title}`}
         className="absolute inset-0 rounded-lg"
         href={`/hangouts/${hangout.id}`}

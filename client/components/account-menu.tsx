@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { signOutAction, submitFeedbackAction } from "@/app/actions";
@@ -24,7 +24,7 @@ export function AccountMenu({
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const initial = getInitial(firstName, displayName, email);
   const accountName = displayName || firstName || email;
-  const menuItemClass = "block w-full cursor-pointer rounded-md px-3 py-2 text-left font-medium text-foreground/78 transition hover:bg-surface-muted";
+  const menuItemClass = "block w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm font-semibold text-foreground/78 transition hover:bg-surface-muted";
 
   return (
     <div className="relative">
@@ -55,12 +55,12 @@ export function AccountMenu({
             <p className="mt-0.5 truncate text-xs text-foreground/58">{email}</p>
           </div>
 
-          <Link className={menuItemClass} href="/settings" onClick={() => setIsOpen(false)} role="menuitem">
+          <PrefetchLink className={menuItemClass} href="/settings" onClick={() => setIsOpen(false)} role="menuitem">
             Settings
-          </Link>
-          <Link className={menuItemClass} href="/settings#billing" onClick={() => setIsOpen(false)} role="menuitem">
+          </PrefetchLink>
+          <PrefetchLink className={menuItemClass} href="/settings#billing" onClick={() => setIsOpen(false)} role="menuitem">
             Billing
-          </Link>
+          </PrefetchLink>
           <button
             className={menuItemClass}
             onClick={() => {

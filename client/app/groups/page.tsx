@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { FeedbackBanner } from "@/components/feedback-banner";
@@ -67,9 +67,9 @@ export default async function GroupsPage({
             content: (
               <SectionCard title="Active groups" description="Open a group to adjust cadence, members, plans, and shared history.">
                 <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <Link className={canAddGroup ? "button-secondary" : "button-primary"} href={addGroupHref}>
+                  <PrefetchLink className={canAddGroup ? "button-secondary" : "button-primary"} href={addGroupHref}>
                     {addGroupLabel}
-                  </Link>
+                  </PrefetchLink>
                   {!hasPremium ? (
                     <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold text-foreground/64">
                       {groupUsageLabel}

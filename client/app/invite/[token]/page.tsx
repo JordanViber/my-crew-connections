@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { notFound, redirect } from "next/navigation";
 import { claimConnectionInviteAction, signOutToPathAction } from "@/app/actions";
 import { FeedbackBanner } from "@/components/feedback-banner";
@@ -16,13 +16,13 @@ function InviteTerminalActions({
   signInHref: string;
 }>) {
   return user ? (
-    <Link className="button-primary w-full sm:w-auto" href="/dashboard">
+    <PrefetchLink className="button-primary w-full sm:w-auto" href="/dashboard">
       Open dashboard
-    </Link>
+    </PrefetchLink>
   ) : (
-    <Link className="button-primary w-full sm:w-auto" href={signInHref}>
+    <PrefetchLink className="button-primary w-full sm:w-auto" href={signInHref}>
       Sign in
-    </Link>
+    </PrefetchLink>
   );
 }
 
@@ -144,9 +144,9 @@ export default async function InviteClaimPage({
     inviteResponseContent = (
       <SectionCard title="Invite claimed" description="This connection is already linked to a real app user.">
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Link className="button-primary w-full sm:w-auto" href="/connections?feedback=connection-linked">
+          <PrefetchLink className="button-primary w-full sm:w-auto" href="/connections?feedback=connection-linked">
             Open people
-          </Link>
+          </PrefetchLink>
         </div>
       </SectionCard>
     );

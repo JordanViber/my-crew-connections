@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ConnectionLinkBadge } from "@/components/connection-link-badge";
@@ -66,7 +66,7 @@ function MobileRelationshipRail({
             const itemHref = `/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`;
 
             return (
-              <Link
+              <PrefetchLink
                 key={`${item.targetType}:${item.id}`}
                 className="group block rounded-lg border border-border/85 bg-white/82 p-3.5 transition hover:border-accent/45 hover:bg-white/90"
                 href={itemHref}
@@ -92,7 +92,7 @@ function MobileRelationshipRail({
                 </div>
 
                 <p className="mt-3 text-sm font-semibold text-accent-strong">Open details</p>
-              </Link>
+              </PrefetchLink>
             );
           })}
         </div>
@@ -145,7 +145,7 @@ function MobileRecentHistory({
         <div className="grid gap-3">
           {touchpoints.slice(0, 4).map((touchpoint) => (
             <article key={touchpoint.id} className="group relative rounded-lg border border-border/85 bg-white/78 p-3.5 transition hover:border-accent/45 hover:bg-white/90">
-              <Link
+              <PrefetchLink
                 aria-label={`Open touchpoint details for ${touchpoint.targetLabel}`}
                 className="absolute inset-0 rounded-lg"
                 href={`/touchpoints/${touchpoint.id}`}
@@ -191,9 +191,9 @@ function NextStepCard({
       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-accent-strong">Recommended next step</p>
       <h2 className="mt-2 text-[1.15rem] font-semibold tracking-tight text-foreground">{title}</h2>
       <p className="mt-1.5 text-sm leading-6 text-foreground/68">{description}</p>
-      <Link className="button-secondary mt-3 inline-flex" href={ctaHref}>
+      <PrefetchLink className="button-secondary mt-3 inline-flex" href={ctaHref}>
         {ctaLabel}
-      </Link>
+      </PrefetchLink>
     </section>
   );
 }
@@ -216,7 +216,7 @@ function RelationshipList({
         const itemHref = `/${item.targetType === "connection" ? "connections" : "groups"}/${item.id}`;
 
         return (
-          <Link
+          <PrefetchLink
             key={`${item.targetType}:${item.id}`}
             className="group block rounded-lg border border-border/90 bg-white/80 p-3.5 transition hover:border-accent/45 hover:bg-white/90"
             href={itemHref}
@@ -246,7 +246,7 @@ function RelationshipList({
                 <p className="text-sm font-semibold text-accent-strong">Open details</p>
               </div>
             </div>
-          </Link>
+          </PrefetchLink>
         );
       })}
     </div>
@@ -413,12 +413,12 @@ export default async function DashboardPage({
                   </p>
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Link className="button-secondary" href="/connections">
+                    <PrefetchLink className="button-secondary" href="/connections">
                       People
-                    </Link>
-                    <Link className="button-secondary" href="/groups">
+                    </PrefetchLink>
+                    <PrefetchLink className="button-secondary" href="/groups">
                       Groups
-                    </Link>
+                    </PrefetchLink>
                   </div>
                 </section>
 
@@ -534,12 +534,12 @@ export default async function DashboardPage({
                   Add a person or group first, then quick log becomes the easiest way to keep your rhythm grounded in real life.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Link className="button-secondary" href="/connections">
+                  <PrefetchLink className="button-secondary" href="/connections">
                     Add a person
-                  </Link>
-                  <Link className="button-secondary" href="/groups">
+                  </PrefetchLink>
+                  <PrefetchLink className="button-secondary" href="/groups">
                     Create a group
-                  </Link>
+                  </PrefetchLink>
                 </div>
               </section>
             ),
@@ -727,7 +727,7 @@ export default async function DashboardPage({
               ) : (
                 data.recentTouchpoints.map((touchpoint) => (
                   <article key={touchpoint.id} className="group relative rounded-lg border border-border/85 bg-white/78 p-3.5 transition hover:border-accent/45 hover:bg-white/90">
-                    <Link
+                    <PrefetchLink
                       aria-label={`Open touchpoint details for ${touchpoint.targetLabel}`}
                       className="absolute inset-0 rounded-lg"
                       href={`/touchpoints/${touchpoint.id}`}
@@ -757,12 +757,12 @@ export default async function DashboardPage({
 
           <SectionCard title="Shortcuts" description="Jump straight into the areas you use most.">
             <div className="flex flex-wrap gap-3">
-              <Link className="button-secondary" href="/connections">
+              <PrefetchLink className="button-secondary" href="/connections">
                 People
-              </Link>
-              <Link className="button-secondary" href="/groups">
+              </PrefetchLink>
+              <PrefetchLink className="button-secondary" href="/groups">
                 Groups
-              </Link>
+              </PrefetchLink>
             </div>
           </SectionCard>
         </div>

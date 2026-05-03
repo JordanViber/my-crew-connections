@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { useState, useTransition } from "react";
 import { PasswordInput } from "@/components/password-input";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
@@ -130,9 +130,9 @@ export function PasswordAuthForm({
         <button className="button-primary" type="submit" disabled={isPending}>
           {isPending ? "Signing in..." : "Sign in"}
         </button>
-        <Link className="button-secondary" href="/auth/reset">
+        <PrefetchLink className="button-secondary" href="/auth/reset">
           Forgot password?
-        </Link>
+        </PrefetchLink>
       </div>
     </form>
   );

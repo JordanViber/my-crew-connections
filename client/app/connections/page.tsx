@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ConnectionCreateForm } from "@/components/connection-create-form";
@@ -74,9 +74,9 @@ export default async function ConnectionsPage({
             content: (
               <SectionCard title="Current people" description="Search, filter, and open a person to update cadence, notes, plans, or recent touchpoints.">
                 <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <Link className={canAddConnection ? "button-secondary" : "button-primary"} href={addPersonHref}>
+                  <PrefetchLink className={canAddConnection ? "button-secondary" : "button-primary"} href={addPersonHref}>
                     {addPersonLabel}
-                  </Link>
+                  </PrefetchLink>
                   {!hasPremium ? (
                     <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold text-foreground/64">
                       {connectionUsageLabel}

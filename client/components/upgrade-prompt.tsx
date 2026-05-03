@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { billingPlan } from "@/lib/billing";
 import { getPremiumValueLine, premiumTierFeatures } from "@/lib/entitlements";
 
@@ -54,9 +54,9 @@ export function UpgradePrompt({
         ) : null}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Link className="button-primary" href="/settings#billing">
+          <PrefetchLink className="button-primary" href="/settings#billing">
             Upgrade in billing
-          </Link>
+          </PrefetchLink>
           <p className="text-sm leading-6 text-foreground/64">{getPremiumValueLine()}</p>
         </div>
       </div>

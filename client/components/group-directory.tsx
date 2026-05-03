@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { StatusPill } from "@/components/status-pill";
 import { summarizeGroupMemberStatuses } from "@/lib/group-members";
 import { filterGroups, type GroupDirectoryFilter } from "@/lib/group-directory";
@@ -52,7 +52,7 @@ function GroupSection({
         <p className="mt-1 text-sm leading-6 text-foreground/68">{description}</p>
       </div>
       {items.map((group) => (
-        <Link
+        <PrefetchLink
           key={group.id}
           className="group block rounded-lg border border-border/90 bg-white/82 p-3.5 transition hover:border-accent/45 hover:bg-white/90"
           href={`/groups/${group.id}`}
@@ -81,7 +81,7 @@ function GroupSection({
               <p className="text-sm font-semibold text-accent-strong">Open details</p>
             </div>
           </div>
-        </Link>
+        </PrefetchLink>
       ))}
     </div>
   );

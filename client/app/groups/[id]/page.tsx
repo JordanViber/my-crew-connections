@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ConnectionLinkBadge } from "@/components/connection-link-badge";
@@ -62,7 +62,7 @@ function AcceptedGroupMembersList({
   }
 
   return members.map((member) => (
-    <Link key={member.id} className="group block rounded-lg border border-border/85 bg-white/78 p-3.5 transition hover:border-accent/45 hover:bg-white/90" href={`/connections/${member.id}`}>
+    <PrefetchLink key={member.id} className="group block rounded-lg border border-border/85 bg-white/78 p-3.5 transition hover:border-accent/45 hover:bg-white/90" href={`/connections/${member.id}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold text-foreground">{member.title}</p>
@@ -77,7 +77,7 @@ function AcceptedGroupMembersList({
         />
       </div>
       <p className="mt-3 text-sm font-semibold text-accent-strong">Open details</p>
-    </Link>
+    </PrefetchLink>
   ));
 }
 
@@ -111,7 +111,7 @@ function PendingGroupInviteList({
   }
 
   return members.map((member) => (
-    <Link key={member.connectionId} className="group warning-surface block rounded-lg border p-3.5 transition hover:border-accent/45" href={`/connections/${member.connectionId}`}>
+    <PrefetchLink key={member.connectionId} className="group warning-surface block rounded-lg border p-3.5 transition hover:border-accent/45" href={`/connections/${member.connectionId}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-base font-semibold text-foreground">{member.name}</p>
@@ -120,7 +120,7 @@ function PendingGroupInviteList({
         <span className="warning-surface-strong warning-text rounded-full px-3 py-1.5 text-xs font-semibold">Pending acceptance</span>
       </div>
       <p className="mt-3 text-sm font-semibold text-accent-strong">Open details</p>
-    </Link>
+    </PrefetchLink>
   ));
 }
 

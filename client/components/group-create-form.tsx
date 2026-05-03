@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { GroupMemberPicker } from "@/components/group-member-picker";
 import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { createGroupAction } from "@/app/actions";
@@ -64,9 +64,9 @@ export function GroupCreateForm({
       <div className="flex flex-wrap gap-2">
         <PendingSubmitButton className="button-primary" idleLabel="Create group" pendingLabel="Creating group..." />
         {connections.length === 0 ? (
-          <Link className="button-secondary" href="/connections?tab=create">
+          <PrefetchLink className="button-secondary" href="/connections?tab=create">
             Add people first
-          </Link>
+          </PrefetchLink>
         ) : null}
       </div>
     </form>

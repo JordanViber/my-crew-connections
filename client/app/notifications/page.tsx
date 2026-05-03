@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { clearInAppNotificationsAction, markInAppNotificationReadAction } from "@/app/actions";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -122,9 +122,9 @@ export default async function NotificationsPage() {
 
                   {notification.href ? (
                     <div className="mt-3">
-                      <Link className="button-secondary button-compact" href={notification.href}>
+                      <PrefetchLink className="button-secondary button-compact" href={notification.href}>
                         Open
-                      </Link>
+                      </PrefetchLink>
                     </div>
                   ) : null}
                 </article>

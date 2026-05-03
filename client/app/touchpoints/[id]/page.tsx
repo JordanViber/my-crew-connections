@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ExternalLink } from "@/components/external-link";
@@ -123,7 +123,7 @@ export default async function TouchpointDetailPage({
             />
           ) : (
             <p className="text-sm leading-7 text-foreground/68">
-              You can still open <Link className="font-medium text-accent-strong underline underline-offset-2" href={targetPath}>the related record</Link> to see full context.
+              You can still open <PrefetchLink className="font-medium text-accent-strong underline underline-offset-2" href={targetPath}>the related record</PrefetchLink> to see full context.
             </p>
           )}
         </SectionCard>

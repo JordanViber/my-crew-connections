@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { notFound, redirect } from "next/navigation";
 import { acceptGroupInviteAction, declineGroupInviteAction, signOutToPathAction } from "@/app/actions";
 import { FeedbackBanner } from "@/components/feedback-banner";
@@ -15,13 +15,13 @@ function InviteTerminalActions({
   signInHref: string;
 }>) {
   return user ? (
-    <Link className="button-primary w-full sm:w-auto" href="/dashboard">
+    <PrefetchLink className="button-primary w-full sm:w-auto" href="/dashboard">
       Open dashboard
-    </Link>
+    </PrefetchLink>
   ) : (
-    <Link className="button-primary w-full sm:w-auto" href={signInHref}>
+    <PrefetchLink className="button-primary w-full sm:w-auto" href={signInHref}>
       Sign in
-    </Link>
+    </PrefetchLink>
   );
 }
 

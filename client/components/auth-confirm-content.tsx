@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
@@ -109,9 +109,9 @@ export function AuthConfirmContent({
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent-strong">Sign-in failed</p>
             <p className="mt-2 text-sm leading-7 text-foreground/75">{errorMessage}</p>
             <div className="mt-3 flex flex-wrap gap-3">
-              <Link className="button-primary" href={signInHref}>
+              <PrefetchLink className="button-primary" href={signInHref}>
                 Back to sign in
-              </Link>
+              </PrefetchLink>
             </div>
           </div>
         ) : null}

@@ -21,11 +21,6 @@ export function LocalAccountForm({
     startTransition(async () => {
       setErrorMessage(null);
 
-      if (!stackAvailable) {
-        setErrorMessage("Local sign-in services are offline. Start the local stack, then try again.");
-        return;
-      }
-
       const normalizedEmail = email.trim();
       if (!normalizedEmail || !password) {
         setErrorMessage("Enter both email and password.");
@@ -51,7 +46,11 @@ export function LocalAccountForm({
         router.replace(`/auth?prepared=1&next=${encodeURIComponent(nextPath)}`);
         router.refresh();
       } catch {
-        setErrorMessage("Could not reach the local account helper. Check the app server and local services, then try again.");
+        setErrorMessage(
+          stackAvailable
+            ? "Could not reach the local account helper. Check the app server and local services, then try again."
+            : "Local sign-in services look offline. Start the local stack, then try again.",
+        );
       }
     });
   }

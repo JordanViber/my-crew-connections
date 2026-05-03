@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { useState, useTransition } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
@@ -67,9 +67,9 @@ export function PasswordResetRequestForm() {
         <button className="button-primary" disabled={isPending} type="submit">
           {isPending ? "Sending reset link..." : "Send reset link"}
         </button>
-        <Link className="button-secondary" href="/auth">
+        <PrefetchLink className="button-secondary" href="/auth">
           Back to sign in
-        </Link>
+        </PrefetchLink>
       </div>
     </form>
   );

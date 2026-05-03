@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { redirect } from "next/navigation";
 import { AppleAuthButton } from "@/components/apple-auth-button";
 import { CreateAccountForm } from "@/components/create-account-form";
@@ -68,7 +68,7 @@ export default async function CreateAccountPage({
           </div>
 
           <div className="rounded-lg border border-border/85 bg-surface-muted px-3.5 py-3 text-sm leading-6 text-foreground/70">
-            Already have an account? <Link className="font-semibold text-accent-strong" href={signInHref}>Go to sign in</Link>.
+            Already have an account? <PrefetchLink className="font-semibold text-accent-strong" href={signInHref}>Go to sign in</PrefetchLink>.
           </div>
         </section>
 

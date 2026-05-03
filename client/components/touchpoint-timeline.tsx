@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PrefetchLink } from "@/components/prefetch-link";
 import { ExternalLink } from "@/components/external-link";
 import type { RecentTouchpoint } from "@/lib/mvp-data";
 
@@ -17,7 +17,7 @@ export function TouchpointTimeline({
     <div className="grid gap-3">
       {touchpoints.map((touchpoint) => (
         <article key={touchpoint.id} className="group relative rounded-lg border border-border/85 bg-white/78 p-3.5 transition hover:border-accent/45 hover:bg-white/90">
-          <Link
+          <PrefetchLink
             aria-label={`Open touchpoint details for ${touchpoint.targetLabel}`}
             className="absolute inset-0 rounded-lg"
             href={`/touchpoints/${touchpoint.id}`}
