@@ -4,10 +4,7 @@ import Link, { type LinkProps } from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
-type PrefetchLinkProps = LinkProps & {
-  className?: string;
-  children: React.ReactNode;
-};
+type PrefetchLinkProps = React.ComponentPropsWithoutRef<typeof Link>;
 
 export function PrefetchLink({ href, className, children, ...props }: Readonly<PrefetchLinkProps>) {
   const router = useRouter();
