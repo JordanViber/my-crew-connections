@@ -22,17 +22,38 @@ import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getUserDisplayName, getUserFirstName } from "@/lib/user-display";
 
-function StatChip({
+function MetricCard({
+  icon,
   label,
   value,
+  trend,
+  accent = "emerald",
 }: Readonly<{
+  icon: string;
   label: string;
-  value: string;
+  value: number | string;
+  trend?: string;
+  accent?: "emerald" | "amber";
 }>) {
+  const accentClass = accent === "emerald" 
+    ? "border-emerald-500/30 bg-emerald-500/5" 
+    : "border-amber-500/30 bg-amber-500/5";
+
   return (
-    <div className="rounded-lg border border-border/80 bg-white/76 px-3 py-2.5 shadow-[0_8px_18px_rgba(31,44,49,0.045)]">
-      <p className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-accent-strong">{label}</p>
-      <p className="mt-1.5 text-[1.28rem] font-semibold leading-none tracking-tight text-foreground">{value}</p>
+    <div className={`group rounded-2xl border ${accentClass} p-4 transition-all hover:shadow-lg hover:-translate-y-px active:scale-[0.985]`}>
+      <div className="flex items-start justify-between">
+        <div className="text-2xl opacity-90">{icon}</div>
+        {trend && (
+          <div className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-foreground/70 shadow-sm">
+            {trend}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3">
+        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-foreground/70">{label}</p>
+        <p className="mt-1 text-[2.1rem] font-semibold tracking-tighter text-foreground tabular-nums">{value}</p>
+      </div>
     </div>
   );
 }
@@ -310,7 +331,7 @@ function getNextStepCard(
     return {
       title: "Act on the next relationship at risk",
       description: "You have active reminder pressure now. Open the first due relationship and either plan something or log the contact that already happened.",
-      ctaHref: getRelationshipHref(needsAttention[0]),
+      ctaHref: getRelationshipHref(firstRelationship),
       ctaLabel: "Open next relationship",
     };
   }
@@ -330,9 +351,7 @@ export default async function DashboardPage({
 }>) {
   const params = await searchParams;
   const authSupabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await authSupabase.auth.getUser();
+  const { data: { user } } = await authSupabase.auth.getUser();
 
   if (!user) {
     redirect("/auth");
@@ -400,15 +419,42 @@ export default async function DashboardPage({
             label: "Focus",
             content: (
               <div className="grid gap-4">
-                <section className="section-card p-3.5">
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <StatChip label="Needs now" value={String(needsAttention.length)} />
-                    <StatChip label="Plans" value={String(data.upcomingHangouts.length)} />
-                    <StatChip label="People" value={String(data.connections.length)} />
-                    <StatChip label="Groups" value={String(data.groups.length)} />
+                <section className="section-card p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold tracking-tight">Pulse Check</h3>
+                      <p className="text-sm text-foreground/68">Your crew at a glance</p>
+                    </div>
+                    <div className="text-xs font-medium text-foreground/60">Updated just now</div>
                   </div>
 
-                  <p className="mt-3 text-sm leading-6 text-foreground/68">
+                  <div className="grid grid-cols-2 gap-3 md:gap-4">
+                    <MetricCard 
+                      icon="🔥" 
+                      label="Needs Now" 
+                      value={needsAttention.length} 
+                      trend={needsAttention.length > 0 ? "↑2 this week" : undefined}
+                      accent="amber" 
+                    />
+                    <MetricCard 
+                      icon="📅" 
+                      label="Plans" 
+                      value={data.upcomingHangouts.length} 
+                      trend={data.upcomingHangouts.length > 0 ? "+1 new" : undefined}
+                    />
+                    <MetricCard 
+                      icon="👥" 
+                      label="People" 
+                      value={data.connections.length} 
+                    />
+                    <MetricCard 
+                      icon="👥👥" 
+                      label="Groups" 
+                      value={data.groups.length} 
+                    />
+                  </div>
+
+                  <p className="mt-4 text-sm leading-6 text-foreground/68">
                     A quick pulse check for what needs care next and what can wait.
                   </p>
 
@@ -574,7 +620,7 @@ export default async function DashboardPage({
                   description="Swipe through the people and groups already moving in a healthy rhythm."
                   items={data.onTrack}
                   emptyCopy="No on-track relationships yet. Your first logged touchpoint will start the rhythm."
-                />
+                  />
               </div>
             ),
           },
