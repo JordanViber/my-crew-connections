@@ -628,7 +628,7 @@ export default async function DashboardPage({
             id: "history",
             label: "History",
             content: (
-              <div className="grid gap-4">
+              <div className="grid gap-4 px-1">
                 <MobileRecentHistory touchpoints={data.recentTouchpoints} emptyCopy={recentHistoryEmptyCopy} />
                 {data.recentTouchpoints.length === 0 ? (
                   <section className="section-card p-3.5">
