@@ -33,9 +33,7 @@ export async function AppShell({
   children: React.ReactNode;
 }>) {
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   let unreadNotifications = 0;
 
   if (user) {
@@ -48,6 +46,9 @@ export async function AppShell({
     unreadNotifications = count ?? 0;
   }
 
+  const greetingName = firstName || displayName || "there";
+  const greeting = `Good ${new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, ${greetingName} 👋`;
+
   return (
     <div className="shell px-2 py-2 md:px-5 md:py-4">
       {user ? <RealtimeRefresh userId={user.id} email={user.email} /> : null}
@@ -55,12 +56,15 @@ export async function AppShell({
       <div className="glass-panel mx-auto max-w-7xl px-3 py-3 md:px-5 md:py-5">
         <header className="border-b border-border/70 pb-3 md:pb-4">
           <div className="flex flex-col gap-3 md:gap-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-accent-strong md:gap-3 md:text-xs md:tracking-[0.22em]">
-                <span>My Crew Connections</span>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-accent-strong md:text-xs md:tracking-[0.22em]">
+                  <span>My Crew Connections</span>
+                </div>
+                <p className="mt-0.5 text-sm font-medium text-foreground/80">{greeting}</p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+              <div className="flex items-center gap-1.5 md:gap-2">
                 <NotificationsBellLink unreadCount={unreadNotifications} />
                 <AccountMenu displayName={displayName} email={email} firstName={firstName} />
               </div>
