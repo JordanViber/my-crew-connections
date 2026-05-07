@@ -26,6 +26,8 @@ The current localhost app already follows this direction:
 - Playwright plus unit tests for core loops
 - persisted hangout planning and ICS export
 - copyable invite links for linking a connection to a real user account
+- group invites, group hangout proposal responses, and in-app notifications
+- web-push and Resend email delivery helpers gated by environment configuration
 
 ## App Architecture Recommendation
 
@@ -85,27 +87,32 @@ Use Postgres for core relational data and object storage later for photo assets 
 - touchpoints
 - hangouts
 - connection_invites
-- notifications later
+- group_invites
+- hangout_participants
+- in_app_notifications
+- push_subscriptions
 
 ### Current localhost note
-The implemented local slice already uses persisted hangouts and connection invites. Photos and notification delivery are still deferred.
+The implemented local slice already uses persisted hangouts, connection invites, group invites, hangout participants, in-app notifications, and push subscription records. Photos and scheduled reminder delivery are still deferred.
 
 ## Notification Strategy
 
 ### In-app notifications
-Required for MVP.
+Implemented for invite, group invite, hangout proposal, and response updates.
 
 ### Web push
-Recommended later with caveats.
+Delivery helpers and subscription storage are implemented. Real delivery depends on VAPID keys, browser support, and user opt-in.
 
 ### Email fallback
-Strongly recommended later.
+Resend-backed helpers are implemented for invite and hangout proposal delivery. Hosted sending depends on provider credentials, sender/domain setup, and the deployed app URL.
 
 ### Recommendation
 Ship in layers:
 1. in-app reminder center and dashboard surfacing first
-2. web push when available and opted in
-3. email fallback for important reminders
+2. in-app notifications for collaboration events
+3. web push when available and opted in
+4. email fallback for important invites, proposals, and reminders
+5. scheduled cadence reminder and digest jobs after collaboration behavior settles
 
 ## Scheduling And Calendar Strategy
 
@@ -169,8 +176,8 @@ Cadence evaluation should not depend on a user opening the app.
 
 ### Integrations
 - ICS generation for calendar export
-- Web Push API later
-- email provider such as Resend for invite or reminder delivery later
+- Web Push API for opted-in push delivery
+- Resend for invite and hangout proposal email delivery when configured
 
 ### Developer tooling
 - ESLint

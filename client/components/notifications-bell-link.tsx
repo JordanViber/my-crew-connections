@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 const LAST_NON_NOTIFICATIONS_PATH_KEY = "last-non-notifications-path";
 
@@ -13,7 +13,6 @@ function isNotificationsPath(pathname: string) {
 export function NotificationsBellLink({ unreadCount }: Readonly<{ unreadCount: number }>) {
   const pathname = usePathname();
   const onNotificationsPage = isNotificationsPath(pathname);
-  const [returnPath, setReturnPath] = useState("/dashboard");
 
   useEffect(() => {
     if (onNotificationsPage) {
@@ -23,21 +22,13 @@ export function NotificationsBellLink({ unreadCount }: Readonly<{ unreadCount: n
     globalThis.sessionStorage?.setItem(LAST_NON_NOTIFICATIONS_PATH_KEY, pathname || "/dashboard");
   }, [onNotificationsPage, pathname]);
 
-  useEffect(() => {
-    if (!onNotificationsPage) {
-      return;
-    }
-
-    setReturnPath(globalThis.sessionStorage?.getItem(LAST_NON_NOTIFICATIONS_PATH_KEY) || "/dashboard");
-  }, [onNotificationsPage]);
-
   const href = useMemo(() => {
     if (!onNotificationsPage) {
       return `/notifications?from=${encodeURIComponent(pathname || "/dashboard")}`;
     }
 
-    return returnPath;
-  }, [onNotificationsPage, pathname, returnPath]);
+    return globalThis.sessionStorage?.getItem(LAST_NON_NOTIFICATIONS_PATH_KEY) || "/dashboard";
+  }, [onNotificationsPage, pathname]);
 
   return (
     <Link

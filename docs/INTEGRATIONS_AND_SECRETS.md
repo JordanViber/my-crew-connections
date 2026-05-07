@@ -31,10 +31,19 @@ Today the app can already run locally with:
 - optional magic-link auth for parity testing
 - copyable invite links for linking one connection to another real user account
 - saved hangouts with ICS export
+- in-app notifications for invites, group invites, hangout proposals, and responses
+- web-push subscription and delivery helpers when VAPID keys are configured
+- Resend-backed invite and hangout proposal email helpers when email provider env vars are configured
+
+What still needs production configuration:
+- deployed app URL and verified sender domain for outbound email links
+- Resend API key and from-address configuration in the hosted environment
+- VAPID public/private keys and subject for web push
+- scheduled jobs for cadence reminders and digests
+- hosted analytics
+- hosted error tracking
 
 What is not yet wired to an external provider:
-- production email delivery for invites
-- push delivery
 - hosted analytics
 - hosted error tracking
 
@@ -93,20 +102,24 @@ Usually yes.
 Helpful for:
 - reminder fallback
 - transactional invite delivery
+- hangout proposal delivery
 - production-quality auth email delivery if default behavior is insufficient
 
 ### Suggested provider
 - Resend
 
 ### Current localhost note
-Invite flows currently work through copyable invite links inside the app. That is enough for local product validation, but it is not enough for a production handoff flow.
+Invite and hangout proposal flows still work through in-app links locally. Resend helpers are implemented for invite and proposal email delivery, but they only send when `RESEND_API_KEY`, app URL, and sender configuration are present.
 
 ## 7. Web Push VAPID Keys
 ### Required for localhost
-No for the first pass
+No for the core localhost loop
 
 ### Required for push notifications
 Yes
+
+### Current localhost note
+Push subscription storage and send helpers exist. Delivery requires `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and a valid `VAPID_SUBJECT`.
 
 ## Optional Later-Phase Integrations
 
@@ -190,7 +203,7 @@ Choose one:
 - in-app plus push plus email
 
 ### Recommendation
-Start with in-app only on localhost, then add email, then add push.
+The app now supports in-app notifications plus provider-dependent email and push paths for invites and proposals. Keep scheduled cadence reminders conservative: start with in-app/dashboard surfacing, then add digest or push/email reminder jobs once collaboration behavior settles.
 
 ## 4. Calendar behavior in MVP
 Choose one:
@@ -215,8 +228,9 @@ That means:
 2. start local Supabase and wire local environment variables
 3. verify local password auth and magic-link fallback
 4. verify invite-link flow locally
-5. add production email delivery later
-6. add push later
+5. configure Resend for hosted invite and proposal email delivery
+6. configure VAPID keys for hosted push delivery
+7. add scheduled reminder and digest jobs later
 
 ## What I Can Do Without Waiting
 
@@ -224,7 +238,7 @@ I can proceed without extra external accounts for:
 - building the Next.js PWA
 - modeling the database schema in SQL and code
 - building UI for people, groups, cadence rules, hangouts, and local reminder views
-- adding invite-link flows that work locally without email delivery
+- adding invite-link and in-app notification flows that work locally without outbound provider delivery
 - adding env placeholders and setup instructions
 
 ## What Will Block Full Functionality

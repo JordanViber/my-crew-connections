@@ -31,10 +31,13 @@ Shipped:
 - touchpoint logging and timeline history
 - mobile navigation and section tabs
 - connection invites and two-way user linking
+- group invites and pending membership states
+- group hangout proposals with participant responses
+- in-app notifications plus push/email delivery plumbing for invites and proposals
 
 Still pending:
-- production invite delivery
-- push and email notifications
+- production deployment and provider configuration for outbound email and push
+- scheduled reminder and digest delivery
 - photo uploads
 - deeper shared group collaboration
 
@@ -66,7 +69,7 @@ Shipped locally
 - push or email reminder delivery for opted-in users later
 
 ### Status
-Core in-app reminder loop shipped locally. Push and email delivery still deferred.
+Core in-app reminder loop shipped locally. Push and email plumbing exists for invites and hangout proposals, but scheduled cadence reminder delivery is still deferred.
 
 ## Milestone 3: Hangout Planning
 
@@ -99,7 +102,7 @@ Core logging and history shipped locally. Photos remain deferred.
 - define private versus shared content rules
 
 ### Status
-Partially shipped. Connection-level invite claiming and two-way linking exist. Shared groups and broader collaboration are still next.
+Partially shipped. Connection-level invite claiming, two-way linking, group invites, pending membership states, and group hangout proposal responses exist. Rich shared group permissions and broader collaboration are still next.
 
 ## Suggested Release Phases
 
@@ -161,6 +164,6 @@ ICS export is better than waiting for flawless calendar integrations.
 
 1. deepen collaboration for linked users and groups
 2. decide whether groups should remain connection-first or become more fully shared
-3. add production invite delivery
-4. add notifications after the collaboration model settles
+3. harden production outbound delivery configuration for Resend and web push
+4. add scheduled reminder and digest notifications after the collaboration model settles
 5. revisit media only after the shared-memory loop is clearer

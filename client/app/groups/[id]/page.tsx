@@ -171,6 +171,7 @@ export default async function GroupDetailPage({
     countGroupMemberStatuses(memberConnections.map((member) => member.linkState)),
   );
   const canManageGroup = group.canManage ?? true;
+  const canCreateGroupPlans = group.canCreatePlans ?? canManageGroup;
   const acceptedMemberCount = group.memberNames.length;
   const groupSettingsDescription = canManageGroup
     ? group.subtitle
@@ -181,6 +182,9 @@ export default async function GroupDetailPage({
     { label: "Cadence", value: `Every ${group.cadenceValue} ${group.cadenceUnit}` },
     { label: "Reminder lead", value: `${group.reminderLeadDays} days before` },
   ];
+  const pendingInvitesEmptyCopy = !canManageGroup && group.pendingMemberCount > 0
+    ? `${group.pendingMemberCount} pending ${group.pendingMemberCount === 1 ? "invite is" : "invites are"} still waiting on a response.`
+    : "No pending invites right now. Everyone attached to this group is either accepted already or still local-only.";
 
   return (
     <AppShell
@@ -279,7 +283,7 @@ export default async function GroupDetailPage({
                     </>
                   ) : (
                     <div className="rounded-lg border border-border/85 bg-white/78 p-3.5 text-sm leading-6 text-foreground/68">
-                      You can follow this group, see who is in it, and keep up with the shared history. Only the organizer can edit the settings or membership list.
+                      You can follow this group, see who is in it, and keep up with the shared history. Only the group owner can edit the settings or membership list.
                     </div>
                   )}
                 </SectionCard>
@@ -346,7 +350,7 @@ export default async function GroupDetailPage({
                   <div className="grid gap-3">
                     <PendingGroupInviteList
                       members={pendingMemberSummary}
-                      emptyCopy="No pending invites right now. Everyone attached to this group is either accepted already or still local-only."
+                      emptyCopy={pendingInvitesEmptyCopy}
                     />
                   </div>
                 </SectionCard>
@@ -445,7 +449,7 @@ export default async function GroupDetailPage({
                 targetId={group.id}
                 redirectTo={`/groups/${group.id}`}
                 autoExportHangoutId={query.exportHangoutId}
-                canCreate={canManageGroup}
+                canCreate={canCreateGroupPlans}
               />
             ),
           },
@@ -548,7 +552,7 @@ export default async function GroupDetailPage({
               </>
             ) : (
               <div className="rounded-lg border border-border/85 bg-white/78 p-3.5 text-sm leading-6 text-foreground/68">
-                You can follow this group, see who is in it, and keep up with the shared history. Only the organizer can edit the settings or membership list.
+                You can follow this group, see who is in it, and keep up with the shared history. Only the group owner can edit the settings or membership list.
               </div>
             )}
           </SectionCard>
@@ -614,7 +618,7 @@ export default async function GroupDetailPage({
             <div className="grid gap-3">
               <PendingGroupInviteList
                 members={pendingMemberSummary}
-                emptyCopy="No pending invites right now. Everyone attached to this group is either accepted already or still local-only."
+                emptyCopy={pendingInvitesEmptyCopy}
               />
             </div>
           </SectionCard>
@@ -707,7 +711,7 @@ export default async function GroupDetailPage({
             targetId={group.id}
             redirectTo={`/groups/${group.id}`}
             autoExportHangoutId={query.exportHangoutId}
-            canCreate={canManageGroup}
+            canCreate={canCreateGroupPlans}
           />
           </section>
 

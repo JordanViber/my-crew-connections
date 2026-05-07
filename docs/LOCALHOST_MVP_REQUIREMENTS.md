@@ -34,13 +34,16 @@ Already shipped:
 - touchpoint logging with history
 - saved hangout planning plus ICS export
 - mobile-first navigation and section tabs
+- in-app notifications for invite and planning updates
 
 Partially shipped:
 - collaboration through connection invite links and two-way real-user linking
+- group invites, pending membership states, and group hangout proposal responses
+- push and Resend email delivery plumbing for invite and proposal flows
 
 Still deferred:
-- push notifications
-- production email delivery
+- production push/email provider configuration
+- scheduled cadence reminder and digest delivery
 - media uploads
 - richer shared group collaboration and permissions
 
@@ -146,12 +149,12 @@ Yes for the current collaboration-ready localhost slice
 These features are valuable, but they are not necessary for a true localhost MVP.
 
 ## 1. Push notifications
-Defer.
-Use in-app status and dashboard alerts first.
+Provider-dependent.
+Use in-app status and dashboard alerts first. Push subscription and send helpers exist, but real delivery requires VAPID configuration and production browser/device validation.
 
 ## 2. Email reminders
-Defer.
-Can be added after in-app reminder logic is validated.
+Partially defer.
+Resend email helpers exist for invite and hangout proposal delivery. Cadence reminder and digest emails can wait until in-app reminder logic and collaboration behavior are validated.
 
 ## 3. Google sign-in
 Defer.
@@ -171,7 +174,7 @@ Use freeform location and activity text.
 
 ## 7. Shared collaboration across multiple users
 Defer deep collaboration.
-Lightweight two-way connection linking now exists, but shared groups, shared timelines, and richer permissions are still intentionally deferred.
+Lightweight two-way connection linking, group invites, and group hangout proposal responses now exist, but shared timelines, organizer/member permissions, and richer group collaboration are still intentionally deferred.
 
 ## 8. Calendar API integration
 Defer.
@@ -274,7 +277,7 @@ After that, add in this order:
 
 ### Helpful but not blocking
 - decision to keep magic link enabled alongside local password for MVP parity
-- decision to defer push, email, contact sync, and maps
+- decision to keep push/email as provider-dependent paths until production setup is ready
 - decision on how far to take shared groups now that two-way connection linking exists
 
 ## Recommended Localhost MVP Decisions
@@ -283,14 +286,13 @@ To move fastest, I recommend:
 - solo-first MVP
 - local password auth as the default localhost path
 - magic link retained as an optional secondary auth path
-- no push in first pass
-- no email in first pass
+- in-app notifications first, with push/email only when env vars and production delivery setup are present
 - no contact sync in first pass
 - no photo uploads in first pass
 - no maps integration in first pass
 - no Google OAuth in first pass
 - no deep calendar integration in first pass
-- invite links are acceptable before production email delivery exists
+- invite links remain acceptable even when outbound email is not configured
 
 ## Concrete Build Order
 
