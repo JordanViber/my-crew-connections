@@ -38,7 +38,7 @@ The core loop for the app is:
 
 ## Current Shipped State
 
-As of April 27, 2026, the local app currently supports:
+As of May 7, 2026, the local app currently supports:
 - dual-path auth with local password first and magic link second
 - people and groups CRUD
 - cadence rules and relationship health
@@ -52,6 +52,10 @@ As of April 27, 2026, the local app currently supports:
 - people directory search plus linked, pending, and local-only filtering
 - group directory search plus health-state filtering
 - searchable existing-people picker during group creation
+- group invites with accepted, declined, and pending membership states
+- group hangout proposals with RSVP-style participant responses
+- in-app notifications for invites, proposals, and responses
+- web-push delivery plumbing and Resend email plumbing, subject to local or production env configuration
 
 ## Resume Here
 
@@ -60,4 +64,4 @@ If we stop and resume later, start from this understanding:
 - local Supabase resets will wipe local auth users and test data
 - groups still center on connection records first, with deeper shared collaboration still to come
 - invite claiming now links both users by creating or reusing a reciprocal connection
-- the next major product choice is how far to take shared groups, linked-user collaboration, and production invite delivery
+- the next major product choice is how far to take shared groups, linked-user collaboration, and production-grade outbound delivery

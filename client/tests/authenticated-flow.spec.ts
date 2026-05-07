@@ -266,31 +266,33 @@ test("group proposals can be accepted, exported, and confirmed", async ({ page, 
   await memberPage.getByRole("button", { name: "Accept" }).first().click();
   await expect(memberPage).toHaveURL(/feedback=group-invite-accepted/, { timeout: 15000 });
 
-  await page.getByRole("button", { name: "Plans" }).click();
-  await page.getByRole("button", { name: "Propose hangout" }).click();
-  await page.locator('input[name="title"]:visible').fill("Dinner with ICS Group");
-  await page.locator('input[name="location"]:visible').fill("Group Patio");
-  await page.locator('textarea[name="notes"]:visible').fill("Bring the game-night ideas.");
-  await page.getByRole("button", { name: "Send proposal" }).click();
+  await memberPage.goto(groupUrl);
+  await expect(memberPage.getByRole("heading", { name: "ICS Group Crew" })).toBeVisible();
+  await expect(memberPage.getByRole("button", { name: "Edit group" })).toHaveCount(0);
+  await memberPage.getByRole("button", { name: "Plans" }).click();
+  await memberPage.getByRole("button", { name: "Propose hangout" }).click();
+  await memberPage.locator('input[name="title"]:visible').fill("Dinner with ICS Group");
+  await memberPage.locator('input[name="location"]:visible').fill("Group Patio");
+  await memberPage.locator('textarea[name="notes"]:visible').fill("Bring the game-night ideas.");
+  await memberPage.getByRole("button", { name: "Send proposal" }).click();
 
-  await expect(page).toHaveURL(/feedback=hangout-proposal-created/, { timeout: 15000 });
-  await expect(page.getByText(/proposal sent/i)).toBeVisible();
+  await expect(memberPage).toHaveURL(/feedback=hangout-proposal-created/, { timeout: 15000 });
+  await expect(memberPage.getByText(/proposal sent/i)).toBeVisible();
+
+  await page.goto(groupUrl);
   await page.getByRole("button", { name: "Plans" }).click();
   await expect(page.locator("h3:visible", { hasText: "Dinner with ICS Group" })).toBeVisible();
   await expect(page.getByText("0 accepted / 0 declined / 1 pending").first()).toBeVisible();
-
-  await memberPage.goto(groupUrl);
-  await memberPage.getByRole("button", { name: "Plans" }).click();
   const [download] = await Promise.all([
-    memberPage.waitForEvent("download"),
-    memberPage.getByRole("button", { name: "Accept and export calendar" }).click(),
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Accept and export calendar" }).click(),
   ]);
 
   const path = await download.path();
   expect(path).toBeTruthy();
   expect(download.suggestedFilename()).toContain("dinner-with-ics-group");
-  await expect(memberPage).toHaveURL(/feedback=hangout-response-accepted/, { timeout: 15000 });
-  await expect(memberPage.getByText(/your response: (accepted|joined)/i).first()).toBeVisible();
+  await expect(page).toHaveURL(/feedback=hangout-response-accepted/, { timeout: 15000 });
+  await expect(page.getByText(/your response: (accepted|joined)/i).first()).toBeVisible();
 
   await page.reload();
   await page.getByRole("button", { name: "Plans" }).click();

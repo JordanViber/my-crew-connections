@@ -43,6 +43,8 @@ The app currently includes:
 - touchpoint history and hangout planning
 - ICS export for saved plans
 - invite-link based relationship linking with push-first delivery and explicit stale-link states
+- group invites, hangout proposal responses, and in-app notifications
+- Resend email and web-push delivery plumbing when provider env vars are configured
 
 ## Notes
 

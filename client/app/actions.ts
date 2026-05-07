@@ -32,6 +32,7 @@ import {
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
 import { findAuthUserByEmail, getAuthUserById } from "@/lib/auth-users";
 import { formatHangoutWindow } from "@/lib/hangouts";
+import { canAccessSharedGroup, canManageGroupPlans, type GroupRole } from "@/lib/group-collaboration";
 import { notifyHangoutProposalParticipant } from "@/lib/hangout-notifications";
 import {
   getFallbackDisplayNameFromEmail,
@@ -76,6 +77,12 @@ type ConnectionHangoutTargetRow = {
 type GroupHangoutTargetRow = {
   id: string;
   name: string;
+  owner_user_id?: string;
+};
+
+type GroupAccessResult = {
+  group: GroupHangoutTargetRow;
+  role: GroupRole;
 };
 
 type ConnectionEmailConflict = {
@@ -744,7 +751,82 @@ async function notifyHangoutOwnerResponse(
   }).catch(() => ({ sent: 0 }));
 }
 
-async function assertCanManageHangoutTarget(
+async function getGroupAccess(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  userId: string,
+  groupId: string,
+): Promise<GroupAccessResult | null> {
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("id, name, owner_user_id")
+    .eq("id", groupId)
+    .is("archived_at", null)
+    .maybeSingle();
+
+  assertMutation(groupError, "Failed to load group");
+
+  if (!group) {
+    return null;
+  }
+
+  if (group.owner_user_id === userId) {
+    return {
+      group: group as GroupHangoutTargetRow,
+      role: "owner",
+    };
+  }
+
+  const { data: membership, error: membershipError } = await supabase
+    .from("group_memberships")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", userId)
+    .is("removed_at", null)
+    .maybeSingle();
+
+  assertMutation(membershipError, "Failed to load group membership");
+
+  if (!canAccessSharedGroup(membership?.role)) {
+    return null;
+  }
+
+  return {
+    group: group as GroupHangoutTargetRow,
+    role: membership.role as GroupRole,
+  };
+}
+
+async function assertCanAccessGroup(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  userId: string,
+  groupId: string,
+  label: string,
+): Promise<GroupAccessResult> {
+  const access = await getGroupAccess(supabase, userId, groupId);
+
+  if (!access) {
+    throw new Error(`${label}: group not found.`);
+  }
+
+  return access;
+}
+
+async function assertCanManageGroupPlanTarget(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  userId: string,
+  groupId: string,
+  label: string,
+) {
+  const access = await assertCanAccessGroup(supabase, userId, groupId, label);
+
+  if (!canManageGroupPlans(access.role)) {
+    throw new Error(`${label}: group plan not found.`);
+  }
+
+  return access.group;
+}
+
+async function assertCanUseHangoutTarget(
   supabase: ReturnType<typeof createServerAdminSupabaseClient>,
   userId: string,
   targetType: "connection" | "group",
@@ -768,27 +850,29 @@ async function assertCanManageHangoutTarget(
     return data as ConnectionHangoutTargetRow;
   }
 
-  const { data, error } = await supabase
-    .from("groups")
-    .select("id, name")
-    .eq("id", targetId)
-    .eq("owner_user_id", userId)
-    .is("archived_at", null)
-    .maybeSingle();
+  return (await assertCanAccessGroup(supabase, userId, targetId, "Failed to save hangout plan")).group;
+}
 
-  assertMutation(error, "Failed to load group for hangout");
-
-  if (!data) {
-    throw new Error("Failed to save hangout plan: group not found.");
+async function assertCanManageHangoutPlan(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  userId: string,
+  hangout: { owner_user_id: string; target_type: "connection" | "group"; target_id: string },
+  label: string,
+) {
+  if (hangout.target_type === "group") {
+    await assertCanManageGroupPlanTarget(supabase, userId, hangout.target_id, label);
+    return;
   }
 
-  return data as GroupHangoutTargetRow;
+  if (hangout.owner_user_id !== userId) {
+    throw new Error(`${label}: plan not found.`);
+  }
 }
 
 async function getGroupHangoutParticipants(
   supabase: ReturnType<typeof createServerAdminSupabaseClient>,
   groupId: string,
-  ownerUserId: string,
+  proposerUserId: string,
 ) {
   const { data: memberships, error: membershipsError } = await supabase
     .from("group_memberships")
@@ -839,14 +923,10 @@ async function getGroupHangoutParticipants(
   const participants = new Map<string, GroupHangoutParticipantCandidate>();
 
   for (const membership of membershipRows) {
-    if (membership.role === "owner") {
-      continue;
-    }
-
     const participantUserId = membership.user_id
       ?? (membership.connection_id ? connectionMap.get(membership.connection_id)?.linked_user_id ?? acceptedInviteMap.get(membership.connection_id) : undefined);
 
-    if (!participantUserId || participantUserId === ownerUserId || participants.has(participantUserId)) {
+    if (!participantUserId || participantUserId === proposerUserId || participants.has(participantUserId)) {
       continue;
     }
 
@@ -857,6 +937,42 @@ async function getGroupHangoutParticipants(
   }
 
   return [...participants.values()];
+}
+
+async function getGroupPlanManagerUserIds(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  groupId: string,
+) {
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("owner_user_id")
+    .eq("id", groupId)
+    .maybeSingle();
+
+  assertMutation(groupError, "Failed to load group managers");
+
+  const managerIds = new Set<string>();
+
+  if (group?.owner_user_id) {
+    managerIds.add(group.owner_user_id);
+  }
+
+  const { data: memberships, error: membershipError } = await supabase
+    .from("group_memberships")
+    .select("user_id, role")
+    .eq("group_id", groupId)
+    .in("role", ["owner", "organizer"])
+    .is("removed_at", null);
+
+  assertMutation(membershipError, "Failed to load group manager memberships");
+
+  for (const membership of memberships ?? []) {
+    if (membership.user_id) {
+      managerIds.add(membership.user_id);
+    }
+  }
+
+  return [...managerIds];
 }
 
 async function getBillingStatusProfile(
@@ -1581,6 +1697,24 @@ export async function createTouchpointAction(formData: FormData) {
     photoAlbumUrl: getString(formData, "photoAlbumUrl"),
   });
 
+  if (payload.targetType === "connection") {
+    const { data: connection, error: connectionError } = await supabase
+      .from("connections")
+      .select("id")
+      .eq("id", payload.targetId)
+      .eq("owner_user_id", user.id)
+      .is("archived_at", null)
+      .maybeSingle();
+
+    assertMutation(connectionError, "Failed to load connection for touchpoint");
+
+    if (!connection) {
+      throw new Error("Failed to create touchpoint: target not found.");
+    }
+  } else {
+    await assertCanAccessGroup(supabase, user.id, payload.targetId, "Failed to create touchpoint");
+  }
+
   const { error } = await supabase.from("touchpoints").insert({
     owner_user_id: user.id,
     target_type: payload.targetType,
@@ -1674,7 +1808,7 @@ export async function createHangoutAction(formData: FormData) {
     shareWithLinkedUser: getString(formData, "shareWithLinkedUser"),
   });
 
-  const target = await assertCanManageHangoutTarget(supabase, user.id, payload.targetType, payload.targetId);
+  const target = await assertCanUseHangoutTarget(supabase, user.id, payload.targetType, payload.targetId);
   const shouldShareWithLinkedUser = payload.targetType === "connection" && payload.shareWithLinkedUser === "true";
   const { data: hangout, error } = await supabase.from("hangouts").insert({
     owner_user_id: user.id,
@@ -1804,18 +1938,30 @@ export async function respondToHangoutProposalAction(formData: FormData) {
     await finalizeConnectionHangoutResponse(supabase, hangout.id, payload.responseStatus);
   }
 
-  await notifyHangoutOwnerResponse(
-    supabase,
-    {
-      ownerUserId: hangout.owner_user_id,
-      responderUserId: user.id,
-      targetType: hangout.target_type,
-      targetId: hangout.target_id,
-      responseStatus: payload.responseStatus,
-      responder: user,
-      hangoutTitle: hangout.title,
-      hangoutId: hangout.id,
-    },
+  const notificationRecipientIds = new Set([hangout.owner_user_id]);
+
+  if (hangout.target_type === "group") {
+    for (const managerUserId of await getGroupPlanManagerUserIds(supabase, hangout.target_id)) {
+      notificationRecipientIds.add(managerUserId);
+    }
+  }
+
+  await Promise.allSettled(
+    [...notificationRecipientIds]
+      .filter((recipientUserId) => recipientUserId !== user.id)
+      .map((recipientUserId) => notifyHangoutOwnerResponse(
+        supabase,
+        {
+          ownerUserId: recipientUserId,
+          responderUserId: user.id,
+          targetType: hangout.target_type,
+          targetId: hangout.target_id,
+          responseStatus: payload.responseStatus,
+          responder: user,
+          hangoutTitle: hangout.title,
+          hangoutId: hangout.id,
+        },
+      )),
   );
 
   revalidateHangoutPaths(hangout.target_type, hangout.target_id);
@@ -1842,9 +1988,8 @@ export async function confirmHangoutProposalAction(formData: FormData) {
   });
   const { data: hangout, error: hangoutError } = await supabase
     .from("hangouts")
-    .select("id, target_type, target_id, proposal_state")
+    .select("id, owner_user_id, target_type, target_id, proposal_state")
     .eq("id", payload.hangoutId)
-    .eq("owner_user_id", user.id)
     .maybeSingle();
 
   assertMutation(hangoutError, "Failed to load hangout proposal");
@@ -1852,6 +1997,8 @@ export async function confirmHangoutProposalAction(formData: FormData) {
   if (hangout?.target_type !== "group") {
     throw new Error("Failed to confirm hangout proposal: plan not found.");
   }
+
+  await assertCanManageHangoutPlan(supabase, user.id, hangout, "Failed to confirm hangout proposal");
 
   if (hangout.proposal_state === "confirmed") {
     const target = await resolveRedirectTarget(formData, `/groups/${hangout.target_id}`, "hangout-proposal-confirmed");
@@ -1865,7 +2012,7 @@ export async function confirmHangoutProposalAction(formData: FormData) {
       proposal_confirmed_at: new Date().toISOString(),
     })
     .eq("id", hangout.id)
-    .eq("owner_user_id", user.id);
+    .eq("target_type", "group");
 
   assertMutation(updateError, "Failed to confirm hangout proposal");
   revalidateHangoutPaths("group", hangout.target_id);
@@ -2274,7 +2421,6 @@ export async function completeHangoutAction(formData: FormData) {
     .from("hangouts")
     .select("id, owner_user_id, target_type, target_id, title, starts_at, location, notes, status, proposal_state, photo_album_label, photo_album_url")
     .eq("id", payload.hangoutId)
-    .eq("owner_user_id", user.id)
     .maybeSingle();
 
   assertMutation(hangoutError, "Failed to load hangout");
@@ -2282,6 +2428,8 @@ export async function completeHangoutAction(formData: FormData) {
   if (!hangout) {
     throw new Error("Failed to complete hangout: plan not found.");
   }
+
+  await assertCanManageHangoutPlan(supabase, user.id, hangout, "Failed to complete hangout");
 
   if (hangout.target_type === "group" && hangout.proposal_state !== "confirmed") {
     throw new Error("Failed to complete hangout: confirm the proposal before logging it as completed.");
@@ -2311,8 +2459,7 @@ export async function completeHangoutAction(formData: FormData) {
       status: "completed",
       completed_at: new Date().toISOString(),
     })
-    .eq("id", hangout.id)
-    .eq("owner_user_id", user.id);
+    .eq("id", hangout.id);
 
   assertMutation(updateError, "Failed to mark hangout as completed");
   revalidateHangoutPaths(hangout.target_type, hangout.target_id);
@@ -2328,9 +2475,8 @@ export async function cancelHangoutAction(formData: FormData) {
   });
   const { data: hangout, error: hangoutError } = await supabase
     .from("hangouts")
-    .select("id, target_type, target_id")
+    .select("id, owner_user_id, target_type, target_id")
     .eq("id", payload.hangoutId)
-    .eq("owner_user_id", user.id)
     .maybeSingle();
 
   assertMutation(hangoutError, "Failed to load hangout");
@@ -2339,13 +2485,14 @@ export async function cancelHangoutAction(formData: FormData) {
     throw new Error("Failed to cancel hangout: plan not found.");
   }
 
+  await assertCanManageHangoutPlan(supabase, user.id, hangout, "Failed to cancel hangout");
+
   const { error } = await supabase
     .from("hangouts")
     .update({
       status: "canceled",
     })
-    .eq("id", payload.hangoutId)
-    .eq("owner_user_id", user.id);
+    .eq("id", payload.hangoutId);
 
   assertMutation(error, "Failed to cancel hangout");
   revalidateHangoutPaths(hangout.target_type, hangout.target_id);

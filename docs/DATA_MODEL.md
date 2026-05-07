@@ -21,7 +21,11 @@ The implemented localhost app currently centers on:
 - `cadence_rules` for both connections and groups
 - `touchpoints` for logged interactions
 - `hangouts` for saved plans and exported ICS events
+- `hangout_participants` for proposal responses from linked group members
 - `connection_invites` for claimable linking between a connection and a real user account
+- `group_invites` for pending group membership invitations
+- `in_app_notifications` for invite, proposal, and response updates
+- `push_subscriptions` for opt-in web push delivery attempts
 
 ## Design Principles
 
@@ -171,7 +175,7 @@ Represents a pending invite to link a connection to a real user account.
 Represents in-app or outbound reminders and updates.
 
 ### Current state
-Reminder surfacing exists in-app today. Dedicated persisted notification delivery records can be added later if push or email delivery becomes a priority.
+The app now has persisted `in_app_notifications` for invite, group invite, hangout proposal, and response updates. Web push subscription storage and delivery helpers exist, and invite/proposal email helpers can use Resend when configured. Scheduled reminder and digest delivery records remain a later production concern.
 
 ## Access Control Model Direction
 

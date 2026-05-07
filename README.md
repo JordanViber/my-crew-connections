@@ -61,13 +61,19 @@ Available today:
 - connection invite links that can be claimed by another real app user
 - optional invite start during connection creation
 - two-way relationship linking so invite claim creates or reuses a reciprocal connection for the invited user
+- group invites with accepted, declined, and pending membership states
+- group hangout proposals with participant responses and confirmation
+- in-app notification center for invites, plans, and responses
 - push-first invite delivery for existing users with email fallback when push is unavailable
+- Resend-backed invite and hangout proposal email plumbing when provider env vars are configured
 - explicit accepted, declined, claimed, and inactive terminal states on invite links
 - unit tests plus Playwright coverage for the core authenticated flows
 
 Still intentionally deferred:
 - hosted deployment setup
-- rich collaboration beyond connection linking and invite claiming
+- production environment/domain configuration for outbound email and push
+- scheduled reminder delivery outside the active app session
+- rich collaboration beyond lightweight linking, group invites, and hangout proposal responses
 - photo and media upload flow
 
 ## Local Development
@@ -95,12 +101,13 @@ If we need to pick up quickly, the current product shape is:
 3. real-user linking currently happens from a connection detail page through a claimable invite link
 4. invite claim links both sides by creating or reusing a reciprocal connection for the invited user
 5. saved hangouts exist and can be exported to calendar via ICS
-6. mobile validation now uses an iPhone 15-sized viewport in browser coverage
+6. in-app notifications, web-push plumbing, and Resend email plumbing exist, but production delivery still depends on hosted configuration
+7. mobile validation now uses an iPhone 15-sized viewport in browser coverage
 
 ## Suggested Next Steps
 
 1. deepen collaborative behavior for linked users and groups now that two-way connection linking exists
 2. decide whether groups should support richer shared membership management beyond connection placeholders
-3. add production invite delivery through email instead of copyable local links only
-4. add notifications after the collaboration and planning model settles
+3. harden production delivery configuration for Resend invite/proposal emails and VAPID web push
+4. add scheduled reminder and digest delivery after the collaboration model settles
 5. add photo or media handling only after the shared-memory loop is clearer
