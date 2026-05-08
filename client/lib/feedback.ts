@@ -92,7 +92,7 @@ const feedbackMessages = {
   "group-member-removed": {
     tone: "success",
     title: "Group member removed",
-    body: "That person is no longer attached to the group or its pending invite list.",
+    body: "That person has been removed from the group.",
   },
   "group-invite-canceled": {
     tone: "success",

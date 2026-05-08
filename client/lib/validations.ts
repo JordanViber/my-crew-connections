@@ -62,7 +62,7 @@ export const MAX_QUICK_GROUP_PEOPLE = 20;
 
 export const quickGroupConnectionSchema = z.object({
   name: z.string().trim().max(80).optional().default(""),
-  email: z.union([z.string().trim().email(), z.literal("")]).default(""),
+  email: z.string().trim().email().optional().or(z.literal("")).default(""),
 }).superRefine((value, context) => {
   if (!value.name && !value.email) {
     context.addIssue({

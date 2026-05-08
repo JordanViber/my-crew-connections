@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import {
   buildQuickGroupConnections,
   groupMemberSchema,
@@ -70,7 +71,7 @@ describe("buildQuickGroupConnections", () => {
       emails: Array(names.length).fill(""),
       legacyName: "",
       legacyEmail: "",
-    })).toThrow();
+    })).toThrow(ZodError);
   });
 
   it("rejects invalid quick-add emails", () => {

@@ -23,9 +23,9 @@ type GroupRosterBuilderProps = Readonly<{
   mode: "create" | "manage";
 }>;
 
-function createQuickRow(index: number): QuickRosterRow {
+function createQuickRow(): QuickRosterRow {
   return {
-    id: `quick-row-${index}`,
+    id: crypto.randomUUID(),
     name: "",
     email: "",
   };
@@ -33,7 +33,7 @@ function createQuickRow(index: number): QuickRosterRow {
 
 function getInitialQuickRows(mode: "create" | "manage") {
   const rowCount = mode === "create" ? 2 : 1;
-  return Array.from({ length: rowCount }, (_, index) => createQuickRow(index + 1));
+  return Array.from({ length: rowCount }, () => createQuickRow());
 }
 
 function getJoinModeLabel(connection: RelationshipSummary) {
@@ -62,7 +62,6 @@ export function GroupRosterBuilder({
   const [search, setSearch] = useState("");
   const [selectedConnectionIds, setSelectedConnectionIds] = useState(() => new Set(initialSelectedConnectionIds));
   const [quickRows, setQuickRows] = useState(() => getInitialQuickRows(mode));
-  const [nextQuickRowIndex, setNextQuickRowIndex] = useState(quickRows.length + 1);
 
   const excludedIds = useMemo(() => new Set(excludedConnectionIds), [excludedConnectionIds]);
   const selectedConnections = useMemo(
@@ -118,16 +117,11 @@ export function GroupRosterBuilder({
   }
 
   function removeQuickRow(rowId: string) {
-    setQuickRows((current) => current.length > 1 ? current.filter((row) => row.id !== rowId) : [createQuickRow(nextQuickRowIndex)]);
-
-    if (quickRows.length <= 1) {
-      setNextQuickRowIndex((current) => current + 1);
-    }
+    setQuickRows((current) => current.length > 1 ? current.filter((row) => row.id !== rowId) : [createQuickRow()]);
   }
 
   function addQuickRow() {
-    setQuickRows((current) => [...current, createQuickRow(nextQuickRowIndex)]);
-    setNextQuickRowIndex((current) => current + 1);
+    setQuickRows((current) => [...current, createQuickRow()]);
   }
 
   return (
@@ -160,7 +154,7 @@ export function GroupRosterBuilder({
               <div key={connection.id} className="flex items-start justify-between gap-3 rounded-lg border border-border/80 bg-white/78 p-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-foreground">{connection.title}</p>
+                    <p className="truncate font-semibold text-foreground">{connection.title}</p>
                     <ConnectionLinkBadge
                       linkState={connection.linkState}
                       pendingInviteEmail={connection.pendingInviteEmail}
@@ -169,7 +163,7 @@ export function GroupRosterBuilder({
                       unlinkedLabel="Local person"
                     />
                   </div>
-                  <p className="mt-1 text-sm text-foreground/62">{getJoinModeLabel(connection)}</p>
+                  <p className="mt-1 truncate text-sm text-foreground/62">{getJoinModeLabel(connection)}</p>
                 </div>
                 <button className="button-secondary" onClick={() => removeConnection(connection.id)} type="button">
                   Remove {connection.title}
@@ -180,6 +174,7 @@ export function GroupRosterBuilder({
         ) : null}
 
         <div className="grid gap-3">
+          <p className="text-xs leading-5 text-foreground/56">Fill in a name (and optional email) for each new person. Leave a row blank and it will be ignored.</p>
           {quickRows.map((row, index) => (
             <div key={row.id} className="grid gap-3 rounded-lg border border-border/80 bg-white/78 p-3 md:grid-cols-[1fr_1fr_auto]">
               <label className="grid gap-2">
