@@ -89,6 +89,26 @@ const feedbackMessages = {
     title: "Group invite declined",
     body: "Your decline is recorded, so the owner still sees that invite as declined instead of accepted.",
   },
+  "group-member-removed": {
+    tone: "success",
+    title: "Group member removed",
+    body: "That person is no longer attached to the group or its pending invite list.",
+  },
+  "group-invite-canceled": {
+    tone: "success",
+    title: "Group invite canceled",
+    body: "The pending group invite was canceled. If this person was already local-only, they stay in the group without the invite.",
+  },
+  "group-invite-resent": {
+    tone: "success",
+    title: "Group invite resent",
+    body: "A fresh group invite is now pending for that person.",
+  },
+  "group-local-member-invited": {
+    tone: "success",
+    title: "Email added and invite started",
+    body: "This local-only member now has an email on file and a fresh group invite waiting.",
+  },
   "connection-archived": {
     tone: "success",
     title: "Person archived",

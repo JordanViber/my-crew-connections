@@ -13,26 +13,31 @@ import {
   accountProfileSchema,
   appFeedbackSchema,
   billingIntervalSchema,
+  buildQuickGroupConnections,
   connectionSchema,
   getString,
   getStringList,
   groupMemberSchema,
+  groupRosterConnectionActionSchema,
+  groupRosterUserActionSchema,
   groupSchema,
   hangoutIdSchema,
   hangoutResponseSchema,
   hangoutSchema,
   inviteEmailSchema,
+  inviteLocalGroupMemberSchema,
   parseTargetReference,
   parseCommaSeparatedList,
   touchpointSchema,
   touchpointUpdateSchema,
   updateConnectionSchema,
   updateGroupSchema,
+  type QuickGroupConnectionInput,
 } from "@/lib/validations";
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
 import { findAuthUserByEmail, getAuthUserById } from "@/lib/auth-users";
 import { formatHangoutWindow } from "@/lib/hangouts";
-import { canAccessSharedGroup, canManageGroupPlans, type GroupRole } from "@/lib/group-collaboration";
+import { canAccessSharedGroup, canManageGroupPlans, getGroupRoleCapabilities, type GroupRole } from "@/lib/group-collaboration";
 import { notifyHangoutProposalParticipant } from "@/lib/hangout-notifications";
 import {
   getFallbackDisplayNameFromEmail,
@@ -383,6 +388,200 @@ function getGroupMembershipFeedbackKey(summary: GroupMembershipUpdateSummary, mo
 
 const MIN_GROUP_SIZE = 3;
 
+type QuickGroupConnectionDraft = {
+  displayName: string;
+  contactEmail: string | null;
+};
+
+type PreparedQuickGroupConnections = {
+  existingConnectionIds: string[];
+  connectionsToCreate: QuickGroupConnectionDraft[];
+};
+
+async function prepareQuickGroupConnections(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  ownerUserId: string,
+  quickConnections: QuickGroupConnectionInput[],
+) {
+  const existingConnectionIds = new Set<string>();
+  const connectionsToCreate: QuickGroupConnectionDraft[] = [];
+  const quickConnectionPlans = new Map<string, { kind: "existing"; connectionId: string } | { kind: "draft"; draftIndex: number; hasExplicitName: boolean }>();
+
+  for (const quickConnection of quickConnections) {
+    const normalizedEmail = quickConnection.email ? normalizeInviteEmail(quickConnection.email) : null;
+    const explicitName = quickConnection.name.trim();
+
+    if (!normalizedEmail) {
+      if (!explicitName) {
+        throw new Error("Failed to prepare group member: enter a name for each person without an email.");
+      }
+
+      connectionsToCreate.push({
+        displayName: explicitName,
+        contactEmail: null,
+      });
+      continue;
+    }
+
+    const existingPlan = quickConnectionPlans.get(normalizedEmail);
+
+    if (existingPlan?.kind === "existing") {
+      continue;
+    }
+
+    if (existingPlan?.kind === "draft") {
+      if (!existingPlan.hasExplicitName && explicitName) {
+        connectionsToCreate[existingPlan.draftIndex].displayName = explicitName;
+        existingPlan.hasExplicitName = true;
+      }
+
+      continue;
+    }
+
+    const conflict = await findConnectionEmailConflict(supabase, ownerUserId, normalizedEmail);
+
+    if (conflict) {
+      existingConnectionIds.add(conflict.connectionId);
+      quickConnectionPlans.set(normalizedEmail, {
+        kind: "existing",
+        connectionId: conflict.connectionId,
+      });
+      continue;
+    }
+
+    const displayName = explicitName || getFallbackDisplayNameFromEmail(normalizedEmail);
+
+    if (!displayName) {
+      throw new Error("Failed to prepare group member: enter a name for each person without an email.");
+    }
+
+    connectionsToCreate.push({
+      displayName,
+      contactEmail: normalizedEmail,
+    });
+    quickConnectionPlans.set(normalizedEmail, {
+      kind: "draft",
+      draftIndex: connectionsToCreate.length - 1,
+      hasExplicitName: Boolean(explicitName),
+    });
+  }
+
+  return {
+    existingConnectionIds: [...existingConnectionIds],
+    connectionsToCreate,
+  } satisfies PreparedQuickGroupConnections;
+}
+
+async function createPreparedQuickGroupConnections(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  ownerUserId: string,
+  drafts: QuickGroupConnectionDraft[],
+) {
+  const createdConnectionIds: string[] = [];
+
+  for (const draft of drafts) {
+    const { data: quickConnection, error: quickConnectionError } = await supabase
+      .from("connections")
+      .insert({
+        owner_user_id: ownerUserId,
+        display_name: draft.displayName,
+        prefers_profile_name: false,
+        contact_email: draft.contactEmail,
+        tags: [],
+        notes: null,
+        preferred_activities: null,
+      })
+      .select("id")
+      .single();
+
+    assertMutation(quickConnectionError, "Failed to quick-add connection for group");
+
+    if (!quickConnection) {
+      throw new Error("Failed to quick-add connection for group: no record returned.");
+    }
+
+    const { error: quickCadenceError } = await supabase.from("cadence_rules").insert({
+      owner_user_id: ownerUserId,
+      target_type: "connection",
+      target_id: quickConnection.id,
+      cadence_value: 3,
+      cadence_unit: "weeks",
+      reminder_lead_days: 5,
+    });
+
+    assertMutation(quickCadenceError, "Failed to create quick-added connection cadence");
+    createdConnectionIds.push(quickConnection.id);
+  }
+
+  return createdConnectionIds;
+}
+
+
+async function loadOwnedGroupConnection(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  ownerUserId: string,
+  connectionId: string,
+  label: string,
+) {
+  const { data: connection, error: connectionError } = await supabase
+    .from("connections")
+    .select("id, display_name, contact_email, linked_user_id")
+    .eq("id", connectionId)
+    .eq("owner_user_id", ownerUserId)
+    .is("archived_at", null)
+    .maybeSingle();
+
+  assertMutation(connectionError, `${label}: failed to load connection`);
+
+  if (!connection) {
+    throw new Error(`${label}: member not found.`);
+  }
+
+  return connection as GroupInviteConnectionRow;
+}
+
+async function createOrReplaceGroupInvite(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  ownerUserId: string,
+  ownerDisplayName: string | null | undefined,
+  groupId: string,
+  groupName: string,
+  connection: GroupInviteConnectionRow,
+  inviteEmail: string,
+) {
+  const normalizedInviteEmail = normalizeInviteEmail(inviteEmail);
+  const { error: revokeInviteError } = await supabase
+    .from("group_invites")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("owner_user_id", ownerUserId)
+    .eq("group_id", groupId)
+    .eq("connection_id", connection.id)
+    .is("accepted_at", null)
+    .is("declined_at", null)
+    .is("revoked_at", null);
+
+  assertMutation(revokeInviteError, "Failed to replace existing group invite");
+
+  const token = crypto.randomUUID();
+  const { error: inviteError } = await supabase.from("group_invites").insert({
+    owner_user_id: ownerUserId,
+    group_id: groupId,
+    connection_id: connection.id,
+    invited_email: normalizedInviteEmail,
+    token,
+  });
+
+  assertMutation(inviteError, "Failed to create group invite");
+  await notifyGroupInvite(
+    supabase,
+    normalizedInviteEmail,
+    token,
+    groupName,
+    connection.display_name,
+    ownerDisplayName,
+  );
+}
+
 async function addConnectionsToGroup(
   supabase: ReturnType<typeof createServerAdminSupabaseClient>,
   ownerUserId: string,
@@ -453,35 +652,14 @@ async function addConnectionsToGroup(
         assertMutation(saveEmailError, "Failed to save linked user email on connection");
       }
 
-      const { error: revokeInviteError } = await supabase
-        .from("group_invites")
-        .update({ revoked_at: new Date().toISOString() })
-        .eq("owner_user_id", ownerUserId)
-        .eq("group_id", groupId)
-        .eq("connection_id", connection.id)
-        .is("accepted_at", null)
-        .is("declined_at", null)
-        .is("revoked_at", null);
-
-      assertMutation(revokeInviteError, "Failed to replace existing group invite");
-
-      const token = crypto.randomUUID();
-      const { error: inviteError } = await supabase.from("group_invites").insert({
-        owner_user_id: ownerUserId,
-        group_id: groupId,
-        connection_id: connection.id,
-        invited_email: inviteEmail,
-        token,
-      });
-
-      assertMutation(inviteError, "Failed to create group invite");
-      await notifyGroupInvite(
+      await createOrReplaceGroupInvite(
         supabase,
-        inviteEmail,
-        token,
-        groupName,
-        connection.display_name,
+        ownerUserId,
         ownerDisplayName,
+        groupId,
+        groupName,
+        connection,
+        inviteEmail,
       );
       invitedCount += 1;
       continue;
@@ -499,35 +677,14 @@ async function addConnectionsToGroup(
       continue;
     }
 
-    const { error: revokeInviteError } = await supabase
-      .from("group_invites")
-      .update({ revoked_at: new Date().toISOString() })
-      .eq("owner_user_id", ownerUserId)
-      .eq("group_id", groupId)
-      .eq("connection_id", connection.id)
-      .is("accepted_at", null)
-      .is("declined_at", null)
-      .is("revoked_at", null);
-
-    assertMutation(revokeInviteError, "Failed to replace existing group invite");
-
-    const token = crypto.randomUUID();
-    const { error: inviteError } = await supabase.from("group_invites").insert({
-      owner_user_id: ownerUserId,
-      group_id: groupId,
-      connection_id: connection.id,
-      invited_email: inviteEmail,
-      token,
-    });
-
-    assertMutation(inviteError, "Failed to create group invite");
-    await notifyGroupInvite(
+    await createOrReplaceGroupInvite(
       supabase,
-      inviteEmail,
-      token,
-      groupName,
-      connection.display_name,
+      ownerUserId,
       ownerDisplayName,
+      groupId,
+      groupName,
+      connection,
+      inviteEmail,
     );
     invitedCount += 1;
   }
@@ -821,6 +978,21 @@ async function assertCanManageGroupPlanTarget(
 
   if (!canManageGroupPlans(access.role)) {
     throw new Error(`${label}: group plan not found.`);
+  }
+
+  return access.group;
+}
+
+async function assertCanManageGroupMembers(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  userId: string,
+  groupId: string,
+  label: string,
+) {
+  const access = await assertCanAccessGroup(supabase, userId, groupId, label);
+
+  if (!getGroupRoleCapabilities(access.role).canManageMembers) {
+    throw new Error(`${label}: group not found.`);
   }
 
   return access.group;
@@ -1480,6 +1652,13 @@ export async function createGroupAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
   await assertCanCreateRelationship(supabase, user.id, user.email, "group");
 
+  const quickConnections = buildQuickGroupConnections({
+    names: getStringList(formData, "quickConnectionNames"),
+    emails: getStringList(formData, "quickConnectionEmails"),
+    legacyName: getString(formData, "quickConnectionName"),
+    legacyEmail: getString(formData, "quickConnectionEmail"),
+  });
+
   const payload = groupSchema.parse({
     name: getString(formData, "name"),
     description: getString(formData, "description"),
@@ -1487,70 +1666,31 @@ export async function createGroupAction(formData: FormData) {
     cadenceUnit: getString(formData, "cadenceUnit"),
     reminderLeadDays: getString(formData, "reminderLeadDays"),
     connectionIds: getStringList(formData, "connectionIds"),
-    quickConnectionName: getString(formData, "quickConnectionName"),
-    quickConnectionEmail: getString(formData, "quickConnectionEmail"),
+    quickConnections,
+    quickConnectionName: "",
+    quickConnectionEmail: "",
   });
 
   const selectedConnectionIds = new Set(payload.connectionIds);
-  const normalizedQuickConnectionEmail = payload.quickConnectionEmail
-    ? normalizeInviteEmail(payload.quickConnectionEmail)
-    : null;
-  const hasQuickConnectionInput = Boolean(payload.quickConnectionName || normalizedQuickConnectionEmail);
-  let quickConnectionConflict: ConnectionEmailConflict | null = null;
+  const preparedQuickConnections = await prepareQuickGroupConnections(supabase, user.id, payload.quickConnections);
 
-  if (hasQuickConnectionInput && normalizedQuickConnectionEmail) {
-    quickConnectionConflict = await findConnectionEmailConflict(supabase, user.id, normalizedQuickConnectionEmail);
+  preparedQuickConnections.existingConnectionIds.forEach((connectionId) => {
+    selectedConnectionIds.add(connectionId);
+  });
 
-    if (quickConnectionConflict) {
-      selectedConnectionIds.add(quickConnectionConflict.connectionId);
-    }
-  }
-
-  const shouldCreateQuickConnection = hasQuickConnectionInput && !quickConnectionConflict;
-
-  if (selectedConnectionIds.size + (shouldCreateQuickConnection ? 1 : 0) < MIN_GROUP_SIZE - 1) {
+  if (selectedConnectionIds.size + preparedQuickConnections.connectionsToCreate.length < MIN_GROUP_SIZE - 1) {
     redirect(withFeedback("/groups?tab=create", "group-minimum-members"));
   }
 
-  if (shouldCreateQuickConnection) {
-    const quickConnectionName = payload.quickConnectionName || getFallbackDisplayNameFromEmail(normalizedQuickConnectionEmail);
+  const createdQuickConnectionIds = await createPreparedQuickGroupConnections(
+    supabase,
+    user.id,
+    preparedQuickConnections.connectionsToCreate,
+  );
 
-    if (!quickConnectionName) {
-      throw new Error("Failed to create group: enter a name for the quick-added person.");
-    }
-
-    const { data: quickConnection, error: quickConnectionError } = await supabase
-      .from("connections")
-      .insert({
-        owner_user_id: user.id,
-        display_name: quickConnectionName,
-        prefers_profile_name: false,
-        contact_email: normalizedQuickConnectionEmail,
-        tags: [],
-        notes: null,
-        preferred_activities: null,
-      })
-      .select("id")
-      .single();
-
-    assertMutation(quickConnectionError, "Failed to quick-add connection for group creation");
-
-    if (!quickConnection) {
-      throw new Error("Failed to quick-add connection for group creation.");
-    }
-
-    const { error: quickCadenceError } = await supabase.from("cadence_rules").insert({
-      owner_user_id: user.id,
-      target_type: "connection",
-      target_id: quickConnection.id,
-      cadence_value: 3,
-      cadence_unit: "weeks",
-      reminder_lead_days: 5,
-    });
-
-    assertMutation(quickCadenceError, "Failed to create quick-added connection cadence");
-    selectedConnectionIds.add(quickConnection.id);
-  }
+  createdQuickConnectionIds.forEach((connectionId) => {
+    selectedConnectionIds.add(connectionId);
+  });
 
   if (selectedConnectionIds.size < MIN_GROUP_SIZE - 1) {
     redirect(withFeedback("/groups?tab=create", "group-minimum-members"));
@@ -1646,9 +1786,16 @@ export async function updateGroupAction(formData: FormData) {
 
 export async function addGroupMembersAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
+  const quickConnections = buildQuickGroupConnections({
+    names: getStringList(formData, "quickConnectionNames"),
+    emails: getStringList(formData, "quickConnectionEmails"),
+    legacyName: getString(formData, "quickConnectionName"),
+    legacyEmail: getString(formData, "quickConnectionEmail"),
+  });
   const payload = groupMemberSchema.parse({
     groupId: getString(formData, "groupId"),
     connectionIds: getStringList(formData, "connectionIds"),
+    quickConnections,
   });
   const { data: group, error: groupError } = await supabase
     .from("groups")
@@ -1663,13 +1810,30 @@ export async function addGroupMembersAction(formData: FormData) {
     throw new Error("Failed to add group members: group not found.");
   }
 
+  const selectedConnectionIds = new Set(payload.connectionIds);
+  const preparedQuickConnections = await prepareQuickGroupConnections(supabase, user.id, payload.quickConnections);
+
+  preparedQuickConnections.existingConnectionIds.forEach((connectionId) => {
+    selectedConnectionIds.add(connectionId);
+  });
+
+  const createdQuickConnectionIds = await createPreparedQuickGroupConnections(
+    supabase,
+    user.id,
+    preparedQuickConnections.connectionsToCreate,
+  );
+
+  createdQuickConnectionIds.forEach((connectionId) => {
+    selectedConnectionIds.add(connectionId);
+  });
+
   const membershipSummary = await addConnectionsToGroup(
     supabase,
     user.id,
     user.user_metadata?.display_name ?? user.email,
     payload.groupId,
     group.name,
-    payload.connectionIds,
+    [...selectedConnectionIds],
   );
 
   revalidateRelationshipPaths("group", payload.groupId);
@@ -1679,6 +1843,159 @@ export async function addGroupMembersAction(formData: FormData) {
     getGroupMembershipFeedbackKey(membershipSummary, "add"),
   );
   redirect(target);
+}
+
+export async function removeGroupConnectionMemberAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const payload = groupRosterConnectionActionSchema.parse({
+    groupId: getString(formData, "groupId"),
+    connectionId: getString(formData, "connectionId"),
+  });
+
+  await assertCanManageGroupMembers(supabase, user.id, payload.groupId, "Failed to remove group member");
+  await loadOwnedGroupConnection(supabase, user.id, payload.connectionId, "Failed to remove group member");
+
+  const removedAt = new Date().toISOString();
+  const { error: membershipError } = await supabase
+    .from("group_memberships")
+    .update({ removed_at: removedAt })
+    .eq("group_id", payload.groupId)
+    .eq("connection_id", payload.connectionId)
+    .neq("role", "owner")
+    .is("removed_at", null);
+
+  assertMutation(membershipError, "Failed to remove group member");
+
+  const { error: inviteError } = await supabase
+    .from("group_invites")
+    .update({ revoked_at: removedAt })
+    .eq("owner_user_id", user.id)
+    .eq("group_id", payload.groupId)
+    .eq("connection_id", payload.connectionId)
+    .is("accepted_at", null)
+    .is("declined_at", null)
+    .is("revoked_at", null);
+
+  assertMutation(inviteError, "Failed to revoke pending group invite during removal");
+  revalidateRelationshipPaths("group", payload.groupId);
+  redirect(withFeedback(`/groups/${payload.groupId}`, "group-member-removed"));
+}
+
+export async function removeGroupUserMemberAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const payload = groupRosterUserActionSchema.parse({
+    groupId: getString(formData, "groupId"),
+    userId: getString(formData, "userId"),
+  });
+  const group = await assertCanManageGroupMembers(supabase, user.id, payload.groupId, "Failed to remove group member");
+
+  if (payload.userId === group.owner_user_id) {
+    throw new Error("Failed to remove group member: owner cannot be removed.");
+  }
+
+  const { error: membershipError } = await supabase
+    .from("group_memberships")
+    .update({ removed_at: new Date().toISOString() })
+    .eq("group_id", payload.groupId)
+    .eq("user_id", payload.userId)
+    .neq("role", "owner")
+    .is("removed_at", null);
+
+  assertMutation(membershipError, "Failed to remove group member");
+  revalidateRelationshipPaths("group", payload.groupId);
+  redirect(withFeedback(`/groups/${payload.groupId}`, "group-member-removed"));
+}
+
+export async function cancelGroupInviteAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const payload = groupRosterConnectionActionSchema.parse({
+    groupId: getString(formData, "groupId"),
+    connectionId: getString(formData, "connectionId"),
+  });
+
+  await assertCanManageGroupMembers(supabase, user.id, payload.groupId, "Failed to cancel group invite");
+  await loadOwnedGroupConnection(supabase, user.id, payload.connectionId, "Failed to cancel group invite");
+
+  const { error: inviteError } = await supabase
+    .from("group_invites")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("owner_user_id", user.id)
+    .eq("group_id", payload.groupId)
+    .eq("connection_id", payload.connectionId)
+    .is("accepted_at", null)
+    .is("declined_at", null)
+    .is("revoked_at", null);
+
+  assertMutation(inviteError, "Failed to cancel group invite");
+  revalidateRelationshipPaths("group", payload.groupId);
+  redirect(withFeedback(`/groups/${payload.groupId}`, "group-invite-canceled"));
+}
+
+export async function resendGroupInviteAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const payload = groupRosterConnectionActionSchema.parse({
+    groupId: getString(formData, "groupId"),
+    connectionId: getString(formData, "connectionId"),
+  });
+  const group = await assertCanManageGroupMembers(supabase, user.id, payload.groupId, "Failed to resend group invite");
+  const connection = await loadOwnedGroupConnection(supabase, user.id, payload.connectionId, "Failed to resend group invite");
+  const inviteEmail = await resolveConnectionContactEmail(supabase, user.id, connection);
+
+  if (!inviteEmail) {
+    throw new Error("Failed to resend group invite: add an email before inviting this member.");
+  }
+
+  await createOrReplaceGroupInvite(
+    supabase,
+    user.id,
+    user.user_metadata?.display_name ?? user.email,
+    payload.groupId,
+    group.name,
+    connection,
+    inviteEmail,
+  );
+  revalidateRelationshipPaths("group", payload.groupId);
+  redirect(withFeedback(`/groups/${payload.groupId}`, "group-invite-resent"));
+}
+
+export async function inviteLocalGroupMemberAction(formData: FormData) {
+  const { supabase, user } = await getAuthenticatedClient();
+  const payload = inviteLocalGroupMemberSchema.parse({
+    groupId: getString(formData, "groupId"),
+    connectionId: getString(formData, "connectionId"),
+    contactEmail: getString(formData, "contactEmail"),
+  });
+  const group = await assertCanManageGroupMembers(supabase, user.id, payload.groupId, "Failed to invite local group member");
+  const connection = await loadOwnedGroupConnection(supabase, user.id, payload.connectionId, "Failed to invite local group member");
+  const normalizedEmail = normalizeInviteEmail(payload.contactEmail);
+  const conflict = await findConnectionEmailConflict(supabase, user.id, normalizedEmail, connection.id);
+
+  if (conflict && conflict.connectionId !== connection.id) {
+    redirect(withFeedback(`/groups/${payload.groupId}`, getConnectionEmailConflictFeedbackKey(conflict)));
+  }
+
+  const { error: connectionError } = await supabase
+    .from("connections")
+    .update({ contact_email: normalizedEmail })
+    .eq("id", payload.connectionId)
+    .eq("owner_user_id", user.id);
+
+  assertMutation(connectionError, "Failed to save local member email");
+
+  await createOrReplaceGroupInvite(
+    supabase,
+    user.id,
+    user.user_metadata?.display_name ?? user.email,
+    payload.groupId,
+    group.name,
+    {
+      ...connection,
+      contact_email: normalizedEmail,
+    },
+    normalizedEmail,
+  );
+  revalidateRelationshipPaths("group", payload.groupId);
+  redirect(withFeedback(`/groups/${payload.groupId}`, "group-local-member-invited"));
 }
 
 export async function createTouchpointAction(formData: FormData) {

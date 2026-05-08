@@ -103,6 +103,10 @@ type GroupInviteRow = {
   connection_id: string;
   invited_email: string;
   created_at: string;
+  accepted_by_user_id: string | null;
+  accepted_at: string | null;
+  declined_at: string | null;
+  revoked_at: string | null;
 };
 
 type AcceptedGroupInviteRow = {
@@ -129,6 +133,23 @@ type PendingGroupMember = {
   connectionId: string;
   name: string;
   invitedEmail: string;
+};
+
+export type GroupRosterMember = {
+  key: string;
+  title: string;
+  subtitle: string;
+  role: GroupRole | "pending";
+  linkState: "linked" | "pending" | "unlinked";
+  connectionId?: string;
+  userId?: string;
+  pendingInviteEmail?: string;
+  isOwner: boolean;
+  hasAcceptedMembership: boolean;
+  canRemove: boolean;
+  canCancelInvite: boolean;
+  canResendInvite: boolean;
+  canInviteLocal: boolean;
 };
 
 export type RelationshipSummary = {
@@ -165,6 +186,7 @@ export type RelationshipSummary = {
   canCreatePlans?: boolean;
   canLogTouchpoints?: boolean;
   canManagePlans?: boolean;
+  rosterMembers?: GroupRosterMember[];
 };
 
 export type HangoutSummary = {
@@ -351,6 +373,212 @@ function buildGroupPendingInviteMap(groupInvites: GroupInviteRow[], connections:
     accumulator.set(invite.group_id, pendingMembers);
     return accumulator;
   }, new Map());
+}
+
+function getRosterLinkState(connection?: GroupConnectionRow | null, connectionInvite?: ConnectionInviteRow) {
+  if (connection?.linked_user_id) {
+    return "linked" as const;
+  }
+
+  if (connectionInvite) {
+    return "pending" as const;
+  }
+
+  return "unlinked" as const;
+}
+
+function compareGroupRosterMembers(left: GroupRosterMember, right: GroupRosterMember) {
+  const stateOrder = {
+    linked: 0,
+    pending: 1,
+    unlinked: 2,
+  } as const;
+
+  if (left.isOwner !== right.isOwner) {
+    return left.isOwner ? -1 : 1;
+  }
+
+  if (left.hasAcceptedMembership !== right.hasAcceptedMembership) {
+    return left.hasAcceptedMembership ? -1 : 1;
+  }
+
+  const linkStateDifference = stateOrder[left.linkState] - stateOrder[right.linkState];
+
+  if (linkStateDifference !== 0) {
+    return linkStateDifference;
+  }
+
+  return left.title.localeCompare(right.title);
+}
+
+export function buildGroupRosterMembers({
+  group,
+  memberships,
+  groupConnections,
+  connectionInviteMap,
+  groupInvites,
+  profiles,
+  viewerUserId,
+  viewerProfileName,
+  membershipRole,
+}: Readonly<{
+  group: GroupRow;
+  memberships: GroupMembershipRow[];
+  groupConnections: GroupConnectionRow[];
+  connectionInviteMap: Map<string, ConnectionInviteRow>;
+  groupInvites: GroupInviteRow[];
+  profiles: Map<string, ProfileRow>;
+  viewerUserId: string;
+  viewerProfileName: string;
+  membershipRole?: GroupRole;
+}>) {
+  if (!getGroupRoleCapabilities(membershipRole).canManageMembers) {
+    return [];
+  }
+
+  const connectionMap = new Map(groupConnections.map((connection) => [connection.id, connection]));
+  const groupMemberships = memberships.filter((membership) => membership.group_id === group.id);
+  const activeGroupInvites = groupInvites.filter(
+    (invite) => invite.group_id === group.id && !invite.accepted_at && !invite.declined_at && !invite.revoked_at,
+  );
+  const acceptedInviteByUserId = groupInvites.reduce<Map<string, GroupInviteRow>>((accumulator, invite) => {
+    if (
+      invite.group_id !== group.id
+      || !invite.accepted_at
+      || !invite.accepted_by_user_id
+      || accumulator.has(invite.accepted_by_user_id)
+    ) {
+      return accumulator;
+    }
+
+    accumulator.set(invite.accepted_by_user_id, invite);
+    return accumulator;
+  }, new Map());
+  const activeInviteByConnectionId = activeGroupInvites.reduce<Map<string, GroupInviteRow>>((accumulator, invite) => {
+    if (!accumulator.has(invite.connection_id)) {
+      accumulator.set(invite.connection_id, invite);
+    }
+
+    return accumulator;
+  }, new Map());
+  const rosterMembers: GroupRosterMember[] = [];
+  const seenKeys = new Set<string>();
+
+  function pushMember(member: GroupRosterMember) {
+    if (seenKeys.has(member.key)) {
+      return;
+    }
+
+    seenKeys.add(member.key);
+    rosterMembers.push(member);
+  }
+
+  pushMember({
+    key: `user:${group.owner_user_id}`,
+    title: group.owner_user_id === viewerUserId ? viewerProfileName : getProfileName(profiles.get(group.owner_user_id)),
+    subtitle: "Group owner",
+    role: "owner",
+    linkState: "linked",
+    userId: group.owner_user_id,
+    isOwner: true,
+    hasAcceptedMembership: true,
+    canRemove: false,
+    canCancelInvite: false,
+    canResendInvite: false,
+    canInviteLocal: false,
+  });
+
+  for (const membership of groupMemberships) {
+    if (membership.role === "owner" || membership.user_id === group.owner_user_id) {
+      continue;
+    }
+
+    if (membership.connection_id) {
+      const connection = connectionMap.get(membership.connection_id);
+
+      if (!connection) {
+        continue;
+      }
+
+      const activeInvite = activeInviteByConnectionId.get(connection.id);
+      const connectionInvite = connectionInviteMap.get(connection.id);
+
+      pushMember({
+        key: `connection:${connection.id}`,
+        title: connection.display_name,
+        subtitle: activeInvite
+          ? `Invite pending for ${activeInvite.invited_email}.`
+          : connection.contact_email
+            ? `Accepted member with ${connection.contact_email} on file.`
+            : "Local-only member.",
+        role: membership.role,
+        linkState: activeInvite ? "pending" : getRosterLinkState(connection, connectionInvite),
+        connectionId: connection.id,
+        pendingInviteEmail: activeInvite?.invited_email ?? undefined,
+        isOwner: false,
+        hasAcceptedMembership: true,
+        canRemove: true,
+        canCancelInvite: Boolean(activeInvite),
+        canResendInvite: Boolean(activeInvite),
+        canInviteLocal: !activeInvite && !connection.linked_user_id && !connection.contact_email,
+      });
+      continue;
+    }
+
+    if (!membership.user_id) {
+      continue;
+    }
+
+    const acceptedInvite = acceptedInviteByUserId.get(membership.user_id);
+    const matchedConnection = acceptedInvite
+      ? connectionMap.get(acceptedInvite.connection_id)
+      : groupConnections.find((connection) => connection.linked_user_id === membership.user_id);
+
+    pushMember({
+      key: `user:${membership.user_id}`,
+      title: membership.user_id === viewerUserId ? viewerProfileName : getProfileName(profiles.get(membership.user_id)),
+      subtitle: matchedConnection
+        ? `Accepted member linked through ${matchedConnection.display_name}.`
+        : "Accepted member with an app account.",
+      role: membership.role,
+      linkState: "linked",
+      connectionId: matchedConnection?.id,
+      userId: membership.user_id,
+      isOwner: false,
+      hasAcceptedMembership: true,
+      canRemove: true,
+      canCancelInvite: false,
+      canResendInvite: false,
+      canInviteLocal: false,
+    });
+  }
+
+  for (const invite of activeGroupInvites) {
+    const key = `connection:${invite.connection_id}`;
+
+    if (seenKeys.has(key)) {
+      continue;
+    }
+
+    const connection = connectionMap.get(invite.connection_id);
+    pushMember({
+      key,
+      title: connection?.display_name ?? invite.invited_email,
+      subtitle: `Invite pending for ${invite.invited_email}.`,
+      role: "pending",
+      linkState: "pending",
+      connectionId: invite.connection_id,
+      pendingInviteEmail: invite.invited_email,
+      isOwner: false,
+      hasAcceptedMembership: false,
+      canRemove: false,
+      canCancelInvite: true,
+      canResendInvite: true,
+      canInviteLocal: false,
+    });
+  }
+
+  return rosterMembers.sort(compareGroupRosterMembers);
 }
 
 export async function getDashboardData(supabase: SupabaseClient, userId: string) {
@@ -584,13 +812,11 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
         .is("removed_at", null),
       supabase
         .from("group_invites")
-        .select("group_id, connection_id, invited_email, created_at")
+        .select("group_id, connection_id, invited_email, created_at, accepted_by_user_id, accepted_at, declined_at, revoked_at")
         .in(
           "group_id",
           groups.map((group) => group.id),
         )
-        .is("accepted_at", null)
-        .is("declined_at", null)
         .is("revoked_at", null)
         .order("created_at", { ascending: false }),
     ]);
@@ -652,7 +878,8 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     userId,
     viewerProfileName,
   );
-  const groupPendingInviteMap = buildGroupPendingInviteMap(groupInvites, groupConnections);
+  const activeGroupInvites = groupInvites.filter((invite) => !invite.accepted_at && !invite.declined_at && !invite.revoked_at);
+  const groupPendingInviteMap = buildGroupPendingInviteMap(activeGroupInvites, groupConnections);
   const groupMemberIdsMap = memberships.reduce<Map<string, string[]>>((accumulator, membership) => {
     if (!membership.connection_id) {
       return accumulator;
@@ -815,6 +1042,17 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
     const membershipRole = viewerGroupRoleMap.get(group.id) ?? (group.owner_user_id === userId ? "owner" : undefined);
     const capabilities = getGroupRoleCapabilities(membershipRole);
     const visiblePendingMembers = capabilities.canManageMembers ? pendingMembers : [];
+    const rosterMembers = buildGroupRosterMembers({
+      group,
+      memberships,
+      groupConnections,
+      connectionInviteMap: groupConnectionInviteMap,
+      groupInvites,
+      profiles: groupProfiles,
+      viewerUserId: userId,
+      viewerProfileName,
+      membershipRole,
+    });
 
     return {
       id: group.id,
@@ -850,6 +1088,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       canCreatePlans: capabilities.canCreatePlans,
       canLogTouchpoints: capabilities.canLogTouchpoints,
       canManagePlans: capabilities.canManagePlans,
+      rosterMembers,
     };
   });
 

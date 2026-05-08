@@ -58,10 +58,57 @@ export const updateConnectionSchema = connectionSchema.extend({
   connectionId: uuidSchema,
 });
 
+export const MAX_QUICK_GROUP_PEOPLE = 20;
+
+export const quickGroupConnectionSchema = z.object({
+  name: z.string().trim().max(80).optional().default(""),
+  email: z.union([z.string().trim().email(), z.literal("")]).default(""),
+}).superRefine((value, context) => {
+  if (!value.name && !value.email) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Enter a name or email for each new person.",
+      path: ["name"],
+    });
+  }
+});
+
+const quickGroupConnectionsSchema = z.array(quickGroupConnectionSchema).max(MAX_QUICK_GROUP_PEOPLE);
+
+export type QuickGroupConnectionInput = z.infer<typeof quickGroupConnectionSchema>;
+
+export function buildQuickGroupConnections({
+  names,
+  emails,
+  legacyName,
+  legacyEmail,
+}: Readonly<{
+  names: string[];
+  emails: string[];
+  legacyName: string;
+  legacyEmail: string;
+}>) {
+  const pairedLength = Math.max(names.length, emails.length);
+  const rows = Array.from({ length: pairedLength }, (_, index) => ({
+    name: names[index] ?? "",
+    email: emails[index] ?? "",
+  })).filter((row) => row.name.trim() || row.email.trim());
+
+  if (rows.length === 0 && (legacyName.trim() || legacyEmail.trim())) {
+    rows.push({
+      name: legacyName,
+      email: legacyEmail,
+    });
+  }
+
+  return quickGroupConnectionsSchema.parse(rows);
+}
+
 export const groupSchema = baseCadenceSchema.extend({
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().max(300).optional().default(""),
   connectionIds: z.array(uuidSchema).default([]),
+  quickConnections: quickGroupConnectionsSchema.default([]),
   quickConnectionName: z.string().trim().max(80).optional().default(""),
   quickConnectionEmail: z.email().optional().or(z.literal("")).default(""),
 });
@@ -72,7 +119,30 @@ export const updateGroupSchema = groupSchema.extend({
 
 export const groupMemberSchema = z.object({
   groupId: uuidSchema,
-  connectionIds: z.array(uuidSchema).min(1),
+  connectionIds: z.array(uuidSchema).default([]),
+  quickConnections: quickGroupConnectionsSchema.default([]),
+}).superRefine((value, context) => {
+  if (value.connectionIds.length === 0 && value.quickConnections.length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Choose or add at least one person.",
+      path: ["connectionIds"],
+    });
+  }
+});
+
+export const groupRosterConnectionActionSchema = z.object({
+  groupId: uuidSchema,
+  connectionId: uuidSchema,
+});
+
+export const groupRosterUserActionSchema = z.object({
+  groupId: uuidSchema,
+  userId: uuidSchema,
+});
+
+export const inviteLocalGroupMemberSchema = groupRosterConnectionActionSchema.extend({
+  contactEmail: z.email(),
 });
 
 export const hangoutSchema = z.object({

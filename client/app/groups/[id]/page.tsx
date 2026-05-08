@@ -1,11 +1,10 @@
-import { PrefetchLink } from "@/components/prefetch-link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { ConnectionLinkBadge } from "@/components/connection-link-badge";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { DesktopSectionSwitcher } from "@/components/desktop-section-switcher";
 import { EditableDetailsForm } from "@/components/editable-details-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
+import { GroupMemberManagementPanel } from "@/components/group-member-management-panel";
 import { HangoutPlansPanel } from "@/components/hangout-plans-panel";
 import { MobileSectionTabs } from "@/components/mobile-section-tabs";
 import { PhotoAlbumFields } from "@/components/photo-album-fields";
@@ -13,7 +12,6 @@ import { SectionCard } from "@/components/section-card";
 import { StatusPill } from "@/components/status-pill";
 import { TouchpointTimeline } from "@/components/touchpoint-timeline";
 import {
-  addGroupMembersAction,
   archiveGroupAction,
   cancelHangoutAction,
   completeHangoutAction,
@@ -24,7 +22,6 @@ import {
   updateGroupAction,
 } from "@/app/actions";
 import { getFeedback } from "@/lib/feedback";
-import { countGroupMemberStatuses, sortConnectionsForGroupMembers, summarizeGroupMemberStatuses } from "@/lib/group-members";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -34,94 +31,6 @@ function toInputDateTime() {
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   return now.toISOString().slice(0, 16);
-}
-
-type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
-type GroupConnectionSummary = DashboardData["connections"][number];
-type PendingGroupMember = DashboardData["groups"][number]["pendingMembers"][number];
-
-function getGroupMembershipSummary(acceptedCount: number, pendingCount: number) {
-  const summaryParts = [`${acceptedCount} accepted`];
-
-  if (pendingCount > 0) {
-    summaryParts.push(`${pendingCount} pending`);
-  }
-
-  return summaryParts.join(" - ");
-}
-
-function AcceptedGroupMembersList({
-  members,
-  emptyCopy,
-}: Readonly<{
-  members: GroupConnectionSummary[];
-  emptyCopy: string;
-}>) {
-  if (members.length === 0) {
-    return <p className="text-sm leading-7 text-foreground/68">{emptyCopy}</p>;
-  }
-
-  return members.map((member) => (
-    <PrefetchLink key={member.id} className="group block rounded-lg border border-border/85 bg-white/78 p-3.5 transition hover:border-accent/45 hover:bg-white/90" href={`/connections/${member.id}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-base font-semibold text-foreground">{member.title}</p>
-          <p className="mt-1 text-sm text-foreground/65">{member.subtitle}</p>
-        </div>
-        <ConnectionLinkBadge
-          linkState={member.linkState}
-          pendingInviteEmail={member.pendingInviteEmail}
-          linkedLabel="App account connected"
-          pendingLabel="Person invite pending"
-          unlinkedLabel="Local person"
-        />
-      </div>
-      <p className="mt-3 text-sm font-semibold text-accent-strong">Open details</p>
-    </PrefetchLink>
-  ));
-}
-
-function AcceptedGroupMemberNamesList({
-  members,
-  emptyCopy,
-}: Readonly<{
-  members: string[];
-  emptyCopy: string;
-}>) {
-  if (members.length === 0) {
-    return <p className="text-sm leading-7 text-foreground/68">{emptyCopy}</p>;
-  }
-
-  return members.map((member) => (
-    <article key={member} className="rounded-lg border border-border/85 bg-white/78 p-3.5">
-      <p className="text-base font-semibold text-foreground">{member}</p>
-    </article>
-  ));
-}
-
-function PendingGroupInviteList({
-  members,
-  emptyCopy,
-}: Readonly<{
-  members: PendingGroupMember[];
-  emptyCopy: string;
-}>) {
-  if (members.length === 0) {
-    return <p className="text-sm leading-7 text-foreground/68">{emptyCopy}</p>;
-  }
-
-  return members.map((member) => (
-    <PrefetchLink key={member.connectionId} className="group warning-surface block rounded-lg border p-3.5 transition hover:border-accent/45" href={`/connections/${member.connectionId}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-base font-semibold text-foreground">{member.name}</p>
-          <p className="mt-1 text-sm text-foreground/65">Waiting on {member.invitedEmail} to accept or decline.</p>
-        </div>
-        <span className="warning-surface-strong warning-text rounded-full px-3 py-1.5 text-xs font-semibold">Pending acceptance</span>
-      </div>
-      <p className="mt-3 text-sm font-semibold text-accent-strong">Open details</p>
-    </PrefetchLink>
-  ));
 }
 
 export default async function GroupDetailPage({
@@ -156,23 +65,10 @@ export default async function GroupDetailPage({
   const plannedHangouts = data.hangouts.filter(
     (hangout) => hangout.targetType === "group" && hangout.targetId === group.id && hangout.status === "planned",
   );
-  const memberConnections = sortConnectionsForGroupMembers(
-    data.connections.filter((connection) => group.memberConnectionIds.includes(connection.id)),
-  );
-  const pendingMemberSummary = group.pendingMembers;
-  const availableConnections = sortConnectionsForGroupMembers(
-    data.connections.filter(
-      (connection) => !group.memberConnectionIds.includes(connection.id) && !group.pendingMemberConnectionIds.includes(connection.id),
-    ),
-  );
   const feedback = getFeedback(query.feedback);
   const latestActivity = timeline.find((touchpoint) => touchpoint.activityLabel || touchpoint.locationLabel);
-  const memberStatusSummary = summarizeGroupMemberStatuses(
-    countGroupMemberStatuses(memberConnections.map((member) => member.linkState)),
-  );
   const canManageGroup = group.canManage ?? true;
   const canCreateGroupPlans = group.canCreatePlans ?? canManageGroup;
-  const acceptedMemberCount = group.memberNames.length;
   const groupSettingsDescription = canManageGroup
     ? group.subtitle
     : `${group.subtitle}${group.ownerName ? ` Organized by ${group.ownerName}.` : ""}`;
@@ -182,10 +78,6 @@ export default async function GroupDetailPage({
     { label: "Cadence", value: `Every ${group.cadenceValue} ${group.cadenceUnit}` },
     { label: "Reminder lead", value: `${group.reminderLeadDays} days before` },
   ];
-  const pendingInvitesEmptyCopy = !canManageGroup && group.pendingMemberCount > 0
-    ? `${group.pendingMemberCount} pending ${group.pendingMemberCount === 1 ? "invite is" : "invites are"} still waiting on a response.`
-    : "No pending invites right now. Everyone attached to this group is either accepted already or still local-only.";
-
   return (
     <AppShell
       title={group.title}
@@ -210,22 +102,7 @@ export default async function GroupDetailPage({
             label: "Manage",
             content: (
               <div className="grid gap-3">
-                <SectionCard title="Members" description={getGroupMembershipSummary(acceptedMemberCount, group.pendingMemberCount)}>
-                  <div className="grid gap-3">
-                    <AcceptedGroupMemberNamesList
-                      members={group.memberNames}
-                      emptyCopy="No accepted members are attached yet."
-                    />
-                    {pendingMemberSummary.length > 0 ? (
-                      <div className="warning-surface rounded-lg border p-3.5">
-                        <p className="warning-text text-[0.72rem] font-semibold uppercase tracking-[0.18em]">Pending group invites</p>
-                        <p className="mt-1.5 text-sm leading-6 text-foreground/68">
-                          {pendingMemberSummary.map((member) => member.name).join(", ")}
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                </SectionCard>
+                <GroupMemberManagementPanel group={group} connections={data.connections} />
 
                 <SectionCard title="Group settings" description={groupSettingsDescription}>
                   <div className="mb-5 flex items-center justify-between gap-4">
@@ -286,73 +163,6 @@ export default async function GroupDetailPage({
                       You can follow this group, see who is in it, and keep up with the shared history. Only the group owner can edit the settings or membership list.
                     </div>
                   )}
-                </SectionCard>
-
-                <SectionCard title="Manage members" description="Accepted members are active in the group. Pending members have a group invite waiting for their account.">
-                  <div className="mb-5 grid gap-3">
-                    <p className="text-sm leading-6 text-foreground/68">
-                      {getGroupMembershipSummary(acceptedMemberCount, group.pendingMemberCount)}
-                    </p>
-                    {canManageGroup && memberConnections.length > 0 ? (
-                      <p className="text-sm leading-6 text-foreground/68">{memberStatusSummary}</p>
-                    ) : null}
-                    {canManageGroup ? (
-                      <AcceptedGroupMembersList
-                        members={memberConnections}
-                        emptyCopy="No accepted members are attached yet. Add people below to turn this into a real crew."
-                      />
-                    ) : (
-                      <AcceptedGroupMemberNamesList
-                        members={group.memberNames}
-                        emptyCopy="No accepted members are attached yet."
-                      />
-                    )}
-                  </div>
-
-                  {canManageGroup ? (
-                    <form action={addGroupMembersAction} className="grid gap-3">
-                      <input type="hidden" name="groupId" value={group.id} />
-                      <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
-                      <p className="text-sm leading-6 text-foreground/68">
-                        Connected app users join immediately. People with a pending person invite can be selected once here, then stay pending in this group until they accept.
-                      </p>
-                      <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
-                        <legend className="field-label px-2">Add existing connections</legend>
-                        {availableConnections.length === 0 ? (
-                          <p className="text-sm leading-7 text-foreground/68">Everyone in your list is already accepted or pending in this group.</p>
-                        ) : (
-                          availableConnections.map((connection) => (
-                            <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
-                              <input className="h-4 w-4" type="checkbox" name="connectionIds" value={connection.id} />
-                              <span>{connection.title}</span>
-                              <ConnectionLinkBadge
-                                linkState={connection.linkState}
-                                pendingInviteEmail={connection.pendingInviteEmail}
-                                linkedLabel="App account connected"
-                                pendingLabel="Person invite pending"
-                                unlinkedLabel="Local person"
-                              />
-                            </label>
-                          ))
-                        )}
-                      </fieldset>
-                      <button className="button-secondary" type="submit" disabled={availableConnections.length === 0}>
-                        Add or invite selected people
-                      </button>
-                    </form>
-                  ) : null}
-                </SectionCard>
-
-                <SectionCard
-                  title="Pending invites"
-                  description="These people have not accepted yet, so the group still treats them as pending instead of active members."
-                >
-                  <div className="grid gap-3">
-                    <PendingGroupInviteList
-                      members={pendingMemberSummary}
-                      emptyCopy={pendingInvitesEmptyCopy}
-                    />
-                  </div>
                 </SectionCard>
 
                 <SectionCard
@@ -479,22 +289,7 @@ export default async function GroupDetailPage({
 
       <div className="hidden gap-5 xl:grid-cols-[0.95fr_1.05fr] md:grid">
         <div id="manage" className="grid gap-5 scroll-mt-24">
-          <SectionCard title="Members" description={getGroupMembershipSummary(acceptedMemberCount, group.pendingMemberCount)}>
-            <div className="grid gap-3">
-              <AcceptedGroupMemberNamesList
-                members={group.memberNames}
-                emptyCopy="No accepted members are attached yet."
-              />
-              {pendingMemberSummary.length > 0 ? (
-                <div className="warning-surface rounded-lg border p-3.5">
-                  <p className="warning-text text-[0.72rem] font-semibold uppercase tracking-[0.18em]">Pending group invites</p>
-                  <p className="mt-1.5 text-sm leading-6 text-foreground/68">
-                    {pendingMemberSummary.map((member) => member.name).join(", ")}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </SectionCard>
+          <GroupMemberManagementPanel group={group} connections={data.connections} />
 
           <SectionCard title="Group settings" description={groupSettingsDescription}>
             <div className="mb-5 flex items-center justify-between gap-4">
@@ -555,72 +350,6 @@ export default async function GroupDetailPage({
                 You can follow this group, see who is in it, and keep up with the shared history. Only the group owner can edit the settings or membership list.
               </div>
             )}
-          </SectionCard>
-          <SectionCard title="Manage members" description="Accepted members are active in the group. Pending members have a group invite waiting for their account.">
-            <div className="mb-5 grid gap-3">
-              <p className="text-sm leading-6 text-foreground/68">
-                {getGroupMembershipSummary(acceptedMemberCount, group.pendingMemberCount)}
-              </p>
-              {canManageGroup && memberConnections.length > 0 ? (
-                <p className="text-sm leading-6 text-foreground/68">{memberStatusSummary}</p>
-              ) : null}
-              {canManageGroup ? (
-                <AcceptedGroupMembersList
-                  members={memberConnections}
-                  emptyCopy="No accepted members are attached yet. Add people below to turn this into a real crew."
-                />
-              ) : (
-                <AcceptedGroupMemberNamesList
-                  members={group.memberNames}
-                  emptyCopy="No accepted members are attached yet."
-                />
-              )}
-            </div>
-
-            {canManageGroup ? (
-              <form action={addGroupMembersAction} className="grid gap-3">
-                <input type="hidden" name="groupId" value={group.id} />
-                <input type="hidden" name="redirectTo" value={`/groups/${group.id}`} />
-                <p className="text-sm leading-6 text-foreground/68">
-                  People with app accounts or saved emails are invited and stay pending until they accept or decline. Local-only people are added immediately.
-                </p>
-                <fieldset className="grid gap-3 rounded-lg border border-border/85 bg-white/75 p-3.5">
-                  <legend className="field-label px-2">Add existing connections</legend>
-                  {availableConnections.length === 0 ? (
-                    <p className="text-sm leading-7 text-foreground/68">Everyone in your list is already accepted or pending in this group.</p>
-                  ) : (
-                    availableConnections.map((connection) => (
-                      <label key={connection.id} className="flex items-center gap-3 text-sm text-foreground/75">
-                        <input className="h-4 w-4" type="checkbox" name="connectionIds" value={connection.id} />
-                        <span>{connection.title}</span>
-                        <ConnectionLinkBadge
-                          linkState={connection.linkState}
-                          pendingInviteEmail={connection.pendingInviteEmail}
-                          linkedLabel="App account connected"
-                          pendingLabel="Person invite pending"
-                          unlinkedLabel="Local person"
-                        />
-                      </label>
-                    ))
-                  )}
-                </fieldset>
-                <button className="button-secondary" type="submit" disabled={availableConnections.length === 0}>
-                  Add or invite selected people
-                </button>
-              </form>
-            ) : null}
-          </SectionCard>
-
-          <SectionCard
-            title="Pending invites"
-            description="These people have not accepted yet, so the group still treats them as pending instead of active members."
-          >
-            <div className="grid gap-3">
-              <PendingGroupInviteList
-                members={pendingMemberSummary}
-                emptyCopy={pendingInvitesEmptyCopy}
-              />
-            </div>
           </SectionCard>
         </div>
 
