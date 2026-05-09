@@ -3,6 +3,7 @@ import {
   buildQuickGroupConnections,
   groupMemberSchema,
   groupSchema,
+  hangoutSchema,
   MAX_QUICK_GROUP_PEOPLE,
   parseCommaSeparatedList,
 } from "@/lib/validations";
@@ -105,6 +106,46 @@ describe("groupSchema", () => {
       { name: "Alex", email: "alex@example.com" },
       { name: "Jordan", email: "" },
     ]);
+  });
+});
+
+describe("hangoutSchema provider fields", () => {
+  const baseHangout = {
+    targetType: "connection",
+    targetId: CONNECTION_ID,
+    title: "Dinner",
+    startsAt: "2026-05-10T18:00",
+    endsAt: "",
+    timezone: "America/Chicago",
+    location: "Cafe Luna",
+    notes: "",
+    photoAlbumLabel: "",
+    photoAlbumUrl: "",
+    shareWithLinkedUser: "",
+  };
+
+  it("accepts blank provider fields", () => {
+    const parsed = hangoutSchema.parse({
+      ...baseHangout,
+      placeName: "",
+      placeAddress: "",
+      googlePlaceId: "",
+      googleMapsUrl: "",
+      yelpBusinessId: "",
+      yelpUrl: "",
+      opentableUrl: "",
+    });
+
+    expect(parsed.googleMapsUrl).toBe("");
+    expect(parsed.yelpUrl).toBe("");
+    expect(parsed.opentableUrl).toBe("");
+  });
+
+  it("rejects invalid provider urls", () => {
+    expect(() => hangoutSchema.parse({
+      ...baseHangout,
+      googleMapsUrl: "ftp://maps.example.com",
+    })).toThrow("Enter a valid http or https link.");
   });
 });
 

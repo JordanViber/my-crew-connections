@@ -69,6 +69,11 @@ const feedbackMessages = {
     title: "Members added",
     body: "The group now includes the selected people.",
   },
+  "group-member-selection-empty": {
+    tone: "success",
+    title: "No roster changes selected",
+    body: "Choose an existing person or add a new person before updating the roster.",
+  },
   "group-invites-created": {
     tone: "success",
     title: "Group invites started",

@@ -67,4 +67,28 @@ describe("HangoutList", () => {
     expect(screen.getByText("Your response: passed for now")).toBeVisible();
     expect(screen.getByText("Shared plan response: passed for now")).toBeVisible();
   });
+
+  it("shows provider links for saved hangout locations", () => {
+    render(
+      <HangoutList
+        hangouts={[buildHangout({
+          canRespond: false,
+          location: "Cafe Luna",
+          yelpUrl: "https://www.yelp.com/biz/cafe-luna",
+          opentableUrl: "https://www.opentable.com/r/cafe-luna",
+        })]}
+        emptyCopy="None"
+        confirmAction={noop}
+        completeAction={noop}
+        cancelAction={noop}
+        respondAction={noop}
+        redirectTo="/connections/conn-1"
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: /open in apple maps/i })).toBeVisible();
+    expect(screen.getByRole("link", { name: /open in google maps/i })).toBeVisible();
+    expect(screen.getByRole("link", { name: /view on yelp/i })).toBeVisible();
+    expect(screen.getByRole("link", { name: /reserve on opentable/i })).toBeVisible();
+  });
 });

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { ExternalLink } from "@/components/external-link";
+import { HangoutProviderLinks } from "@/components/hangout-provider-links";
 import { SectionCard } from "@/components/section-card";
 import { formatHangoutWindow, getHangoutStatusLabel } from "@/lib/hangouts";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -17,6 +18,13 @@ type HangoutDetailRow = {
   ends_at: string | null;
   timezone: string;
   location: string | null;
+  place_name: string | null;
+  place_address: string | null;
+  google_place_id: string | null;
+  google_maps_url: string | null;
+  yelp_business_id: string | null;
+  yelp_url: string | null;
+  opentable_url: string | null;
   notes: string | null;
   status: "planned" | "completed" | "canceled";
   proposal_state: "pending" | "confirmed" | "declined";
@@ -72,7 +80,7 @@ export default async function HangoutDetailPage({
   const supabase = createServerAdminSupabaseClient();
   const { data: hangout, error: hangoutError } = await supabase
     .from("hangouts")
-    .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, proposal_state, photo_album_label, photo_album_url")
+    .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, place_name, place_address, google_place_id, google_maps_url, yelp_business_id, yelp_url, opentable_url, notes, status, proposal_state, photo_album_label, photo_album_url")
     .eq("id", id)
     .maybeSingle();
 
@@ -204,6 +212,16 @@ export default async function HangoutDetailPage({
                 <span className="font-semibold text-foreground">Location:</span> {parsedHangout.location}
               </p>
             ) : null}
+            <HangoutProviderLinks
+              hangout={{
+                location: parsedHangout.location ?? undefined,
+                placeName: parsedHangout.place_name ?? undefined,
+                placeAddress: parsedHangout.place_address ?? undefined,
+                googleMapsUrl: parsedHangout.google_maps_url ?? undefined,
+                yelpUrl: parsedHangout.yelp_url ?? undefined,
+                opentableUrl: parsedHangout.opentable_url ?? undefined,
+              }}
+            />
             {parsedHangout.notes ? (
               <p className="leading-7">
                 <span className="font-semibold text-foreground">Notes:</span> {parsedHangout.notes}

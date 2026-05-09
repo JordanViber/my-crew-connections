@@ -68,6 +68,13 @@ export type HangoutRow = {
   ends_at: string | null;
   timezone: string;
   location: string | null;
+  place_name: string | null;
+  place_address: string | null;
+  google_place_id: string | null;
+  google_maps_url: string | null;
+  yelp_business_id: string | null;
+  yelp_url: string | null;
+  opentable_url: string | null;
   notes: string | null;
   status: HangoutStatus;
   proposal_state: HangoutProposalState;
@@ -199,6 +206,13 @@ export type HangoutSummary = {
   endsAt?: string;
   timezone: string;
   location?: string;
+  placeName?: string;
+  placeAddress?: string;
+  googlePlaceId?: string;
+  googleMapsUrl?: string;
+  yelpBusinessId?: string;
+  yelpUrl?: string;
+  opentableUrl?: string;
   notes?: string;
   status: HangoutStatus;
   proposalState: HangoutProposalState;
@@ -618,7 +632,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       .limit(100),
     supabase
       .from("hangouts")
-      .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, proposal_state, proposal_confirmed_at, photo_album_label, photo_album_url, completed_at, created_at")
+      .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, place_name, place_address, google_place_id, google_maps_url, yelp_business_id, yelp_url, opentable_url, notes, status, proposal_state, proposal_confirmed_at, photo_album_label, photo_album_url, completed_at, created_at")
       .eq("owner_user_id", userId)
       .order("starts_at"),
     supabase
@@ -690,7 +704,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
   if (participantConnectionHangoutIds.length > 0) {
     const participantConnectionHangoutResult = await supabase
       .from("hangouts")
-      .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, proposal_state, proposal_confirmed_at, photo_album_label, photo_album_url, completed_at, created_at")
+      .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, place_name, place_address, google_place_id, google_maps_url, yelp_business_id, yelp_url, opentable_url, notes, status, proposal_state, proposal_confirmed_at, photo_album_label, photo_album_url, completed_at, created_at")
       .eq("target_type", "connection")
       .in("id", participantConnectionHangoutIds)
       .order("starts_at");
@@ -721,7 +735,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
         .limit(100),
       supabase
         .from("hangouts")
-        .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, proposal_state, proposal_confirmed_at, photo_album_label, photo_album_url, completed_at, created_at")
+        .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, place_name, place_address, google_place_id, google_maps_url, yelp_business_id, yelp_url, opentable_url, notes, status, proposal_state, proposal_confirmed_at, photo_album_label, photo_album_url, completed_at, created_at")
         .eq("target_type", "group")
         .in("target_id", joinedGroupIds)
         .order("starts_at"),
@@ -752,7 +766,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
         .limit(100),
       supabase
         .from("hangouts")
-        .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, notes, status, proposal_state, proposal_confirmed_at, photo_album_label, photo_album_url, completed_at, created_at")
+        .select("id, owner_user_id, target_type, target_id, title, starts_at, ends_at, timezone, location, place_name, place_address, google_place_id, google_maps_url, yelp_business_id, yelp_url, opentable_url, notes, status, proposal_state, proposal_confirmed_at, photo_album_label, photo_album_url, completed_at, created_at")
         .eq("target_type", "group")
         .in("target_id", accessibleGroupIds)
         .order("starts_at"),
@@ -1149,6 +1163,13 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       endsAt: hangout.ends_at ?? undefined,
       timezone: hangout.timezone,
       location: hangout.location ?? undefined,
+      placeName: hangout.place_name ?? undefined,
+      placeAddress: hangout.place_address ?? undefined,
+      googlePlaceId: hangout.google_place_id ?? undefined,
+      googleMapsUrl: hangout.google_maps_url ?? undefined,
+      yelpBusinessId: hangout.yelp_business_id ?? undefined,
+      yelpUrl: hangout.yelp_url ?? undefined,
+      opentableUrl: hangout.opentable_url ?? undefined,
       notes: hangout.notes ?? undefined,
       status: hangout.status,
       proposalState: hangout.proposal_state,
