@@ -14,10 +14,11 @@ function isValidHttpUrl(value: string) {
   }
 }
 
-const optionalPhotoAlbumUrlSchema = z.string().trim().max(500).optional().default("").refine(
+const optionalHttpUrlSchema = z.string().trim().max(500).optional().default("").refine(
   (value) => !value || isValidHttpUrl(value),
   { message: "Enter a valid http or https link." },
 );
+const optionalPhotoAlbumUrlSchema = optionalHttpUrlSchema;
 const optionalPhotoAlbumLabelSchema = z.string().trim().max(120).optional().default("");
 export const hangoutResponseStatusSchema = z.enum(["pending", "accepted", "declined"]);
 
@@ -153,6 +154,13 @@ export const hangoutSchema = z.object({
   endsAt: z.string().optional().default(""),
   timezone: z.string().trim().min(1).max(100),
   location: z.string().trim().max(200).optional().default(""),
+  placeName: z.string().trim().max(160).optional().default(""),
+  placeAddress: z.string().trim().max(240).optional().default(""),
+  googlePlaceId: z.string().trim().max(180).optional().default(""),
+  googleMapsUrl: optionalHttpUrlSchema,
+  yelpBusinessId: z.string().trim().max(180).optional().default(""),
+  yelpUrl: optionalHttpUrlSchema,
+  opentableUrl: optionalHttpUrlSchema,
   notes: z.string().trim().max(1000).optional().default(""),
   photoAlbumLabel: optionalPhotoAlbumLabelSchema,
   photoAlbumUrl: optionalPhotoAlbumUrlSchema,

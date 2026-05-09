@@ -205,6 +205,31 @@ test("saved connection plans can be exported and completed", async ({ page }) =>
   await page.getByRole("button", { name: "Add plan" }).click();
   await page.locator('input[name="title"]:visible').fill("Coffee with ICS Friend");
   await page.locator('input[name="location"]:visible').fill("Cafe Patio");
+  await page.locator('input[name="placeName"]:visible').fill("Cafe Luna");
+  await page.locator('input[name="placeAddress"]:visible').fill("123 Main St, Austin, TX");
+  await expect(page.getByRole("link", { name: "Open Apple Maps" })).toHaveAttribute(
+    "href",
+    "http://maps.apple.com/?q=Cafe+Luna+123+Main+St%2C+Austin%2C+TX",
+  );
+  await expect(page.getByRole("link", { name: "Open Google Maps" })).toHaveAttribute(
+    "href",
+    "https://www.google.com/maps/search/?api=1&query=Cafe+Luna+123+Main+St%2C+Austin%2C+TX",
+  );
+  await expect(page.getByRole("link", { name: "Find on Yelp" })).toHaveAttribute(
+    "href",
+    "https://www.yelp.com/search?find_desc=Cafe+Luna&find_loc=123+Main+St%2C+Austin%2C+TX",
+  );
+  await expect(page.getByRole("link", { name: "Find on OpenTable" })).toHaveAttribute(
+    "href",
+    "https://www.opentable.com/s?term=Cafe+Luna",
+  );
+  await expect(page.getByRole("link", { name: "Open Google Photos" })).toHaveAttribute(
+    "href",
+    "https://photos.google.com/albums",
+  );
+  await page.locator('input[name="googleMapsUrl"]:visible').fill("https://www.google.com/maps/place/Cafe+Luna");
+  await page.locator('input[name="yelpUrl"]:visible').fill("https://www.yelp.com/biz/cafe-luna");
+  await page.locator('input[name="opentableUrl"]:visible').fill("https://www.opentable.com/r/cafe-luna");
   await page.locator('textarea[name="notes"]:visible').fill("Bring the last trip photos.");
   await page.locator('input[name="photoAlbumLabel"]:visible').fill("ICS coffee album");
   await page.locator('input[name="photoAlbumUrl"]:visible').fill("https://photos.example.com/ics-coffee");
@@ -214,6 +239,22 @@ test("saved connection plans can be exported and completed", async ({ page }) =>
   await expect(page.getByText(/plan saved/i)).toBeVisible();
   await page.getByRole("button", { name: "Plans" }).click();
   await expect(page.locator("h3:visible", { hasText: "Coffee with ICS Friend" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open in Apple Maps" })).toHaveAttribute(
+    "href",
+    "http://maps.apple.com/?q=Cafe+Luna+123+Main+St%2C+Austin%2C+TX",
+  );
+  await expect(page.getByRole("link", { name: "Open in Google Maps" })).toHaveAttribute(
+    "href",
+    "https://www.google.com/maps/place/Cafe+Luna",
+  );
+  await expect(page.getByRole("link", { name: "View on Yelp" })).toHaveAttribute("href", "https://www.yelp.com/biz/cafe-luna");
+  await expect(page.getByRole("link", { name: "Reserve on OpenTable" })).toHaveAttribute("href", "https://www.opentable.com/r/cafe-luna");
+
+  await page.getByRole("link", { name: "Open plan details for Coffee with ICS Friend" }).click();
+  await expect(page.getByRole("heading", { name: "Coffee with ICS Friend" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open in Apple Maps" })).toBeVisible();
+  await page.goBack();
+  await page.getByRole("button", { name: "Plans" }).click();
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),

@@ -4,6 +4,7 @@ import { PrefetchLink } from "@/components/prefetch-link";
 import { useEffect, useRef } from "react";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ExternalLink } from "@/components/external-link";
+import { HangoutProviderLinks } from "@/components/hangout-provider-links";
 import { getHangoutStatusLabel } from "@/lib/hangouts";
 import type { HangoutSummary } from "@/lib/mvp-data";
 
@@ -174,6 +175,7 @@ function HangoutListItem({
       </div>
 
       {hangout.location ? <p className="mt-3 text-sm text-foreground/68">Location: {hangout.location}</p> : null}
+      <HangoutProviderLinks hangout={hangout} />
       {hangout.notes ? <p className="mt-2 text-sm leading-6 text-foreground/72">{hangout.notes}</p> : null}
       {hangout.photoAlbumUrl ? (
         <p className="relative z-10 mt-2 text-sm text-foreground/68">

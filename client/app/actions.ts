@@ -17,7 +17,6 @@ import {
   connectionSchema,
   getString,
   getStringList,
-  groupMemberSchema,
   groupRosterConnectionActionSchema,
   groupRosterUserActionSchema,
   groupSchema,
@@ -36,6 +35,7 @@ import {
 } from "@/lib/validations";
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
 import { findAuthUserByEmail, getAuthUserById } from "@/lib/auth-users";
+import { findMissingSelectedConnectionIds, parseGroupMemberActionPayload } from "@/lib/group-roster-actions";
 import { formatHangoutWindow } from "@/lib/hangouts";
 import { canAccessSharedGroup, canManageGroupPlans, getGroupRoleCapabilities, type GroupRole } from "@/lib/group-collaboration";
 import { notifyHangoutProposalParticipant } from "@/lib/hangout-notifications";
@@ -701,6 +701,35 @@ async function addConnectionsToGroup(
     acceptedCount: membershipRows.length,
     invitedCount,
   } satisfies GroupMembershipUpdateSummary;
+}
+
+async function assertSelectedConnectionsAvailableForGroup(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  ownerUserId: string,
+  connectionIds: string[],
+) {
+  const uniqueConnectionIds = [...new Set(connectionIds)];
+
+  if (uniqueConnectionIds.length === 0) {
+    return uniqueConnectionIds;
+  }
+
+  const { data: connections, error } = await supabase
+    .from("connections")
+    .select("id")
+    .eq("owner_user_id", ownerUserId)
+    .is("archived_at", null)
+    .in("id", uniqueConnectionIds);
+
+  assertMutation(error, "Failed to validate selected group members");
+
+  const missingConnectionIds = findMissingSelectedConnectionIds(uniqueConnectionIds, connections ?? []);
+
+  if (missingConnectionIds.length > 0) {
+    throw new Error("Failed to create group: one or more selected people could not be loaded.");
+  }
+
+  return uniqueConnectionIds;
 }
 
 function revalidateAccountPaths() {
@@ -1671,7 +1700,11 @@ export async function createGroupAction(formData: FormData) {
     quickConnectionEmail: "",
   });
 
-  const selectedConnectionIds = new Set(payload.connectionIds);
+  const selectedConnectionIds = new Set(await assertSelectedConnectionsAvailableForGroup(
+    supabase,
+    user.id,
+    payload.connectionIds,
+  ));
   const preparedQuickConnections = await prepareQuickGroupConnections(supabase, user.id, payload.quickConnections);
 
   preparedQuickConnections.existingConnectionIds.forEach((connectionId) => {
@@ -1792,11 +1825,22 @@ export async function addGroupMembersAction(formData: FormData) {
     legacyName: getString(formData, "quickConnectionName"),
     legacyEmail: getString(formData, "quickConnectionEmail"),
   });
-  const payload = groupMemberSchema.parse({
+  const parsedPayload = parseGroupMemberActionPayload({
     groupId: getString(formData, "groupId"),
     connectionIds: getStringList(formData, "connectionIds"),
     quickConnections,
   });
+
+  if (parsedPayload.status === "empty") {
+    const target = await resolveRedirectTarget(
+      formData,
+      `/groups/${parsedPayload.groupId}`,
+      "group-member-selection-empty",
+    );
+    redirect(target);
+  }
+
+  const payload = parsedPayload.payload;
   const { data: group, error: groupError } = await supabase
     .from("groups")
     .select("id, name")
@@ -2119,6 +2163,13 @@ export async function createHangoutAction(formData: FormData) {
     endsAt: getString(formData, "endsAt"),
     timezone: getString(formData, "timezone"),
     location: getString(formData, "location"),
+    placeName: getString(formData, "placeName"),
+    placeAddress: getString(formData, "placeAddress"),
+    googlePlaceId: getString(formData, "googlePlaceId"),
+    googleMapsUrl: getString(formData, "googleMapsUrl"),
+    yelpBusinessId: getString(formData, "yelpBusinessId"),
+    yelpUrl: getString(formData, "yelpUrl"),
+    opentableUrl: getString(formData, "opentableUrl"),
     notes: getString(formData, "notes"),
     photoAlbumLabel: getString(formData, "photoAlbumLabel"),
     photoAlbumUrl: getString(formData, "photoAlbumUrl"),
@@ -2136,6 +2187,13 @@ export async function createHangoutAction(formData: FormData) {
     ends_at: payload.endsAt ? new Date(payload.endsAt).toISOString() : null,
     timezone: payload.timezone,
     location: payload.location || null,
+    place_name: payload.placeName || null,
+    place_address: payload.placeAddress || null,
+    google_place_id: payload.googlePlaceId || null,
+    google_maps_url: payload.googleMapsUrl || null,
+    yelp_business_id: payload.yelpBusinessId || null,
+    yelp_url: payload.yelpUrl || null,
+    opentable_url: payload.opentableUrl || null,
     notes: payload.notes || null,
     proposal_state: payload.targetType === "group" || shouldShareWithLinkedUser ? "pending" : "confirmed",
     proposal_confirmed_at: payload.targetType === "group" || shouldShareWithLinkedUser ? null : new Date().toISOString(),
