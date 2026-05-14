@@ -101,7 +101,7 @@ type GroupMembershipRow = {
 
 type ConnectionInviteRow = {
   connection_id: string;
-  invited_email: string;
+  invited_email: string | null;
   created_at: string;
 };
 
@@ -528,7 +528,7 @@ export function buildGroupRosterMembers({
         role: membership.role,
         linkState: activeInvite ? "pending" : getRosterLinkState(connection, connectionInvite),
         connectionId: connection.id,
-        pendingInviteEmail: activeInvite?.invited_email ?? undefined,
+      pendingInviteEmail: activeInvite?.invited_email ?? undefined,
         isOwner: false,
         hasAcceptedMembership: true,
         canRemove: true,
@@ -991,7 +991,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
       contactEmail: connection.contact_email ?? undefined,
       prefersProfileName: connection.prefers_profile_name,
       linkState,
-      pendingInviteEmail: pendingInvite?.invited_email,
+      pendingInviteEmail: pendingInvite?.invited_email ?? undefined,
       preferredActivities: connection.preferred_activities ?? undefined,
       lastTouchpointAt: latestTouchpoint?.occurred_at,
       lastTouchpointLabel: formatDateLabel(latestTouchpoint?.occurred_at),
@@ -1026,7 +1026,7 @@ export async function getDashboardData(supabase: SupabaseClient, userId: string)
         connection.id,
         {
           linkState,
-          pendingInviteEmail: pendingInvite?.invited_email,
+          pendingInviteEmail: pendingInvite?.invited_email ?? undefined,
         },
       ] as const;
     }),

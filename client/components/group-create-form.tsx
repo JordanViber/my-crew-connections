@@ -18,9 +18,15 @@ export function GroupCreateForm({
         <span className="field-label">Description</span>
         <textarea className="field-input min-h-24" name="description" placeholder="What makes this group meaningful or recurring?" />
       </label>
+      <div className="rounded-lg border border-border/80 bg-white/72 p-3">
+        <p className="text-sm font-semibold text-foreground">How often should this group feel active?</p>
+        <p className="mt-1 text-sm leading-6 text-foreground/64">
+          The first timer starts today. After you log a group touchpoint, it resets from that touchpoint date.
+        </p>
+      </div>
       <div className="grid gap-3 md:grid-cols-[0.8fr_1fr_1.35fr]">
         <label className="grid gap-2">
-          <span className="field-label">Every</span>
+          <span className="field-label">Gather every</span>
           <input className="field-input" name="cadenceValue" type="number" min="1" max="90" defaultValue="1" required />
         </label>
         <label className="grid gap-2">
@@ -32,11 +38,11 @@ export function GroupCreateForm({
           </select>
         </label>
         <label className="grid gap-2">
-          <span className="field-label">Remind me days before</span>
+          <span className="field-label">Heads-up window</span>
           <input className="field-input" name="reminderLeadDays" type="number" min="0" max="30" defaultValue="7" required />
         </label>
       </div>
-      <p className="text-xs leading-5 text-foreground/56">Example: every 1 month, remind me 7 days before the group is due.</p>
+      <p className="text-xs leading-5 text-foreground/56">Example: every 1 month, show the group as needing attention during the final 7 days.</p>
 
       <GroupRosterBuilder connections={connections} minPeople={2} mode="create" />
 

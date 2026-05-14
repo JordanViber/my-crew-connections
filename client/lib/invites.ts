@@ -21,9 +21,11 @@ export function buildGroupInviteUrl(origin: string, token: string) {
 export function getConnectionLinkState({
   linkedUserLabel,
   pendingInviteEmail,
+  hasPendingInvite = false,
 }: Readonly<{
   linkedUserLabel?: string | null;
   pendingInviteEmail?: string | null;
+  hasPendingInvite?: boolean;
 }>) {
   if (linkedUserLabel) {
     return {
@@ -34,12 +36,14 @@ export function getConnectionLinkState({
     };
   }
 
-  if (pendingInviteEmail) {
+  if (pendingInviteEmail || hasPendingInvite) {
     return {
       state: "pending" as const,
       eyebrow: "Link status",
       title: "Invite pending",
-      body: `Waiting on ${pendingInviteEmail} to sign in and claim this connection.`,
+      body: pendingInviteEmail
+        ? `Waiting on ${pendingInviteEmail} to sign in and claim this connection.`
+        : "A shareable invite link is ready. Send it by text or any other app when you want them to claim this connection.",
     };
   }
 
@@ -47,6 +51,6 @@ export function getConnectionLinkState({
     state: "unlinked" as const,
     eyebrow: "Link status",
     title: "Not linked yet",
-    body: "This person is only in your private list right now. Add an email below whenever you want to invite them in.",
+    body: "This person is only in your list right now. Create an invite link whenever you want them to claim the connection.",
   };
 }

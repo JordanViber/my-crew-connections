@@ -129,15 +129,18 @@ export default async function InviteClaimPage({
     const authParams = new URLSearchParams({
       next: invitePath,
       invite: token,
-      inviteEmail: invite.invited_email,
       ...(connection.prefers_profile_name ? {} : { inviteName: connection.display_name }),
     });
+
+    if (invite.invited_email) {
+      authParams.set("inviteEmail", invite.invited_email);
+    }
 
     redirect(`/auth?${authParams.toString()}`);
   }
 
   const signedInEmail = user.email ?? "";
-  const emailMatchesInvite = normalizeInviteEmail(signedInEmail) === normalizeInviteEmail(invite.invited_email);
+  const emailMatchesInvite = !invite.invited_email || normalizeInviteEmail(signedInEmail) === normalizeInviteEmail(invite.invited_email);
   let inviteResponseContent: React.ReactNode;
 
   if (query.claimed) {
@@ -154,7 +157,9 @@ export default async function InviteClaimPage({
     inviteResponseContent = (
       <SectionCard
         title="Claim this connection"
-        description="Once claimed, the owner can treat this relationship as linked to your real account."
+        description={invite.invited_email
+          ? "Once claimed, the owner can treat this relationship as linked to your real account."
+          : "This invite link can be claimed by the account you are signed in with right now."}
       >
         <form action={claimConnectionInviteAction} className="grid gap-3">
           <input type="hidden" name="token" value={token} />
@@ -188,7 +193,12 @@ export default async function InviteClaimPage({
           {inviteHeading}
         </h1>
         <p className="text-sm leading-7 text-foreground/72">
-          Signed in as <strong>{user.email}</strong>. To claim this connection, your signed-in email should match <strong>{invite.invited_email}</strong>.
+          Signed in as <strong>{user.email}</strong>.
+          {invite.invited_email ? (
+            <> To claim this connection, your signed-in email should match <strong>{invite.invited_email}</strong>.</>
+          ) : (
+            <> This invite was shared as a link, so the signed-in account can claim it.</>
+          )}
         </p>
 
         {query.error ? (

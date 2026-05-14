@@ -27,7 +27,7 @@ export const magicLinkSchema = z.object({
 });
 
 export const inviteEmailSchema = z.object({
-  email: z.email(),
+  email: z.email().optional().or(z.literal("")).default(""),
 });
 
 const nameFieldSchema = z.string().trim().min(1).max(50);

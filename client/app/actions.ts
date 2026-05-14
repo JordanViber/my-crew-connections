@@ -2402,8 +2402,10 @@ export async function createConnectionInviteAction(formData: FormData) {
   const payload = inviteEmailSchema.parse({
     email: getString(formData, "email"),
   });
-  const normalizedEmail = normalizeInviteEmail(payload.email);
-  const conflict = await findConnectionEmailConflict(supabase, user.id, normalizedEmail, connectionId);
+  const normalizedEmail = payload.email ? normalizeInviteEmail(payload.email) : null;
+  const conflict = normalizedEmail
+    ? await findConnectionEmailConflict(supabase, user.id, normalizedEmail, connectionId)
+    : null;
 
   if (conflict) {
     redirect(withFeedback(`/connections/${conflict.connectionId}`, getConnectionEmailConflictFeedbackKey(conflict)));
@@ -2430,13 +2432,15 @@ export async function createConnectionInviteAction(formData: FormData) {
 
   assertMutation(connectionError, "Failed to load connection for invite");
 
-  const { error: saveContactEmailError } = await supabase
-    .from("connections")
-    .update({ contact_email: normalizedEmail })
-    .eq("id", connectionId)
-    .eq("owner_user_id", user.id);
+  if (normalizedEmail) {
+    const { error: saveContactEmailError } = await supabase
+      .from("connections")
+      .update({ contact_email: normalizedEmail })
+      .eq("id", connectionId)
+      .eq("owner_user_id", user.id);
 
-  assertMutation(saveContactEmailError, "Failed to save contact email for invite");
+    assertMutation(saveContactEmailError, "Failed to save contact email for invite");
+  }
 
   const token = crypto.randomUUID();
   const { error } = await supabase.from("connection_invites").insert({
@@ -2447,22 +2451,25 @@ export async function createConnectionInviteAction(formData: FormData) {
   });
 
   assertMutation(error, "Failed to create invite");
-  const notification = await notifyConnectionInvite(
-    supabase,
-    normalizedEmail,
-    token,
-    getInviteConnectionLabel(connection?.display_name ?? "A connection", connection?.prefers_profile_name ?? false),
-    user.user_metadata?.display_name ?? user.email,
-  );
   revalidatePath("/dashboard");
   revalidatePath("/connections");
   revalidatePath(`/connections/${connectionId}`);
   let feedbackKey = "invite-created";
 
-  if (notification.delivery === "push") {
-    feedbackKey = "invite-pushed";
-  } else if (notification.emailSent) {
-    feedbackKey = "invite-sent";
+  if (normalizedEmail) {
+    const notification = await notifyConnectionInvite(
+      supabase,
+      normalizedEmail,
+      token,
+      getInviteConnectionLabel(connection?.display_name ?? "A connection", connection?.prefers_profile_name ?? false),
+      user.user_metadata?.display_name ?? user.email,
+    );
+
+    if (notification.delivery === "push") {
+      feedbackKey = "invite-pushed";
+    } else if (notification.emailSent) {
+      feedbackKey = "invite-sent";
+    }
   }
 
   redirect(withFeedback(redirectTo || `/connections/${connectionId}`, feedbackKey));
@@ -2499,7 +2506,7 @@ export async function claimConnectionInviteAction(formData: FormData) {
     redirect(`${fallbackPath}?claimed=1`);
   }
 
-  if (normalizeInviteEmail(invite.invited_email) !== normalizedUserEmail) {
+  if (invite.invited_email && normalizeInviteEmail(invite.invited_email) !== normalizedUserEmail) {
     redirect(`${fallbackPath}?error=${encodeURIComponent("This invite was created for a different email address.")}`);
   }
 
@@ -2961,9 +2968,9 @@ export async function clearInAppNotificationsAction(formData: FormData) {
 
   const { error } = await supabase
     .from("in_app_notifications")
-    .update({ read_at: new Date().toISOString() })
+    .delete()
     .eq("user_id", user.id)
-    .is("read_at", null);
+    .not("read_at", "is", null);
 
   assertMutation(error, "Failed to clear notifications");
   revalidatePath("/notifications");

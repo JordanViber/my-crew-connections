@@ -22,17 +22,27 @@ import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getUserDisplayName, getUserFirstName } from "@/lib/user-display";
 
+function DetailActionLabel({ label = "Open details" }: Readonly<{ label?: string }>) {
+  return (
+    <span className="inline-flex min-h-9 items-center justify-center rounded-md border border-accent/25 bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent-strong transition group-hover:border-accent/40 group-hover:bg-[rgba(209,96,61,0.18)]">
+      {label}
+    </span>
+  );
+}
+
 function MetricCard({
   icon,
   label,
   value,
   trend,
+  href,
   accent = "emerald",
 }: Readonly<{
   icon: string;
   label: string;
   value: number | string;
   trend?: string;
+  href: string;
   accent?: "emerald" | "amber";
 }>) {
   const accentClass = accent === "emerald" 
@@ -40,7 +50,11 @@ function MetricCard({
     : "border-amber-500/30 bg-amber-500/5";
 
   return (
-    <div className={`group rounded-2xl border ${accentClass} p-4 transition-all hover:shadow-lg hover:-translate-y-px active:scale-[0.985]`}>
+    <PrefetchLink
+      aria-label={`Open ${label.toLowerCase()}`}
+      className={`group rounded-2xl border ${accentClass} p-4 transition-all hover:-translate-y-px hover:shadow-lg focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] active:scale-[0.985]`}
+      href={href}
+    >
       <div className="flex items-start justify-between">
         <div className="text-2xl opacity-90">{icon}</div>
         {trend && (
@@ -54,7 +68,7 @@ function MetricCard({
         <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-foreground/70">{label}</p>
         <p className="mt-1 text-[2.1rem] font-semibold tracking-tighter text-foreground tabular-nums">{value}</p>
       </div>
-    </div>
+    </PrefetchLink>
   );
 }
 
@@ -112,7 +126,9 @@ function MobileRelationshipRail({
                   {item.targetType === "group" && groupMembershipSummary ? <p>{groupMembershipSummary}</p> : null}
                 </div>
 
-                <p className="mt-3 text-sm font-semibold text-accent-strong">Open details</p>
+                <div className="mt-3">
+                  <DetailActionLabel />
+                </div>
               </PrefetchLink>
             );
           })}
@@ -264,7 +280,7 @@ function RelationshipList({
               <div className="flex flex-col items-start gap-3 md:items-end">
                 <StatusPill health={item.health} />
                 <p className="max-w-xs text-sm text-foreground/65">{item.health.summary}</p>
-                <p className="text-sm font-semibold text-accent-strong">Open details</p>
+                <DetailActionLabel />
               </div>
             </div>
           </PrefetchLink>
@@ -305,49 +321,21 @@ function getRelationshipHref(relationship?: Awaited<ReturnType<typeof getDashboa
 
 function getNextStepCard(
   hasRelationships: boolean,
-  recentTouchpointsCount: number,
-  needsAttention: Awaited<ReturnType<typeof getDashboardData>>["relationships"],
-  firstRelationship?: Awaited<ReturnType<typeof getDashboardData>>["relationships"][number],
 ) {
-  if (!hasRelationships) {
-    return {
-      title: "Add the first relationship",
-      description: "Start with one person or one group that matters. The dashboard becomes useful as soon as the first cadence exists.",
-      ctaHref: "/connections",
-      ctaLabel: "Add a person",
-    };
-  }
-
-  if (recentTouchpointsCount === 0) {
-    return {
-      title: "Log the first real interaction",
-      description: "You already have someone in the system. One quick hangout, message, or call turns the app from setup into something personally useful.",
-      ctaHref: getRelationshipHref(firstRelationship),
-      ctaLabel: "Open the first relationship",
-    };
-  }
-
-  if (needsAttention.length > 0) {
-    return {
-      title: "Act on the next relationship at risk",
-      description: "You have active reminder pressure now. Open the first due relationship and either plan something or log the contact that already happened.",
-      ctaHref: getRelationshipHref(firstRelationship),
-      ctaLabel: "Open next relationship",
-    };
-  }
-
-  return {
-    title: "Keep the rhythm going",
-    description: "Everything is on track right now. Use the dashboard to log the next real-world touchpoint as soon as it happens.",
-    ctaHref: "/dashboard",
-    ctaLabel: "Use quick log",
-  };
+  return hasRelationships
+    ? null
+    : {
+        title: "Add the first relationship",
+        description: "Start with one person or one group that matters. The dashboard becomes useful as soon as the first cadence exists.",
+        ctaHref: "/connections",
+        ctaLabel: "Add a person",
+      };
 }
 
 export default async function DashboardPage({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ feedback?: string; exportHangoutId?: string }>;
+  searchParams: Promise<{ feedback?: string; exportHangoutId?: string; section?: string }>;
 }>) {
   const params = await searchParams;
   const authSupabase = await createServerSupabaseClient();
@@ -375,7 +363,7 @@ export default async function DashboardPage({
   const recentHistoryEmptyCopy = getRecentHistoryEmptyCopy(data.relationships.length);
   const reminderQueueEmptyCopy = getReminderQueueEmptyCopy(data.relationships.length);
   const firstRelationship = data.relationships[0];
-  const nextStep = getNextStepCard(hasRelationships, data.recentTouchpoints.length, needsAttention, firstRelationship);
+  const nextStep = getNextStepCard(hasRelationships);
   const hasPremium = hasPremiumAccess(billingProfile, user.email);
   const canAddConnection = canCreateConnection(billingProfile, data.connections.length, user.email);
   const canAddGroup = canCreateGroup(billingProfile, data.ownedGroupCount, user.email);
@@ -412,7 +400,7 @@ export default async function DashboardPage({
       </div>
 
       <MobileSectionTabs
-        initialSectionId={params.exportHangoutId ? "plans" : "focus"}
+        initialSectionId={params.section || (params.exportHangoutId ? "plans" : "focus")}
         sections={[
           {
             id: "focus",
@@ -434,6 +422,7 @@ export default async function DashboardPage({
                       label="Needs Now" 
                       value={needsAttention.length} 
                       trend={needsAttention.length > 0 ? "↑2 this week" : undefined}
+                      href={needsAttention[0] ? getRelationshipHref(needsAttention[0]) : "/dashboard?section=focus#reminder-queue"}
                       accent="amber" 
                     />
                     <MetricCard 
@@ -441,16 +430,19 @@ export default async function DashboardPage({
                       label="Plans" 
                       value={data.upcomingHangouts.length} 
                       trend={data.upcomingHangouts.length > 0 ? "+1 new" : undefined}
+                      href="/dashboard?section=plans"
                     />
                     <MetricCard 
                       icon="👥" 
                       label="People" 
                       value={data.connections.length} 
+                      href="/connections"
                     />
                     <MetricCard 
                       icon="👥👥" 
                       label="Groups" 
                       value={data.groups.length} 
+                      href="/groups"
                     />
                   </div>
 
@@ -458,22 +450,16 @@ export default async function DashboardPage({
                     A quick pulse check for what needs care next and what can wait.
                   </p>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <PrefetchLink className="button-secondary" href="/connections">
-                      People
-                    </PrefetchLink>
-                    <PrefetchLink className="button-secondary" href="/groups">
-                      Groups
-                    </PrefetchLink>
-                  </div>
                 </section>
 
-                <NextStepCard
-                  title={nextStep.title}
-                  description={nextStep.description}
-                  ctaHref={nextStep.ctaHref}
-                  ctaLabel={nextStep.ctaLabel}
-                />
+                {nextStep ? (
+                  <NextStepCard
+                    title={nextStep.title}
+                    description={nextStep.description}
+                    ctaHref={nextStep.ctaHref}
+                    ctaLabel={nextStep.ctaLabel}
+                  />
+                ) : null}
                 {showUpgradePrompt ? (
                   <UpgradePrompt
                     compact
@@ -490,7 +476,7 @@ export default async function DashboardPage({
                   emptyCopy={needsAttentionEmptyCopy}
                 />
 
-                <section className="section-card p-3.5">
+                <section id="reminder-queue" className="section-card scroll-mt-4 p-3.5">
                   <div className="mb-3">
                     <h2 className="text-xl font-semibold tracking-tight text-foreground">Reminder queue</h2>
                     <p className="mt-1 text-sm leading-6 text-foreground/68">
@@ -646,12 +632,14 @@ export default async function DashboardPage({
 
       <div className="hidden gap-5 md:grid xl:grid-cols-[1.15fr_0.85fr]">
         <div className="grid gap-5">
-          <NextStepCard
-            title={nextStep.title}
-            description={nextStep.description}
-            ctaHref={nextStep.ctaHref}
-            ctaLabel={nextStep.ctaLabel}
-          />
+          {nextStep ? (
+            <NextStepCard
+              title={nextStep.title}
+              description={nextStep.description}
+              ctaHref={nextStep.ctaHref}
+              ctaLabel={nextStep.ctaLabel}
+            />
+          ) : null}
           {showUpgradePrompt ? (
             <UpgradePrompt
               compact

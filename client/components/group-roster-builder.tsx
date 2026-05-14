@@ -36,20 +36,45 @@ function getInitialQuickRows(mode: "create" | "manage") {
   return Array.from({ length: rowCount }, () => createQuickRow());
 }
 
-function getJoinModeLabel(connection: RelationshipSummary) {
+function getJoinModeInfo(connection: RelationshipSummary) {
   if (connection.linkedUserId) {
-    return "App account connected; group invite will wait for acceptance.";
+    return {
+      label: "Connected",
+      title: "App account connected; group invite will wait for acceptance.",
+    };
   }
 
   if (connection.pendingInviteEmail) {
-    return "Person invite pending; group invite waits for acceptance.";
+    return {
+      label: "Pending",
+      title: "Person invite pending; group invite waits for acceptance.",
+    };
   }
 
   if (connection.contactEmail) {
-    return "Email on file; group invite can be sent.";
+    return {
+      label: "Email invite",
+      title: "Email on file; group invite can be sent.",
+    };
   }
 
-  return "Local person; joins immediately.";
+  return {
+    label: "Local",
+    title: "Local person; joins immediately.",
+  };
+}
+
+function JoinModeTag({ connection }: Readonly<{ connection: RelationshipSummary }>) {
+  const joinMode = getJoinModeInfo(connection);
+
+  return (
+    <span
+      className="inline-flex rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold text-foreground/68"
+      title={joinMode.title}
+    >
+      {joinMode.label}
+    </span>
+  );
 }
 
 export function GroupRosterBuilder({
@@ -163,10 +188,14 @@ export function GroupRosterBuilder({
                       unlinkedLabel="Local person"
                     />
                   </div>
-                  <p className="mt-1 truncate text-sm text-foreground/62">{getJoinModeLabel(connection)}</p>
                 </div>
-                <button className="button-secondary" onClick={() => removeConnection(connection.id)} type="button">
-                  Remove {connection.title}
+                <button
+                  aria-label={`Remove ${connection.title}`}
+                  className="button-secondary"
+                  onClick={() => removeConnection(connection.id)}
+                  type="button"
+                >
+                  Remove
                 </button>
               </div>
             ))}
@@ -226,15 +255,20 @@ export function GroupRosterBuilder({
             availableConnections.map((connection) => (
               <button
                 key={connection.id}
-                className="flex items-start justify-between gap-3 rounded-lg border border-border/80 bg-white/76 p-3 text-left text-sm text-foreground/78"
+                aria-label={`Add ${connection.title}`}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border/80 bg-white/76 p-3 text-left text-sm text-foreground/78 transition hover:-translate-y-px hover:border-accent/30 hover:bg-white/90 hover:shadow-[0_8px_18px_rgba(31,44,49,0.06)]"
                 onClick={() => selectConnection(connection.id)}
                 type="button"
               >
                 <span className="min-w-0">
                   <span className="block font-semibold text-foreground">{connection.title}</span>
-                  <span className="mt-1 block text-foreground/62">{getJoinModeLabel(connection)}</span>
+                  <span className="mt-2 flex flex-wrap gap-1.5">
+                    <JoinModeTag connection={connection} />
+                  </span>
                 </span>
-                <span className="text-sm font-semibold text-accent-strong">Add {connection.title}</span>
+                <span className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-md border border-accent/25 bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent-strong">
+                  Add
+                </span>
               </button>
             ))
           )}

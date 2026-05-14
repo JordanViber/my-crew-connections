@@ -36,12 +36,21 @@ describe("invite helpers", () => {
     });
   });
 
+  it("reports pending state for a shareable invite link without email delivery", () => {
+    expect(getConnectionLinkState({ hasPendingInvite: true })).toEqual({
+      state: "pending",
+      eyebrow: "Link status",
+      title: "Invite pending",
+      body: "A shareable invite link is ready. Send it by text or any other app when you want them to claim this connection.",
+    });
+  });
+
   it("reports unlinked state when nothing has been started", () => {
     expect(getConnectionLinkState({})).toEqual({
       state: "unlinked",
       eyebrow: "Link status",
       title: "Not linked yet",
-      body: "This person is only in your private list right now. Add an email below whenever you want to invite them in.",
+      body: "This person is only in your list right now. Create an invite link whenever you want them to claim the connection.",
     });
   });
 });

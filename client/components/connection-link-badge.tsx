@@ -20,6 +20,7 @@ export function ConnectionLinkBadge({
   const state = getConnectionLinkState({
     linkedUserLabel: fallbackLinkedUserLabel,
     pendingInviteEmail: normalizedPendingInviteEmail,
+    hasPendingInvite: linkState === "pending",
   });
 
   let classes = "bg-white text-foreground/70";

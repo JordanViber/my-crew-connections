@@ -21,7 +21,7 @@ export function ConnectionIdentityFields({
     : "Jordan, Alexis, dinner crew organizer";
   const helperText = inviteable
     ? "Optional. If you leave this blank, the app will switch to their real account name once they claim the invite."
-    : "Required for local-only connections that are not tied to an invite email.";
+    : "Use whatever name helps you recognize this person. You can add an email or invite them later.";
 
   return (
     <>

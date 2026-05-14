@@ -5,6 +5,8 @@ import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { PrefetchLink } from "@/components/prefetch-link";
 import { clearInAppNotificationsAction, markInAppNotificationReadAction } from "@/app/actions";
 import { getFeedback } from "@/lib/feedback";
+import { normalizeInviteEmail } from "@/lib/invites";
+import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type ProfileRow = {
@@ -19,6 +21,7 @@ type NotificationRow = {
   title: string;
   body: string;
   href: string | null;
+  metadata: Record<string, unknown> | null;
   read_at: string | null;
   created_at: string;
 };
@@ -35,6 +38,15 @@ function getNotificationCenterBody(notification: NotificationRow) {
   return notification.body;
 }
 
+function getNormalizedCategory(notification: NotificationRow) {
+  return (notification.category ?? "").replaceAll("_", "-");
+}
+
+function getNotificationToken(notification: NotificationRow) {
+  const token = notification.metadata?.token;
+  return typeof token === "string" && token.trim() ? token : null;
+}
+
 function getDisplayName(profile: ProfileRow | null, email?: string | null) {
   return profile?.display_name
     ?? (`${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || email?.split("@")[0] || "Your account");
@@ -46,6 +58,59 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
 });
+
+async function getActiveInviteTokens(userEmail: string | null | undefined, rows: NotificationRow[]) {
+  if (!userEmail) {
+    return new Set<string>();
+  }
+
+  const normalizedEmail = normalizeInviteEmail(userEmail);
+  const connectionTokens = rows
+    .filter((row) => getNormalizedCategory(row).startsWith("connection-invite"))
+    .map(getNotificationToken)
+    .filter((token): token is string => Boolean(token));
+  const groupTokens = rows
+    .filter((row) => getNormalizedCategory(row).startsWith("group-invite"))
+    .map(getNotificationToken)
+    .filter((token): token is string => Boolean(token));
+  const supabase = createServerAdminSupabaseClient();
+  const activeTokens = new Set<string>();
+
+  if (connectionTokens.length > 0) {
+    const { data, error } = await supabase
+      .from("connection_invites")
+      .select("token")
+      .eq("invited_email", normalizedEmail)
+      .in("token", connectionTokens)
+      .is("claimed_at", null)
+      .is("revoked_at", null);
+
+    if (error) {
+      throw new Error(`Failed to validate connection invite notifications: ${error.message}`);
+    }
+
+    (data ?? []).forEach((row) => activeTokens.add(row.token));
+  }
+
+  if (groupTokens.length > 0) {
+    const { data, error } = await supabase
+      .from("group_invites")
+      .select("token")
+      .eq("invited_email", normalizedEmail)
+      .in("token", groupTokens)
+      .is("accepted_at", null)
+      .is("declined_at", null)
+      .is("revoked_at", null);
+
+    if (error) {
+      throw new Error(`Failed to validate group invite notifications: ${error.message}`);
+    }
+
+    (data ?? []).forEach((row) => activeTokens.add(row.token));
+  }
+
+  return activeTokens;
+}
 
 export default async function NotificationsPage({
   searchParams,
@@ -70,7 +135,7 @@ export default async function NotificationsPage({
 
   const { data: notifications, error } = await supabase
     .from("in_app_notifications")
-    .select("id, category, title, body, href, read_at, created_at")
+    .select("id, category, title, body, href, metadata, read_at, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -81,6 +146,8 @@ export default async function NotificationsPage({
 
   const rows = (notifications ?? []) as NotificationRow[];
   const unreadCount = rows.filter((row) => row.read_at === null).length;
+  const readCount = rows.length - unreadCount;
+  const activeInviteTokens = await getActiveInviteTokens(user.email, rows);
   const displayName = getDisplayName(profile as ProfileRow | null, user.email);
   const unreadLabel = unreadCount === 1
     ? "1 unread notification"
@@ -107,7 +174,7 @@ export default async function NotificationsPage({
             </p>
             <form action={clearInAppNotificationsAction}>
               <input name="redirectTo" type="hidden" value="/notifications" />
-              <button className="button-secondary" type="submit" disabled={unreadCount === 0}>
+              <button className="button-secondary" type="submit" disabled={readCount === 0}>
                 Clear all read
               </button>
             </form>
@@ -122,6 +189,9 @@ export default async function NotificationsPage({
           ) : (
             rows.map((notification) => {
               const isUnread = notification.read_at === null;
+              const notificationToken = getNotificationToken(notification);
+              const isInviteNotification = getNormalizedCategory(notification).endsWith("invite") || getNormalizedCategory(notification).includes("invite");
+              const isStaleInviteNotification = Boolean(notificationToken && isInviteNotification && !activeInviteTokens.has(notificationToken));
 
               return (
                 <article key={notification.id} className="rounded-lg border border-border bg-surface-strong p-4 shadow-(--shadow-tight)">
@@ -133,7 +203,11 @@ export default async function NotificationsPage({
                         ) : null}
                         <h2 className="text-base font-semibold text-foreground">{notification.title}</h2>
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-foreground/72">{getNotificationCenterBody(notification)}</p>
+                      <p className="mt-2 text-sm leading-6 text-foreground/72">
+                        {isStaleInviteNotification
+                          ? "This invite has already been handled or is no longer available."
+                          : getNotificationCenterBody(notification)}
+                      </p>
                       <p className="mt-2 text-xs text-foreground/54">{dateFormatter.format(new Date(notification.created_at))}</p>
                     </div>
 
@@ -150,7 +224,13 @@ export default async function NotificationsPage({
                     ) : null}
                   </div>
 
-                  {notification.href ? (
+                  {isStaleInviteNotification ? (
+                    <div className="mt-3">
+                      <span className="inline-flex min-h-9 items-center rounded-md border border-border bg-surface-muted px-3 py-1.5 text-sm font-semibold text-foreground/62">
+                        Already handled
+                      </span>
+                    </div>
+                  ) : notification.href ? (
                     <div className="mt-3">
                       <PrefetchLink className="button-secondary button-compact" href={notification.href}>
                         Open

@@ -25,6 +25,7 @@ export function AccountMenu({
   const initial = getInitial(firstName, displayName, email);
   const accountName = displayName || firstName || email;
   const menuItemClass = "block w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm font-semibold text-foreground/78 transition hover:bg-surface-muted";
+  const menuDividerClass = "border-t border-border/65 pt-1";
 
   return (
     <div className="relative">
@@ -55,28 +56,34 @@ export function AccountMenu({
             <p className="mt-0.5 truncate text-xs text-foreground/58">{email}</p>
           </div>
 
-          <PrefetchLink className={menuItemClass} href="/settings" onClick={() => setIsOpen(false)} role="menuitem">
-            Settings
-          </PrefetchLink>
-          <PrefetchLink className={menuItemClass} href="/settings#billing" onClick={() => setIsOpen(false)} role="menuitem">
-            Billing
-          </PrefetchLink>
-          <button
-            className={menuItemClass}
-            onClick={() => {
-              setIsOpen(false);
-              setIsFeedbackOpen(true);
-            }}
-            role="menuitem"
-            type="button"
-          >
-            Send feedback
-          </button>
-          <form action={signOutAction} className="pt-1">
-            <button className={menuItemClass} role="menuitem" type="submit">
-              Sign out
-            </button>
-          </form>
+          <div className="grid gap-1 py-1">
+            <PrefetchLink className={menuItemClass} href="/settings" onClick={() => setIsOpen(false)} role="menuitem">
+              Settings
+            </PrefetchLink>
+            <div className={menuDividerClass}>
+              <PrefetchLink className={menuItemClass} href="/settings#billing" onClick={() => setIsOpen(false)} role="menuitem">
+                Billing
+              </PrefetchLink>
+            </div>
+            <div className={menuDividerClass}>
+              <button
+                className={menuItemClass}
+                onClick={() => {
+                  setIsOpen(false);
+                  setIsFeedbackOpen(true);
+                }}
+                role="menuitem"
+                type="button"
+              >
+                Send feedback
+              </button>
+            </div>
+            <form action={signOutAction} className={menuDividerClass}>
+              <button className={menuItemClass} role="menuitem" type="submit">
+                Sign out
+              </button>
+            </form>
+          </div>
         </div>
       ) : null}
 

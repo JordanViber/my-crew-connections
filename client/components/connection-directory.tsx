@@ -22,6 +22,14 @@ function SummaryChip({
   );
 }
 
+function DetailActionLabel() {
+  return (
+    <span className="inline-flex min-h-9 items-center justify-center rounded-md border border-accent/25 bg-accent-soft px-3 py-1.5 text-sm font-semibold text-accent-strong transition group-hover:border-accent/40 group-hover:bg-[rgba(209,96,61,0.18)]">
+      Open details
+    </span>
+  );
+}
+
 function ConnectionSection({
   title,
   description,
@@ -63,7 +71,7 @@ function ConnectionSection({
             </div>
             <div className="flex flex-col items-start gap-3 md:items-end">
               <StatusPill health={connection.health} />
-              <p className="text-sm font-semibold text-accent-strong">Open details</p>
+              <DetailActionLabel />
             </div>
           </div>
         </PrefetchLink>

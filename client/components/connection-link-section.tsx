@@ -8,7 +8,7 @@ type ConnectionLinkSectionProps = Readonly<{
   contactEmail?: string | null;
   linkedUserLabel?: string | null;
   activeInvite?: {
-    email: string;
+    email?: string | null;
     inviteUrl: string;
   } | null;
 }>;
@@ -23,6 +23,7 @@ export function ConnectionLinkSection({
   const linkState = getConnectionLinkState({
     linkedUserLabel: linkedUserLabel ?? undefined,
     pendingInviteEmail: activeInvite?.email,
+    hasPendingInvite: Boolean(activeInvite),
   });
   const showInviteForm = linkState.state !== "linked";
   let cardClasses = "border-border/85 bg-white/78";
@@ -48,18 +49,17 @@ export function ConnectionLinkSection({
           <input type="hidden" name="connectionId" value={connectionId} />
           <input type="hidden" name="redirectTo" value={redirectTo} />
           <label className="grid gap-2">
-            <span className="field-label">{activeInvite ? "Replace pending invite" : "Invite email"}</span>
+            <span className="field-label">{activeInvite ? "Replace pending invite" : "Email for optional delivery"}</span>
             <input
               className="field-input"
               defaultValue={activeInvite?.email ?? contactEmail ?? ""}
               name="email"
               type="email"
               placeholder="friend@example.com"
-              required
             />
           </label>
           <p className="text-sm leading-6 text-foreground/68">
-            This uses the saved contact email when available. They can sign in or create an account with that email, then claim the invite when they open the link.
+            Leave email blank to create a link you can send by text. Add an email if you also want email delivery or an email-locked claim.
           </p>
           <button className="button-primary w-full sm:w-auto" type="submit">
             {activeInvite ? "Refresh invite link" : "Create invite link"}
