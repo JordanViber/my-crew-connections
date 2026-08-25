@@ -4,6 +4,7 @@ import {
   groupMemberSchema,
   groupSchema,
   hangoutSchema,
+  touchpointSchema,
   MAX_QUICK_GROUP_PEOPLE,
   parseCommaSeparatedList,
 } from "@/lib/validations";
@@ -178,5 +179,30 @@ describe("groupMemberSchema", () => {
       connectionIds: [],
       quickConnections: [],
     })).toThrow("Choose or add at least one person.");
+  });
+});
+
+describe("touchpointSchema linked sharing", () => {
+  const baseTouchpoint = {
+    targetType: "connection",
+    targetId: CONNECTION_ID,
+    touchpointType: "hangout",
+    occurredAt: "2026-08-24T18:00",
+    note: "Private",
+    activityLabel: "Dinner",
+    locationLabel: "Cafe Luna",
+    photoAlbumLabel: "",
+    photoAlbumUrl: "",
+  };
+
+  it("defaults shareWithLinkedUser to an empty string", () => {
+    expect(touchpointSchema.parse(baseTouchpoint).shareWithLinkedUser).toBe("");
+  });
+
+  it("accepts an explicit share request", () => {
+    expect(touchpointSchema.parse({
+      ...baseTouchpoint,
+      shareWithLinkedUser: "true",
+    }).shareWithLinkedUser).toBe("true");
   });
 });

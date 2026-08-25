@@ -50,6 +50,12 @@ import { buildConnectionInvitePath, buildGroupInvitePath, normalizeInviteEmail }
 import { createInAppNotification } from "@/lib/in-app-notifications";
 import { canCreateConnection, canCreateGroup } from "@/lib/entitlements";
 import { sendPushToUser } from "@/lib/push";
+import {
+  buildSharedMemoryNotification,
+  buildSharedTouchpointCopy,
+  getSharedTouchpointFeedbackKey,
+  shouldShareTouchpoint,
+} from "@/lib/shared-memories";
 
 type GroupHangoutMembershipRow = {
   connection_id: string | null;
@@ -745,6 +751,74 @@ function revalidateRelationshipPaths(targetType: "connection" | "group", targetI
 
 function revalidateHangoutPaths(targetType: "connection" | "group", targetId: string) {
   revalidateRelationshipPaths(targetType, targetId);
+}
+
+async function findReciprocalLinkedConnection(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  ownerUserId: string,
+  linkedUserId: string,
+) {
+  const { data, error } = await supabase
+    .from("connections")
+    .select("id")
+    .eq("owner_user_id", linkedUserId)
+    .eq("linked_user_id", ownerUserId)
+    .is("archived_at", null)
+    .maybeSingle();
+
+  assertMutation(error, "Failed to load linked connection for shared memory");
+  return data?.id ?? null;
+}
+
+async function sharePublicTouchpointWithLinkedParticipant(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  args: {
+    ownerUser: { email?: string | null; user_metadata?: Record<string, unknown> };
+    participantUserId: string;
+    participantConnectionId: string;
+    copy: ReturnType<typeof buildSharedTouchpointCopy>;
+  },
+) {
+  const { error } = await supabase.from("touchpoints").insert({
+    owner_user_id: args.participantUserId,
+    target_type: "connection",
+    target_id: args.participantConnectionId,
+    touchpoint_type: args.copy.touchpointType,
+    occurred_at: args.copy.occurredAt,
+    note: null,
+    activity_label: args.copy.activityLabel,
+    location_label: args.copy.locationLabel,
+    photo_album_label: args.copy.photoAlbumLabel,
+    photo_album_url: args.copy.photoAlbumUrl,
+  });
+
+  if (error) {
+    return false;
+  }
+
+  const notification = buildSharedMemoryNotification({
+    sharerName: getCurrentUserLabel(args.ownerUser),
+    touchpointType: args.copy.touchpointType,
+    activityLabel: args.copy.activityLabel,
+  });
+
+  await createInAppNotification(supabase, args.participantUserId, {
+    category: "shared-memory",
+    title: notification.title,
+    body: notification.body,
+    href: `/connections/${args.participantConnectionId}`,
+    metadata: { participantConnectionId: args.participantConnectionId },
+  }).catch(() => undefined);
+
+  await sendPushToUser(supabase, args.participantUserId, {
+    title: notification.title,
+    body: notification.body,
+    url: `/connections/${args.participantConnectionId}`,
+    tag: `shared-memory-${args.participantConnectionId}`,
+  }).catch(() => ({ sent: 0 }));
+
+  revalidateRelationshipPaths("connection", args.participantConnectionId);
+  return true;
 }
 
 function withFeedback(path: string, feedback: string) {
@@ -2056,12 +2130,15 @@ export async function createTouchpointAction(formData: FormData) {
     locationLabel: getString(formData, "locationLabel"),
     photoAlbumLabel: getString(formData, "photoAlbumLabel"),
     photoAlbumUrl: getString(formData, "photoAlbumUrl"),
+    shareWithLinkedUser: getString(formData, "shareWithLinkedUser"),
   });
+
+  let linkedUserId: string | null = null;
 
   if (payload.targetType === "connection") {
     const { data: connection, error: connectionError } = await supabase
       .from("connections")
-      .select("id")
+      .select("id, linked_user_id")
       .eq("id", payload.targetId)
       .eq("owner_user_id", user.id)
       .is("archived_at", null)
@@ -2072,16 +2149,19 @@ export async function createTouchpointAction(formData: FormData) {
     if (!connection) {
       throw new Error("Failed to create touchpoint: target not found.");
     }
+
+    linkedUserId = connection.linked_user_id;
   } else {
     await assertCanAccessGroup(supabase, user.id, payload.targetId, "Failed to create touchpoint");
   }
 
+  const occurredAt = new Date(payload.occurredAt).toISOString();
   const { error } = await supabase.from("touchpoints").insert({
     owner_user_id: user.id,
     target_type: payload.targetType,
     target_id: payload.targetId,
     touchpoint_type: payload.touchpointType,
-    occurred_at: new Date(payload.occurredAt).toISOString(),
+    occurred_at: occurredAt,
     note: payload.note || null,
     activity_label: payload.activityLabel || null,
     location_label: payload.locationLabel || null,
@@ -2091,6 +2171,34 @@ export async function createTouchpointAction(formData: FormData) {
 
   assertMutation(error, "Failed to create touchpoint");
   revalidateRelationshipPaths(payload.targetType, payload.targetId);
+
+  let didShare = false;
+  if (shouldShareTouchpoint({
+    targetType: payload.targetType,
+    shareWithLinkedUser: payload.shareWithLinkedUser,
+    linkedUserId,
+  }) && linkedUserId) {
+    const reciprocalConnectionId = await findReciprocalLinkedConnection(supabase, user.id, linkedUserId);
+
+    if (reciprocalConnectionId) {
+      const copy = buildSharedTouchpointCopy({
+        touchpointType: payload.touchpointType,
+        occurredAt,
+        activityLabel: payload.activityLabel,
+        locationLabel: payload.locationLabel,
+        photoAlbumLabel: payload.photoAlbumLabel,
+        photoAlbumUrl: payload.photoAlbumUrl,
+        note: payload.note,
+      });
+      didShare = await sharePublicTouchpointWithLinkedParticipant(supabase, {
+        ownerUser: user,
+        participantUserId: linkedUserId,
+        participantConnectionId: reciprocalConnectionId,
+        copy,
+      });
+    }
+  }
+
   let fallbackPath = "/dashboard";
 
   if (payload.targetType === "connection") {
@@ -2099,7 +2207,7 @@ export async function createTouchpointAction(formData: FormData) {
     fallbackPath = `/groups/${payload.targetId}`;
   }
 
-  const target = await resolveRedirectTarget(formData, fallbackPath, "touchpoint-saved");
+  const target = await resolveRedirectTarget(formData, fallbackPath, getSharedTouchpointFeedbackKey(didShare));
   redirect(target);
 }
 
@@ -2844,6 +2952,41 @@ export async function completeHangoutAction(formData: FormData) {
     .eq("id", hangout.id);
 
   assertMutation(updateError, "Failed to mark hangout as completed");
+
+  if (hangout.target_type === "connection") {
+    const { data: acceptedParticipants, error: acceptedParticipantsError } = await supabase
+      .from("hangout_participants")
+      .select("participant_user_id, participant_connection_id, response_status")
+      .eq("hangout_id", hangout.id)
+      .eq("response_status", "accepted");
+
+    assertMutation(acceptedParticipantsError, "Failed to load accepted hangout participants");
+
+    const copy = buildSharedTouchpointCopy({
+      touchpointType: "hangout",
+      occurredAt,
+      activityLabel: hangout.title,
+      locationLabel: hangout.location,
+      photoAlbumLabel: hangout.photo_album_label,
+      photoAlbumUrl: hangout.photo_album_url,
+      note: hangout.notes,
+    });
+
+    await Promise.allSettled(
+      (acceptedParticipants ?? [])
+        .filter((participant) => (
+          participant.participant_user_id !== user.id
+          && Boolean(participant.participant_connection_id)
+        ))
+        .map((participant) => sharePublicTouchpointWithLinkedParticipant(supabase, {
+          ownerUser: user,
+          participantUserId: participant.participant_user_id,
+          participantConnectionId: participant.participant_connection_id as string,
+          copy,
+        })),
+    );
+  }
+
   revalidateHangoutPaths(hangout.target_type, hangout.target_id);
   const fallbackPath = hangout.target_type === "connection" ? `/connections/${hangout.target_id}` : `/groups/${hangout.target_id}`;
   const target = await resolveRedirectTarget(formData, fallbackPath, "hangout-completed");

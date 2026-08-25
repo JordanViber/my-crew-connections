@@ -61,6 +61,8 @@ Available today:
 - connection invite links that can be claimed by another real app user
 - optional invite start during connection creation
 - two-way relationship linking so invite claim creates or reuses a reciprocal connection for the invited user
+- optional shared public memories for two-way-linked users, with private notes kept on the logger's side
+- completed shared hangouts copy a public memory onto the linked person's timeline so cadence updates on both sides
 - group invites with accepted, declined, and pending membership states
 - group hangout proposals with participant responses and confirmation
 - in-app notification center for invites, plans, and responses
@@ -73,7 +75,7 @@ Still intentionally deferred:
 - hosted deployment setup
 - production environment/domain configuration for outbound email and push
 - scheduled reminder delivery outside the active app session
-- rich collaboration beyond lightweight linking, group invites, and hangout proposal responses
+- richer shared group membership beyond connection placeholders, hangout responses, and public linked memories
 - photo and media upload flow
 
 ## Local Development
@@ -100,14 +102,14 @@ If we need to pick up quickly, the current product shape is:
 2. groups are still primarily composed from existing connection records
 3. real-user linking currently happens from a connection detail page through a claimable invite link
 4. invite claim links both sides by creating or reusing a reciprocal connection for the invited user
-5. saved hangouts exist and can be exported to calendar via ICS
-6. in-app notifications, web-push plumbing, and Resend email plumbing exist, but production delivery still depends on hosted configuration
-7. mobile validation now uses an iPhone 15-sized viewport in browser coverage
+5. linked users can share public touchpoint memories and completed shared hangouts update both timelines
+6. saved hangouts exist and can be exported to calendar via ICS
+7. in-app notifications, web-push plumbing, and Resend email plumbing exist, but production delivery still depends on hosted configuration
+8. mobile validation now uses an iPhone 15-sized viewport in browser coverage
 
 ## Suggested Next Steps
 
-1. deepen collaborative behavior for linked users and groups now that two-way connection linking exists
-2. decide whether groups should support richer shared membership management beyond connection placeholders
-3. harden production delivery configuration for Resend invite/proposal emails and VAPID web push
-4. add scheduled reminder and digest delivery after the collaboration model settles
-5. add photo or media handling only after the shared-memory loop is clearer
+1. decide whether groups should support richer shared membership management beyond connection placeholders
+2. harden production delivery configuration for Resend invite/proposal emails and VAPID web push
+3. add scheduled reminder and digest delivery after the collaboration model settles
+4. add photo or media handling only after the shared-memory loop is clearer

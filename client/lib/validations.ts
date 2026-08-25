@@ -186,6 +186,7 @@ export const touchpointSchema = z.object({
   locationLabel: z.string().trim().max(120).optional().default(""),
   photoAlbumLabel: optionalPhotoAlbumLabelSchema,
   photoAlbumUrl: optionalPhotoAlbumUrlSchema,
+  shareWithLinkedUser: z.enum(["", "true"]).optional().default(""),
 });
 
 export const touchpointUpdateSchema = z.object({
