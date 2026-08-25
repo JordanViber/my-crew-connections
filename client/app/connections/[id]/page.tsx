@@ -25,6 +25,7 @@ import {
 } from "@/app/actions";
 import { getFeedback } from "@/lib/feedback";
 import { buildConnectionInviteUrl } from "@/lib/invites";
+import { canShareTouchpointWithLinkedUser } from "@/lib/shared-memories";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -316,6 +317,17 @@ export default async function ConnectionDetailPage({
                     <textarea className="field-input min-h-28" name="note" placeholder="What mattered? Anything to remember for the next invite?" />
                   </label>
                   <PhotoAlbumFields />
+                  {canShareTouchpointWithLinkedUser(connection.linkState) ? (
+                    <label className="inline-flex items-start gap-2 rounded-md border border-border/80 bg-white/70 px-3 py-2.5 text-sm text-foreground/75">
+                      <input className="mt-1" name="shareWithLinkedUser" type="checkbox" value="true" />
+                      <span>
+                        Share this memory with {linkedUserLabel || "the linked user"}.
+                        <span className="mt-1 block text-xs text-foreground/58">
+                          Private notes stay on your side. They get the type, date, activity, location, and album link.
+                        </span>
+                      </span>
+                    </label>
+                  ) : null}
                   <p className="text-sm leading-6 text-foreground/68">
                     After save, this page will refresh with the new timeline entry and updated reminder timing.
                   </p>
@@ -488,6 +500,17 @@ export default async function ConnectionDetailPage({
                 <textarea className="field-input min-h-28" name="note" placeholder="What mattered? Anything to remember for the next invite?" />
               </label>
               <PhotoAlbumFields />
+              {canShareTouchpointWithLinkedUser(connection.linkState) ? (
+                <label className="inline-flex items-start gap-2 rounded-md border border-border/80 bg-white/70 px-3 py-2.5 text-sm text-foreground/75">
+                  <input className="mt-1" name="shareWithLinkedUser" type="checkbox" value="true" />
+                  <span>
+                    Share this memory with {linkedUserLabel || "the linked user"}.
+                    <span className="mt-1 block text-xs text-foreground/58">
+                      Private notes stay on your side. They get the type, date, activity, location, and album link.
+                    </span>
+                  </span>
+                </label>
+              ) : null}
               <p className="text-sm leading-6 text-foreground/68">
                 After save, this page will refresh with the new timeline entry and updated reminder timing.
               </p>
