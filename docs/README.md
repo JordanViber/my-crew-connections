@@ -64,4 +64,5 @@ If we stop and resume later, start from this understanding:
 - local Supabase resets will wipe local auth users and test data
 - groups still center on connection records first, with deeper shared collaboration still to come
 - invite claiming now links both users by creating or reusing a reciprocal connection
-- the next major product choice is how far to take shared groups, linked-user collaboration, and production-grade outbound delivery
+- linked users can share public memories; completed shared hangouts update both timelines
+- the next major product choice is richer shared group membership and production-grade outbound delivery
