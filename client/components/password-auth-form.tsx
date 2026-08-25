@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { PrefetchLink } from "@/components/prefetch-link";
 import { useState, useTransition } from "react";
 import { PasswordInput } from "@/components/password-input";
+import {
+  getPasswordSignInClientErrorMessage,
+  PASSWORD_SIGN_IN_UNREACHABLE_MESSAGE,
+} from "@/lib/auth-errors";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export function PasswordAuthForm({
@@ -50,7 +54,7 @@ export function PasswordAuthForm({
 
         if (!response.ok) {
           const result = (await response.json().catch(() => null)) as { error?: string } | null;
-          setErrorMessage(result?.error ?? "Invalid email, phone, or password.");
+          setErrorMessage(getPasswordSignInClientErrorMessage(response.status, result?.error));
           return;
         }
 
@@ -75,7 +79,7 @@ export function PasswordAuthForm({
         router.refresh();
         return;
       } catch {
-        setErrorMessage("We couldn't reach the sign-in service. Try again in a moment.");
+        setErrorMessage(PASSWORD_SIGN_IN_UNREACHABLE_MESSAGE);
         return;
       }
     });
