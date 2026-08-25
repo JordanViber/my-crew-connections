@@ -48,6 +48,12 @@ import { notifyConnectionInvite } from "@/lib/connection-invites";
 import { notifyGroupInvite } from "@/lib/group-invites";
 import { buildConnectionInvitePath, buildGroupInvitePath, normalizeInviteEmail } from "@/lib/invites";
 import { createInAppNotification } from "@/lib/in-app-notifications";
+import {
+  buildAcceptedLinkedGroupMembership,
+  buildLinkedMemberAddedNotification,
+  buildLinkedMemberJoinedOwnerNotification,
+  shouldPromoteLinkedConnectionToGroupMember,
+} from "@/lib/linked-group-membership";
 import { canCreateConnection, canCreateGroup } from "@/lib/entitlements";
 import { sendPushToUser } from "@/lib/push";
 
@@ -582,6 +588,71 @@ async function createOrReplaceGroupInvite(
   );
 }
 
+async function acceptLinkedUserIntoGroup(
+  supabase: ReturnType<typeof createServerAdminSupabaseClient>,
+  input: {
+    groupId: string;
+    groupName: string;
+    userId: string;
+    connectionId: string;
+    adderName: string;
+    notifyMember: boolean;
+  },
+) {
+  const acceptedAt = new Date().toISOString();
+  const { error: clearConnectionMembershipError } = await supabase
+    .from("group_memberships")
+    .update({ removed_at: acceptedAt })
+    .eq("group_id", input.groupId)
+    .eq("connection_id", input.connectionId)
+    .is("removed_at", null);
+
+  assertMutation(clearConnectionMembershipError, "Failed to clear stale connection membership");
+
+  const { error: membershipError } = await supabase.from("group_memberships").upsert(
+    buildAcceptedLinkedGroupMembership({
+      groupId: input.groupId,
+      userId: input.userId,
+    }),
+    { onConflict: "group_id,user_id" },
+  );
+
+  assertMutation(membershipError, "Failed to add linked group member");
+
+  const { error: acceptInviteError } = await supabase
+    .from("group_invites")
+    .update({
+      accepted_by_user_id: input.userId,
+      accepted_at: acceptedAt,
+      declined_by_user_id: null,
+      declined_at: null,
+    })
+    .eq("group_id", input.groupId)
+    .eq("connection_id", input.connectionId)
+    .is("accepted_at", null)
+    .is("declined_at", null)
+    .is("revoked_at", null);
+
+  assertMutation(acceptInviteError, "Failed to accept pending group invite for linked member");
+
+  if (!input.notifyMember) {
+    return;
+  }
+
+  const notification = buildLinkedMemberAddedNotification({
+    adderName: input.adderName,
+    groupName: input.groupName,
+  });
+
+  await createInAppNotification(supabase, input.userId, {
+    category: notification.category,
+    title: notification.title,
+    body: notification.body,
+    href: `/groups/${input.groupId}`,
+    metadata: { groupId: input.groupId, connectionId: input.connectionId },
+  }).catch(() => undefined);
+}
+
 async function addConnectionsToGroup(
   supabase: ReturnType<typeof createServerAdminSupabaseClient>,
   ownerUserId: string,
@@ -629,39 +700,46 @@ async function addConnectionsToGroup(
     }
   }
 
+  const linkedUserIds = availableConnections.flatMap((connection) => connection.linked_user_id ? [connection.linked_user_id] : []);
+  const existingLinkedUserIds = new Set<string>();
+
+  if (linkedUserIds.length > 0) {
+    const { data: existingUserMemberships, error: existingUserMembershipsError } = await supabase
+      .from("group_memberships")
+      .select("user_id")
+      .eq("group_id", groupId)
+      .is("removed_at", null)
+      .in("user_id", linkedUserIds);
+
+    assertMutation(existingUserMembershipsError, "Failed to load existing linked group memberships");
+    for (const membership of existingUserMemberships ?? []) {
+      if (membership.user_id) {
+        existingLinkedUserIds.add(membership.user_id);
+      }
+    }
+  }
+
   const membershipRows: Array<{ group_id: string; connection_id: string; role: string; removed_at: null }> = [];
   let invitedCount = 0;
+  let promotedCount = 0;
+  const adderName = ownerDisplayName?.trim() || "Someone";
 
   for (const connection of availableConnections) {
-    if (connection.linked_user_id) {
-      const linkedUser = await getAuthUserById(supabase, connection.linked_user_id);
-      const linkedInviteEmail = linkedUser?.email ? normalizeInviteEmail(linkedUser.email) : null;
-      const inviteEmail = linkedInviteEmail ?? (connection.contact_email ? normalizeInviteEmail(connection.contact_email) : null);
-
-      if (!inviteEmail) {
-        throw new Error("Failed to create group invite: linked account is missing an invite email.");
+    if (shouldPromoteLinkedConnectionToGroupMember({ linkedUserId: connection.linked_user_id }) && connection.linked_user_id) {
+      if (existingLinkedUserIds.has(connection.linked_user_id)) {
+        continue;
       }
 
-      if (connection.contact_email !== inviteEmail) {
-        const { error: saveEmailError } = await supabase
-          .from("connections")
-          .update({ contact_email: inviteEmail })
-          .eq("id", connection.id)
-          .eq("owner_user_id", ownerUserId);
-
-        assertMutation(saveEmailError, "Failed to save linked user email on connection");
-      }
-
-      await createOrReplaceGroupInvite(
-        supabase,
-        ownerUserId,
-        ownerDisplayName,
+      await acceptLinkedUserIntoGroup(supabase, {
         groupId,
         groupName,
-        connection,
-        inviteEmail,
-      );
-      invitedCount += 1;
+        userId: connection.linked_user_id,
+        connectionId: connection.id,
+        adderName,
+        notifyMember: true,
+      });
+      existingLinkedUserIds.add(connection.linked_user_id);
+      promotedCount += 1;
       continue;
     }
 
@@ -698,7 +776,7 @@ async function addConnectionsToGroup(
   }
 
   return {
-    acceptedCount: membershipRows.length,
+    acceptedCount: membershipRows.length + promotedCount,
     invitedCount,
   } satisfies GroupMembershipUpdateSummary;
 }
@@ -2642,6 +2720,66 @@ export async function claimConnectionInviteAction(formData: FormData) {
     url: `/connections/${invite.connection_id}`,
     tag: `connection-invite-accepted-${invite.id}`,
   }).catch(() => ({ sent: 0 }));
+
+  const [{ data: placeholderMemberships, error: placeholderMembershipsError }, { data: pendingGroupInvites, error: pendingGroupInvitesError }] = await Promise.all([
+    supabase
+      .from("group_memberships")
+      .select("group_id")
+      .eq("connection_id", invite.connection_id)
+      .is("removed_at", null),
+    supabase
+      .from("group_invites")
+      .select("group_id")
+      .eq("connection_id", invite.connection_id)
+      .is("accepted_at", null)
+      .is("declined_at", null)
+      .is("revoked_at", null),
+  ]);
+
+  assertMutation(placeholderMembershipsError, "Failed to load group memberships for linked connection");
+  assertMutation(pendingGroupInvitesError, "Failed to load pending group invites for linked connection");
+
+  const groupIds = [...new Set([
+    ...(placeholderMemberships ?? []).map((membership) => membership.group_id),
+    ...(pendingGroupInvites ?? []).map((pendingInvite) => pendingInvite.group_id),
+  ])];
+
+  if (groupIds.length > 0) {
+    const groupNames = new Map<string, string>();
+    const { data: groups, error: groupsError } = await supabase
+      .from("groups")
+      .select("id, name")
+      .in("id", groupIds);
+    assertMutation(groupsError, "Failed to load groups for linked membership promotion");
+    for (const group of groups ?? []) {
+      groupNames.set(group.id, group.name);
+    }
+
+    for (const groupId of groupIds) {
+      await acceptLinkedUserIntoGroup(supabase, {
+        groupId,
+        groupName: groupNames.get(groupId) ?? "a group",
+        userId: user.id,
+        connectionId: invite.connection_id,
+        adderName: getCurrentUserLabel(user),
+        notifyMember: false,
+      });
+      revalidatePath(`/groups/${groupId}`);
+    }
+
+    const ownerNotification = buildLinkedMemberJoinedOwnerNotification({
+      memberName: getCurrentUserLabel(user),
+      groupCount: groupIds.length,
+    });
+    await createInAppNotification(supabase, sourceConnection.owner_user_id, {
+      category: ownerNotification.category,
+      title: ownerNotification.title,
+      body: ownerNotification.body,
+      href: "/groups",
+      metadata: { connectionId: invite.connection_id, groupIds },
+    }).catch(() => undefined);
+    revalidatePath("/groups");
+  }
 
   revalidatePath("/dashboard");
   revalidatePath("/connections");
