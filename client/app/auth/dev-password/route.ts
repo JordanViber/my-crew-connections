@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
-import { accountRegistrationSchema } from "@/lib/validations";
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
+import { env } from "@/lib/env";
+import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
+import { getLocalDevPasswordDenial } from "@/lib/supabase/local-stack-status";
+import { accountRegistrationSchema } from "@/lib/validations";
 
 type Payload = {
   email?: string;
@@ -28,6 +30,12 @@ function buildDisplayName(firstName: string, lastName: string, email: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const denial = getLocalDevPasswordDenial(env.supabaseUrl);
+
+  if (denial) {
+    return NextResponse.json({ error: denial }, { status: 403 });
+  }
+
   try {
     const body = (await request.json()) as Payload;
     const email = body.email?.trim() ?? "";

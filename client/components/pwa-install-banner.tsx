@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getPushEnvironment } from "@/lib/pwa-client";
+import { getPushEnvironment, getPwaBannerVisibility } from "@/lib/pwa-client";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -30,7 +30,6 @@ function isProbablyIosSafari() {
 export function PwaInstallBanner() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
-  const [installed, setInstalled] = useState(false);
   const [iosSafari, setIosSafari] = useState(false);
   const [androidDevice, setAndroidDevice] = useState(false);
   const [showIosSteps, setShowIosSteps] = useState(false);
@@ -41,21 +40,33 @@ export function PwaInstallBanner() {
       return undefined;
     }
 
-    if (isStandaloneDisplay() || wasRecentlyDismissed()) {
+    if (isStandaloneDisplay()) {
       return undefined;
     }
 
+    const recentlyDismissed = wasRecentlyDismissed();
     const storedInstalled = globalThis.localStorage.getItem(installedStorageKey) === "1";
     const isIos = isProbablyIosSafari();
     const environment = getPushEnvironment({ installPromptAvailable: false });
+    const initialVisibility = getPwaBannerVisibility({
+      standalone: false,
+      recentlyDismissed,
+      storedInstalled,
+      installPromptAvailable: false,
+      iosSafari: isIos,
+      androidDevice: environment.deviceFamily === "android",
+    });
 
     globalThis.setTimeout(() => {
-      setInstalled(storedInstalled);
       setIosSafari(isIos);
       setAndroidDevice(environment.deviceFamily === "android");
-      setShowIosSteps(isIos && !storedInstalled);
-      setVisible(storedInstalled || isIos || environment.deviceFamily === "android");
+      setShowIosSteps(initialVisibility.mode === "ios-manual");
+      setVisible(initialVisibility.visible);
     }, 0);
+
+    if (recentlyDismissed) {
+      return undefined;
+    }
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -65,7 +76,6 @@ export function PwaInstallBanner() {
 
     const handleInstalled = () => {
       globalThis.localStorage.setItem(installedStorageKey, "1");
-      setInstalled(true);
       setVisible(false);
     };
 
@@ -89,14 +99,6 @@ export function PwaInstallBanner() {
   }, []);
 
   const copy = useMemo(() => {
-    if (installed) {
-      return {
-        title: "Open the app",
-        body: "My Crew Connections is installed on this device. Open it from your Home Screen or app drawer for the best notification experience.",
-        action: "Open",
-      };
-    }
-
     if (iosSafari) {
       return {
         title: "Add to Home Screen",
@@ -118,18 +120,13 @@ export function PwaInstallBanner() {
       body: "Get faster access, full-screen mode, and the best notification support on this device.",
       action: "Install",
     };
-  }, [androidDevice, installPrompt, installed, iosSafari, showAndroidSteps, showIosSteps]);
+  }, [androidDevice, installPrompt, iosSafari, showAndroidSteps, showIosSteps]);
 
   if (!visible) {
     return null;
   }
 
   async function handlePrimaryAction() {
-    if (installed) {
-      globalThis.location.assign("/dashboard");
-      return;
-    }
-
     if (iosSafari) {
       setShowIosSteps((current) => !current);
       return;

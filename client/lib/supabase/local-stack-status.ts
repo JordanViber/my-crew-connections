@@ -50,3 +50,11 @@ export async function getLocalSupabaseStatus(): Promise<LocalStackStatus> {
     };
   }
 }
+
+export function getLocalDevPasswordDenial(supabaseUrl: string) {
+  if (isLocalSupabaseUrl(supabaseUrl)) {
+    return null;
+  }
+
+  return "Local account recovery is only available on a local development stack.";
+}

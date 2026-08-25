@@ -6,9 +6,11 @@ import { LocalAccountForm } from "@/components/local-account-form";
 import { MagicLinkForm } from "@/components/magic-link-form";
 import { PasswordAuthForm } from "@/components/password-auth-form";
 import { PhoneOtpForm } from "@/components/phone-otp-form";
+import { getAccountCreatedBannerBody } from "@/lib/auth-copy";
 import { appleAuthEnabled, phoneAuthEnabled } from "@/lib/auth-features";
+import { env } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getLocalSupabaseStatus } from "@/lib/supabase/local-stack-status";
+import { getLocalSupabaseStatus, isLocalSupabaseUrl } from "@/lib/supabase/local-stack-status";
 
 function InviteNotice({
   inviteEmail,
@@ -75,7 +77,7 @@ function PasswordStatusBanners({
         <div className="mt-3">
           <FeedbackBanner
             title="Check your email"
-            body="If email confirmation is enabled for this environment, finish account setup from the message we just sent. After that, you can continue back into your invite or sign in below."
+            body={getAccountCreatedBannerBody()}
           />
         </div>
       ) : null}
@@ -100,6 +102,7 @@ export default async function AuthPage({
   }
 
   const stackStatus = await getLocalSupabaseStatus();
+  const showLocalRecovery = isLocalSupabaseUrl(env.supabaseUrl);
   const createAccountHref = `/auth/create?${new URLSearchParams({
     next: nextPath,
     ...(params.invite ? { invite: params.invite } : {}),
@@ -190,29 +193,31 @@ export default async function AuthPage({
             <MagicLinkForm stackAvailable={stackStatus.available} nextPath={nextPath} />
           </div>
 
-          <details className="section-card p-3.5 md:p-4" open={Boolean(params.prepared)}>
-            <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
-              Local recovery tools
-            </summary>
-            <div className="mt-4 grid gap-4 text-sm leading-7 text-foreground/72">
-              <p>
-                If you&apos;re running the app on your own machine, use this section to recover or reseed a local account after resetting the local database.
-              </p>
-              <div className="rounded-lg border border-border/80 bg-surface-muted px-3.5 py-3">
-                <p className="font-semibold text-foreground">Sign-in service status</p>
-                <p className="mt-1 text-foreground/68">{stackStatus.message}</p>
+          {showLocalRecovery ? (
+            <details className="section-card p-3.5 md:p-4" open={Boolean(params.prepared)}>
+              <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.16em] text-accent-strong">
+                Local recovery tools
+              </summary>
+              <div className="mt-4 grid gap-4 text-sm leading-7 text-foreground/72">
+                <p>
+                  If you&apos;re running the app on your own machine, use this section to recover or reseed a local account after resetting the local database.
+                </p>
+                <div className="rounded-lg border border-border/80 bg-surface-muted px-3.5 py-3">
+                  <p className="font-semibold text-foreground">Sign-in service status</p>
+                  <p className="mt-1 text-foreground/68">{stackStatus.message}</p>
+                </div>
+
+                {params.prepared ? (
+                  <FeedbackBanner
+                    title="Local account is ready"
+                    body="Sign in above with the email and password you just entered."
+                  />
+                ) : null}
+
+                <LocalAccountForm stackAvailable={stackStatus.available} nextPath={nextPath} />
               </div>
-
-              {params.prepared ? (
-                <FeedbackBanner
-                  title="Local account is ready"
-                  body="Sign in above with the email and password you just entered."
-                />
-              ) : null}
-
-              <LocalAccountForm stackAvailable={stackStatus.available} nextPath={nextPath} />
-            </div>
-          </details>
+            </details>
+          ) : null}
         </section>
       </div>
     </main>

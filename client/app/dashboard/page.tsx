@@ -20,6 +20,13 @@ import { getFeedback } from "@/lib/feedback";
 import { getDashboardData } from "@/lib/mvp-data";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import {
+  getMemoryTrailCta,
+  getNeedsAttentionEmptyCopy,
+  getRecentHistoryEmptyCopy,
+  getReminderQueueEmptyCopy,
+  getUpcomingPlansEmptyCopy,
+} from "@/lib/dashboard-empty-copy";
 import { getUserDisplayName, getUserFirstName } from "@/lib/user-display";
 
 function DetailActionLabel({ label = "Open details" }: Readonly<{ label?: string }>) {
@@ -136,30 +143,6 @@ function MobileRelationshipRail({
       )}
     </section>
   );
-}
-
-function getNeedsAttentionEmptyCopy(relationshipCount: number) {
-  if (relationshipCount === 0) {
-    return "Nothing is due soon yet. Add a person or group and set a cadence to start the loop.";
-  }
-
-  return "Nothing needs attention right now. Your current people and groups are on track.";
-}
-
-function getRecentHistoryEmptyCopy(relationshipCount: number) {
-  if (relationshipCount === 0) {
-    return "No touchpoints yet. Your first log will appear here immediately.";
-  }
-
-  return "No touchpoints yet. Log your first hangout, check-in, call, or message to turn this into a useful memory trail.";
-}
-
-function getReminderQueueEmptyCopy(relationshipCount: number) {
-  if (relationshipCount === 0) {
-    return "Your reminder queue is clear right now. Keep logging touchpoints and the queue will stay honest.";
-  }
-
-  return "Your reminder queue is clear right now because your current people and groups are on track.";
 }
 
 function MobileRecentHistory({
@@ -327,7 +310,7 @@ function getNextStepCard(
     : {
         title: "Add the first relationship",
         description: "Start with one person or one group that matters. The dashboard becomes useful as soon as the first cadence exists.",
-        ctaHref: "/connections",
+        ctaHref: "/connections?tab=create",
         ctaLabel: "Add a person",
       };
 }
@@ -362,6 +345,8 @@ export default async function DashboardPage({
   const needsAttentionEmptyCopy = getNeedsAttentionEmptyCopy(data.relationships.length);
   const recentHistoryEmptyCopy = getRecentHistoryEmptyCopy(data.relationships.length);
   const reminderQueueEmptyCopy = getReminderQueueEmptyCopy(data.relationships.length);
+  const upcomingPlansEmptyCopy = getUpcomingPlansEmptyCopy(data.relationships.length);
+  const memoryTrailCta = getMemoryTrailCta(data.relationships.length);
   const firstRelationship = data.relationships[0];
   const nextStep = getNextStepCard(hasRelationships);
   const hasPremium = hasPremiumAccess(billingProfile, user.email);
@@ -575,10 +560,10 @@ export default async function DashboardPage({
                   Add a person or group first, then quick log becomes the easiest way to keep your rhythm grounded in real life.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <PrefetchLink className="button-secondary" href="/connections">
+                  <PrefetchLink className="button-secondary" href="/connections?tab=create">
                     Add a person
                   </PrefetchLink>
-                  <PrefetchLink className="button-secondary" href="/groups">
+                  <PrefetchLink className="button-secondary" href="/groups?tab=create">
                     Create a group
                   </PrefetchLink>
                 </div>
@@ -599,7 +584,7 @@ export default async function DashboardPage({
                   </div>
                   <HangoutList
                     hangouts={data.upcomingHangouts}
-                    emptyCopy="No saved plans yet. Create one from a person or group detail page and it will stay visible here."
+                    emptyCopy={upcomingPlansEmptyCopy}
                     confirmAction={confirmHangoutProposalAction}
                     completeAction={completeHangoutAction}
                     cancelAction={cancelHangoutAction}
@@ -631,6 +616,9 @@ export default async function DashboardPage({
                     <p className="mt-2 text-sm leading-6 text-foreground/68">
                       Things get more helpful after the first real-world touchpoint because reminders, history, and future plans all become more personal.
                     </p>
+                    <PrefetchLink className="button-secondary mt-4 inline-flex" href={memoryTrailCta.href}>
+                      {memoryTrailCta.label}
+                    </PrefetchLink>
                   </section>
                 ) : null}
               </div>
@@ -681,7 +669,7 @@ export default async function DashboardPage({
           >
             <HangoutList
               hangouts={data.upcomingHangouts}
-              emptyCopy="No saved plans yet. Create one from a person or group detail page and it will show up here."
+              emptyCopy={upcomingPlansEmptyCopy}
               confirmAction={confirmHangoutProposalAction}
               completeAction={completeHangoutAction}
               cancelAction={cancelHangoutAction}
@@ -702,9 +690,12 @@ export default async function DashboardPage({
 
         <div className="grid gap-5">
           <SectionCard
-            title="Quick log"
-            description="Minimal friction beats perfect detail. Log a check-in, call, or hangout straight from the dashboard."
+            title={hasRelationships ? "Quick log" : "First step"}
+            description={hasRelationships
+              ? "Minimal friction beats perfect detail. Log a check-in, call, or hangout straight from the dashboard."
+              : "Add a person or group first, then quick log becomes the easiest way to keep your rhythm grounded in real life."}
           >
+            {hasRelationships ? (
             <form action={createTouchpointAction} className="grid gap-3">
               <input type="hidden" name="redirectTo" value="/dashboard" />
               <label className="grid gap-2">
@@ -763,10 +754,20 @@ export default async function DashboardPage({
               <p className="text-sm leading-6 text-foreground/68">
                 After save, the reminder queue and recent history will refresh right away.
               </p>
-              <button className="button-primary" type="submit" disabled={data.relationships.length === 0}>
+              <button className="button-primary" type="submit">
                 Log touchpoint
               </button>
             </form>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <PrefetchLink className="button-secondary" href="/connections?tab=create">
+                  Add a person
+                </PrefetchLink>
+                <PrefetchLink className="button-secondary" href="/groups?tab=create">
+                  Create a group
+                </PrefetchLink>
+              </div>
+            )}
           </SectionCard>
 
           <SectionCard
@@ -775,7 +776,12 @@ export default async function DashboardPage({
           >
             <div className="grid gap-3">
               {data.recentTouchpoints.length === 0 ? (
-                <p className="text-sm leading-7 text-foreground/68">{recentHistoryEmptyCopy}</p>
+                <div className="grid gap-3">
+                  <p className="text-sm leading-7 text-foreground/68">{recentHistoryEmptyCopy}</p>
+                  <PrefetchLink className="button-secondary inline-flex w-fit" href={memoryTrailCta.href}>
+                    {memoryTrailCta.label}
+                  </PrefetchLink>
+                </div>
               ) : (
                 data.recentTouchpoints.map((touchpoint) => (
                   <article key={touchpoint.id} className="group relative rounded-lg border border-border/85 bg-white/78 p-3.5 transition hover:border-accent/45 hover:bg-white/90">

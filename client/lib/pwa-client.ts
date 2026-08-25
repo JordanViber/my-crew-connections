@@ -92,3 +92,36 @@ export function getPushEnvironment(options: PushEnvironmentOptions = {}) {
     installState,
   };
 }
+
+export type PwaBannerMode = "hidden" | "install-prompt" | "ios-manual" | "android-manual";
+
+export function getPwaBannerVisibility(options: {
+  standalone: boolean;
+  recentlyDismissed?: boolean;
+  storedInstalled: boolean;
+  installPromptAvailable: boolean;
+  iosSafari: boolean;
+  androidDevice: boolean;
+}): { visible: boolean; mode: PwaBannerMode } {
+  if (options.standalone || options.recentlyDismissed) {
+    return { visible: false, mode: "hidden" };
+  }
+
+  if (options.installPromptAvailable) {
+    return { visible: true, mode: "install-prompt" };
+  }
+
+  if (options.storedInstalled) {
+    return { visible: false, mode: "hidden" };
+  }
+
+  if (options.iosSafari) {
+    return { visible: true, mode: "ios-manual" };
+  }
+
+  if (options.androidDevice) {
+    return { visible: true, mode: "android-manual" };
+  }
+
+  return { visible: false, mode: "hidden" };
+}
