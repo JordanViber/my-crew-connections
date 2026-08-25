@@ -66,4 +66,5 @@ If we stop and resume later, start from this understanding:
 - groups can still include local-only placeholders, but two-way-linked people become real accepted members
 - invite claiming now links both users by creating or reusing a reciprocal connection
 - claiming a connection invite promotes existing group memberships and pending group invites for that person
+- linked users can share public memories; completed shared hangouts update both timelines
 - the next major product choice is shared history/notes/cadence plus production-grade outbound delivery

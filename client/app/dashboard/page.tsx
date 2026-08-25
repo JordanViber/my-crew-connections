@@ -551,6 +551,15 @@ export default async function DashboardPage({
                     <textarea className="field-input min-h-24" name="note" placeholder="What mattered, what to remember, or what to plan next." />
                   </label>
                   <PhotoAlbumFields />
+                  <label className="inline-flex items-start gap-2 rounded-md border border-border/80 bg-white/70 px-3 py-2.5 text-sm text-foreground/75">
+                    <input className="mt-1" name="shareWithLinkedUser" type="checkbox" value="true" />
+                    <span>
+                      If this target is a linked person, share a public copy.
+                      <span className="mt-1 block text-xs text-foreground/58">
+                        Private notes stay on your side. Group logs stay on the shared group timeline as they already do.
+                      </span>
+                    </span>
+                  </label>
                   <p className="text-sm leading-6 text-foreground/68">
                     Saving this refreshes your history and reminder timing right away.
                   </p>
@@ -742,6 +751,15 @@ export default async function DashboardPage({
                 <textarea className="field-input min-h-28" name="note" placeholder="What mattered, what to remember, or what to plan next." />
               </label>
               <PhotoAlbumFields />
+              <label className="inline-flex items-start gap-2 rounded-md border border-border/80 bg-white/70 px-3 py-2.5 text-sm text-foreground/75">
+                <input className="mt-1" name="shareWithLinkedUser" type="checkbox" value="true" />
+                <span>
+                  If this target is a linked person, share a public copy.
+                  <span className="mt-1 block text-xs text-foreground/58">
+                    Private notes stay on your side. Group logs stay on the shared group timeline as they already do.
+                  </span>
+                </span>
+              </label>
               <p className="text-sm leading-6 text-foreground/68">
                 After save, the reminder queue and recent history will refresh right away.
               </p>
