@@ -122,6 +122,9 @@ export function ConnectionDirectory({
         <p className="mt-2 text-sm leading-6 text-foreground/62">
           A great starting set is a close friend, a recurring activity buddy, and someone you never want to accidentally lose track of.
         </p>
+        <PrefetchLink className="button-secondary mt-4 inline-flex" href="/connections?tab=create">
+          Add a person
+        </PrefetchLink>
       </div>
     );
   } else if (filtered.length === 0) {

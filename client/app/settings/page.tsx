@@ -261,7 +261,7 @@ export default async function SettingsPage({
           </SettingsRow>
         </SettingsGroup>
 
-        <SettingsGroup title="Notifications">
+        <SettingsGroup id="notifications" title="Notifications">
           <SettingsRow>
             <NotificationSettingRow />
           </SettingsRow>

@@ -5,7 +5,7 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
-import { getLocalSupabaseStatus, isLocalSupabaseUrl } from "@/lib/supabase/local-stack-status";
+import { getLocalDevPasswordDenial, getLocalSupabaseStatus, isLocalSupabaseUrl } from "@/lib/supabase/local-stack-status";
 
 describe("local stack status", () => {
   it("identifies local Supabase URLs", () => {
@@ -37,5 +37,13 @@ describe("local stack status", () => {
     });
 
     global.fetch = originalFetch;
+  });
+
+  it("refuses the local recovery helper on hosted Supabase URLs", () => {
+    expect(getLocalDevPasswordDenial("http://127.0.0.1:54321")).toBeNull();
+    expect(getLocalDevPasswordDenial("http://localhost:54321")).toBeNull();
+    expect(getLocalDevPasswordDenial("https://example.supabase.co")).toBe(
+      "Local account recovery is only available on a local development stack.",
+    );
   });
 });

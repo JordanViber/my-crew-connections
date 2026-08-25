@@ -1,6 +1,6 @@
 # My Crew Connections Docs
 
-This folder contains the planning documents plus the current implementation snapshot for the app as it exists in local development today.
+This folder contains the planning documents plus the current implementation snapshot for the app as it exists in hosted production and local development today.
 
 ## Documents
 
@@ -38,11 +38,13 @@ The core loop for the app is:
 
 ## Current Shipped State
 
-As of May 7, 2026, the local app currently supports:
-- dual-path auth with local password first and magic link second
+As of August 25, 2026, hosted production is live at https://mycrewconnections.app (custom domain on Vercel), and the same app still runs locally. It currently supports:
+- dual-path auth with password first and email code/link second, plus PWA install on supported browsers
 - people and groups CRUD
 - cadence rules and relationship health
 - reminder queue and dashboard surfacing
+- first-run empty states that ask new users to add a person or group instead of assuming an existing rhythm
+- PWA assets (`/sw.js`, `/manifest.webmanifest`, `/icon`, `/apple-icon`) are excluded from session-refresh middleware so those requests no longer saturate hosted auth
 - touchpoint logging and history
 - saved hangout planning plus ICS export
 - mobile bottom navigation and section tabs
@@ -56,15 +58,17 @@ As of May 7, 2026, the local app currently supports:
 - two-way-linked people added to a group become accepted members immediately
 - group hangout proposals with RSVP-style participant responses
 - in-app notifications for invites, proposals, and responses
-- web-push delivery plumbing and Resend email plumbing, subject to local or production env configuration
+- Resend auth confirmation email in production (no-reply@auth.mycrewconnections.app); web-push and invite-email plumbing still need production hardening
 
 ## Resume Here
 
 If we stop and resume later, start from this understanding:
-- the core relationship loop is implemented and usable locally end to end
+- production is live at https://mycrewconnections.app, and the core relationship loop is usable there and locally
+- first-run empty-state / onboarding polish is shipped: new users are asked to add a person or group, local recovery tools stay local-only, and empty notifications/directories have real next steps
+- hosted dashboard/auth can stall when middleware refreshes the session on PWA asset requests; those assets are now excluded
 - local Supabase resets will wipe local auth users and test data
 - groups can still include local-only placeholders, but two-way-linked people become real accepted members
 - invite claiming now links both users by creating or reusing a reciprocal connection
 - claiming a connection invite promotes existing group memberships and pending group invites for that person
 - linked users can share public memories; completed shared hangouts update both timelines
-- the next major product choice is shared history/notes/cadence plus production-grade outbound delivery
+- remaining work is richer shared notes/cadence, scheduled reminders, photos, and invite/push production hardening

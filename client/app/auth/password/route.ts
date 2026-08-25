@@ -1,6 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import { normalizePhoneNumberForAuth, normalizePhoneNumberForStorage } from "@/lib/account-fields";
+import {
+  mapPasswordSignInServiceError,
+  PASSWORD_SIGN_IN_INVALID_CREDENTIALS_MESSAGE,
+} from "@/lib/auth-errors";
 import { env } from "@/lib/env";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -63,7 +67,12 @@ async function resolveEmailFromIdentifier(identifier: string) {
 }
 
 function invalidResponse() {
-  return NextResponse.json({ error: "Invalid email, phone, or password." }, { status: 400 });
+  return NextResponse.json({ error: PASSWORD_SIGN_IN_INVALID_CREDENTIALS_MESSAGE }, { status: 400 });
+}
+
+function signInErrorResponse(error: unknown) {
+  const mapped = mapPasswordSignInServiceError(error);
+  return NextResponse.json({ error: mapped.error }, { status: mapped.status });
 }
 
 export async function POST(request: NextRequest) {
@@ -97,13 +106,22 @@ export async function POST(request: NextRequest) {
     : normalizePhoneNumberForAuth(identifier);
 
   if (normalizedPhone) {
-    const { error: phoneError } = await supabase.auth.signInWithPassword({
-      phone: normalizedPhone,
-      password,
-    });
+    try {
+      const { error: phoneError } = await supabase.auth.signInWithPassword({
+        phone: normalizedPhone,
+        password,
+      });
 
-    if (!phoneError) {
-      return response;
+      if (!phoneError) {
+        return response;
+      }
+
+      const phoneFailure = signInErrorResponse(phoneError);
+      if (phoneFailure.status === 503) {
+        return phoneFailure;
+      }
+    } catch (error) {
+      return signInErrorResponse(error);
     }
   }
 
@@ -113,13 +131,17 @@ export async function POST(request: NextRequest) {
     return invalidResponse();
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  if (error) {
-    return invalidResponse();
+    if (error) {
+      return signInErrorResponse(error);
+    }
+  } catch (error) {
+    return signInErrorResponse(error);
   }
 
   return response;

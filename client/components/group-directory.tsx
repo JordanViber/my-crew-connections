@@ -124,6 +124,9 @@ export function GroupDirectory({
         <p className="mt-2 text-sm leading-6 text-foreground/62">
           Good starting candidates are a monthly dinner crew, a walking group, or any tradition that depends on one organizer remembering to make it happen.
         </p>
+        <PrefetchLink className="button-secondary mt-4 inline-flex" href="/groups?tab=create">
+          Create a group
+        </PrefetchLink>
       </div>
     );
   } else if (filtered.length === 0) {

@@ -5,6 +5,7 @@ import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { PrefetchLink } from "@/components/prefetch-link";
 import { clearInAppNotificationsAction, markInAppNotificationReadAction } from "@/app/actions";
 import { getFeedback } from "@/lib/feedback";
+import { getNotificationsEmptyBody, getNotificationsInboxStatus } from "@/lib/notification-copy";
 import { normalizeInviteEmail } from "@/lib/invites";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -149,9 +150,7 @@ export default async function NotificationsPage({
   const readCount = rows.length - unreadCount;
   const activeInviteTokens = await getActiveInviteTokens(user.email, rows);
   const displayName = getDisplayName(profile as ProfileRow | null, user.email);
-  const unreadLabel = unreadCount === 1
-    ? "1 unread notification"
-    : `${unreadCount} unread notifications`;
+  const inboxStatus = getNotificationsInboxStatus(rows.length, unreadCount);
   const feedback = getFeedback(params.feedback);
 
   return (
@@ -170,7 +169,7 @@ export default async function NotificationsPage({
         <section className="rounded-lg border border-border bg-surface-strong p-4 shadow-(--shadow-tight)">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm font-medium text-foreground/72">
-              {unreadCount > 0 ? unreadLabel : "All caught up"}
+              {inboxStatus}
             </p>
             <form action={clearInAppNotificationsAction}>
               <input name="redirectTo" type="hidden" value="/notifications" />
@@ -184,7 +183,10 @@ export default async function NotificationsPage({
         <section className="grid gap-3">
           {rows.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-surface-muted px-4 py-8 text-center text-sm text-foreground/62">
-              You do not have notifications yet.
+              <p>{getNotificationsEmptyBody()}</p>
+              <PrefetchLink className="button-secondary mt-4 inline-flex" href="/settings#notifications">
+                Open Settings
+              </PrefetchLink>
             </div>
           ) : (
             rows.map((notification) => {

@@ -43,11 +43,15 @@ Key documents:
 
 ## Current Product State
 
-This repository contains an actively developed local-first build of My Crew Connections.
+This repository contains the My Crew Connections PWA. Production is live at [https://mycrewconnections.app](https://mycrewconnections.app) on a custom domain via Vercel, and the same app still runs locally against a local Supabase stack.
 
 Available today:
+- hosted production at https://mycrewconnections.app
 - Next.js App Router app in `client/`
+- PWA install on supported browsers, plus first-run empty-state copy for brand-new hosted users
+- PWA assets (`/sw.js`, `/manifest.webmanifest`, `/icon`, `/apple-icon`) are excluded from session-refresh middleware so hosted auth is not saturated by those requests
 - Supabase-backed auth with password sign-in, email code sign-in with link fallback, and optional phone OTP sign-in
+- outbound auth confirmation email via Resend from no-reply@auth.mycrewconnections.app
 - people and groups CRUD with archive support
 - searchable and filterable people directory with linked, pending, and local-only states
 - searchable and filterable group directory for larger crews
@@ -74,9 +78,8 @@ Available today:
 - unit tests plus Playwright coverage for the core authenticated flows
 
 Still intentionally deferred:
-- hosted deployment setup
-- production environment/domain configuration for outbound email and push
 - scheduled reminder delivery outside the active app session
+- invite and push production hardening beyond working auth confirmation email
 - richer shared group permissions, shared notes, and linked cadence beyond accepted membership
 - photo and media upload flow
 
@@ -107,12 +110,14 @@ If we need to pick up quickly, the current product shape is:
 5. linked users can share public touchpoint memories and completed shared hangouts update both timelines
 6. claiming a connection invite also promotes that person into any groups they already belonged to as a placeholder or pending invite
 7. saved hangouts exist and can be exported to calendar via ICS
-8. in-app notifications, web-push plumbing, and Resend email plumbing exist, but production delivery still depends on hosted configuration
-9. mobile validation now uses an iPhone 15-sized viewport in browser coverage
+8. in-app notifications, web-push plumbing, and Resend email plumbing exist; auth confirmation email is working in production, while invite/push delivery still needs hardening
+9. first-run empty states now point new users toward adding a person or group instead of assuming they already have a rhythm
+10. mobile validation now uses an iPhone 15-sized viewport in browser coverage
+11. hosted dashboard/auth can stall when middleware refreshes the session on PWA asset requests; those assets are now excluded
 
 ## Suggested Next Steps
 
 1. deepen shared history, notes, or cadence for two-way-linked users now that linked people can sit in groups as real members
-2. harden production delivery configuration for Resend invite/proposal emails and VAPID web push
-3. add scheduled reminder and digest delivery after the collaboration model settles
+2. add scheduled reminder and digest delivery after the collaboration model settles
+3. harden production invite/proposal email and VAPID web push delivery
 4. add photo or media handling only after the shared-memory loop is clearer

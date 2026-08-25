@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectBrowserFamily, detectDeviceFamily, getPushEnvironment } from "@/lib/pwa-client";
+import { detectBrowserFamily, detectDeviceFamily, getPushEnvironment, getPwaBannerVisibility } from "@/lib/pwa-client";
 
 describe("pwa-client", () => {
   it("detects iPhone Safari as requiring Home Screen install for push", () => {
@@ -44,5 +44,51 @@ describe("pwa-client", () => {
   it("keeps browser-only push enabled on desktop browsers", () => {
     expect(detectDeviceFamily("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/135.0.0.0 Safari/537.36")).toBe("desktop");
     expect(detectBrowserFamily("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/135.0.0.0 Safari/537.36")).toBe("chrome");
+  });
+});
+describe("getPwaBannerVisibility", () => {
+  const base = {
+    standalone: false,
+    recentlyDismissed: false,
+    storedInstalled: false,
+    installPromptAvailable: false,
+    iosSafari: false,
+    androidDevice: false,
+  };
+
+  it("stays hidden in standalone display-mode", () => {
+    expect(getPwaBannerVisibility({ ...base, standalone: true, storedInstalled: true, installPromptAvailable: true })).toEqual({
+      visible: false,
+      mode: "hidden",
+    });
+  });
+
+  it("hides the post-install Open banner in a normal browser tab", () => {
+    expect(getPwaBannerVisibility({ ...base, storedInstalled: true })).toEqual({
+      visible: false,
+      mode: "hidden",
+    });
+  });
+
+  it("keeps a real Install prompt when beforeinstallprompt exists", () => {
+    expect(getPwaBannerVisibility({ ...base, storedInstalled: true, installPromptAvailable: true })).toEqual({
+      visible: true,
+      mode: "install-prompt",
+    });
+    expect(getPwaBannerVisibility({ ...base, installPromptAvailable: true })).toEqual({
+      visible: true,
+      mode: "install-prompt",
+    });
+  });
+
+  it("shows manual install steps on iOS and Android when not installed", () => {
+    expect(getPwaBannerVisibility({ ...base, iosSafari: true })).toEqual({
+      visible: true,
+      mode: "ios-manual",
+    });
+    expect(getPwaBannerVisibility({ ...base, androidDevice: true })).toEqual({
+      visible: true,
+      mode: "android-manual",
+    });
   });
 });

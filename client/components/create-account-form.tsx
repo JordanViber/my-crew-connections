@@ -7,6 +7,8 @@ import { AddressFields } from "@/components/address-fields";
 import { PasswordInput } from "@/components/password-input";
 import { PhoneNumberInput } from "@/components/phone-number-input";
 import { getDefaultCountry, normalizePhoneNumberForStorage } from "@/lib/account-fields";
+import { getCreateAccountPhoneHelperCopy } from "@/lib/auth-copy";
+import { phoneAuthEnabled } from "@/lib/auth-features";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 function RequiredLabel({ children }: Readonly<{ children: ReactNode }>) {
@@ -208,7 +210,7 @@ export function CreateAccountForm({
         <PhoneNumberInput name="phoneNumber" disabled={isPending} placeholder="Optional" />
       </label>
       <p className="text-sm leading-6 text-foreground/62">
-        Add a phone number now if you want it saved to your profile. SMS sign-in is hidden in this environment, so this only stores the number on your account for now.
+        {getCreateAccountPhoneHelperCopy(phoneAuthEnabled)}
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
