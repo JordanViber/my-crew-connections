@@ -129,6 +129,11 @@ const feedbackMessages = {
     title: "Touchpoint logged",
     body: "Your history is updated and reminder timing has been recalculated.",
   },
+  "touchpoint-shared": {
+    tone: "success",
+    title: "Touchpoint logged and shared",
+    body: "Your linked connection got a public copy of this memory. Private notes stayed on your side, and reminder timing updated for both of you.",
+  },
   "touchpoint-updated": {
     tone: "success",
     title: "Touchpoint updated",
