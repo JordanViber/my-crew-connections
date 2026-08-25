@@ -100,7 +100,7 @@ Represents membership of users or connection placeholders in a group.
 
 ### Notes
 This structure allows groups to exist before every participant joins the app.
-The current localhost product treats groups as connection-first rather than fully shared collaborative objects.
+Local-only people stay on connection-id memberships. Two-way-linked users are promoted to user-id memberships so they can see and act on the shared group.
 
 ## CadenceRule
 Represents how often a user wants to reconnect with a person or group.
@@ -170,6 +170,7 @@ Represents a pending invite to link a connection to a real user account.
 - recipient signs in or creates an account
 - invite claim links the owner's connection to the recipient account
 - invite claim also creates or reuses a reciprocal connection for the recipient
+- invite claim promotes existing group memberships and pending group invites for that connection
 
 ## Notification
 Represents in-app or outbound reminders and updates.
