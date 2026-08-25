@@ -63,7 +63,9 @@ Available today:
 - two-way relationship linking so invite claim creates or reuses a reciprocal connection for the invited user
 - optional shared public memories for two-way-linked users, with private notes kept on the logger's side
 - completed shared hangouts copy a public memory onto the linked person's timeline so cadence updates on both sides
-- group invites with accepted, declined, and pending membership states
+- two-way-linked people become real accepted group members instead of staying placeholders or pending a second group invite
+- claiming a connection invite promotes existing group memberships and pending group invites for that person
+- group invites with accepted, declined, and pending membership states for people who are not linked yet
 - group hangout proposals with participant responses and confirmation
 - in-app notification center for invites, plans, and responses
 - push-first invite delivery for existing users with email fallback when push is unavailable
@@ -75,7 +77,7 @@ Still intentionally deferred:
 - hosted deployment setup
 - production environment/domain configuration for outbound email and push
 - scheduled reminder delivery outside the active app session
-- richer shared group membership beyond connection placeholders, hangout responses, and public linked memories
+- richer shared group permissions, shared notes, and linked cadence beyond accepted membership
 - photo and media upload flow
 
 ## Local Development
@@ -99,17 +101,18 @@ Important local-dev note:
 
 If we need to pick up quickly, the current product shape is:
 1. solo-first relationship maintenance app with collaboration-ready data
-2. groups are still primarily composed from existing connection records
+2. groups can still include local-only connection placeholders, but two-way-linked people become real accepted members
 3. real-user linking currently happens from a connection detail page through a claimable invite link
 4. invite claim links both sides by creating or reusing a reciprocal connection for the invited user
 5. linked users can share public touchpoint memories and completed shared hangouts update both timelines
-6. saved hangouts exist and can be exported to calendar via ICS
-7. in-app notifications, web-push plumbing, and Resend email plumbing exist, but production delivery still depends on hosted configuration
-8. mobile validation now uses an iPhone 15-sized viewport in browser coverage
+6. claiming a connection invite also promotes that person into any groups they already belonged to as a placeholder or pending invite
+7. saved hangouts exist and can be exported to calendar via ICS
+8. in-app notifications, web-push plumbing, and Resend email plumbing exist, but production delivery still depends on hosted configuration
+9. mobile validation now uses an iPhone 15-sized viewport in browser coverage
 
 ## Suggested Next Steps
 
-1. decide whether groups should support richer shared membership management beyond connection placeholders
+1. deepen shared history, notes, or cadence for two-way-linked users now that linked people can sit in groups as real members
 2. harden production delivery configuration for Resend invite/proposal emails and VAPID web push
 3. add scheduled reminder and digest delivery after the collaboration model settles
 4. add photo or media handling only after the shared-memory loop is clearer

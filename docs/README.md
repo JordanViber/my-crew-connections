@@ -53,6 +53,7 @@ As of May 7, 2026, the local app currently supports:
 - group directory search plus health-state filtering
 - searchable existing-people picker during group creation
 - group invites with accepted, declined, and pending membership states
+- two-way-linked people added to a group become accepted members immediately
 - group hangout proposals with RSVP-style participant responses
 - in-app notifications for invites, proposals, and responses
 - web-push delivery plumbing and Resend email plumbing, subject to local or production env configuration
@@ -62,7 +63,8 @@ As of May 7, 2026, the local app currently supports:
 If we stop and resume later, start from this understanding:
 - the core relationship loop is implemented and usable locally end to end
 - local Supabase resets will wipe local auth users and test data
-- groups still center on connection records first, with deeper shared collaboration still to come
+- groups can still include local-only placeholders, but two-way-linked people become real accepted members
 - invite claiming now links both users by creating or reusing a reciprocal connection
+- claiming a connection invite promotes existing group memberships and pending group invites for that person
 - linked users can share public memories; completed shared hangouts update both timelines
-- the next major product choice is richer shared group membership and production-grade outbound delivery
+- the next major product choice is shared history/notes/cadence plus production-grade outbound delivery

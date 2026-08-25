@@ -34,12 +34,13 @@ Shipped:
 - group invites and pending membership states
 - group hangout proposals with participant responses
 - in-app notifications plus push/email delivery plumbing for invites and proposals
+- accepted group membership for two-way-linked users
 
 Still pending:
 - production deployment and provider configuration for outbound email and push
 - scheduled reminder and digest delivery
 - photo uploads
-- deeper shared group collaboration
+- shared notes, linked cadence, and richer group permissions
 
 ## Product Milestones
 
@@ -102,7 +103,7 @@ Core logging and history shipped locally. Photos remain deferred.
 - define private versus shared content rules
 
 ### Status
-Partially shipped. Connection-level invite claiming, two-way linking, group invites, pending membership states, and group hangout proposal responses exist. Rich shared group permissions and broader collaboration are still next.
+Partially shipped. Connection-level invite claiming, two-way linking, group invites, pending membership states, hangout proposal responses, and accepted membership for two-way-linked users exist. Shared notes, linked cadence, and photos are still next.
 
 ## Suggested Release Phases
 
@@ -162,8 +163,7 @@ ICS export is better than waiting for flawless calendar integrations.
 
 ## Recommended Immediate Next Deliverables
 
-1. deepen collaboration for linked users and groups
-2. decide whether groups should remain connection-first or become more fully shared
-3. harden production outbound delivery configuration for Resend and web push
-4. add scheduled reminder and digest notifications after the collaboration model settles
-5. revisit media only after the shared-memory loop is clearer
+1. deepen shared history, notes, or cadence for two-way-linked users
+2. harden production outbound delivery configuration for Resend and web push
+3. add scheduled reminder and digest notifications after the collaboration model settles
+4. revisit media only after the shared-memory loop is clearer
