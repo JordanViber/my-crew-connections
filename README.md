@@ -49,6 +49,7 @@ Available today:
 - hosted production at https://mycrewconnections.app
 - Next.js App Router app in `client/`
 - PWA install on supported browsers, plus first-run empty-state copy for brand-new hosted users
+- PWA assets (`/sw.js`, `/manifest.webmanifest`, `/icon`, `/apple-icon`) are excluded from session-refresh middleware so hosted auth is not saturated by those requests
 - Supabase-backed auth with password sign-in, email code sign-in with link fallback, and optional phone OTP sign-in
 - outbound auth confirmation email via Resend from no-reply@auth.mycrewconnections.app
 - people and groups CRUD with archive support
@@ -112,6 +113,7 @@ If we need to pick up quickly, the current product shape is:
 8. in-app notifications, web-push plumbing, and Resend email plumbing exist; auth confirmation email is working in production, while invite/push delivery still needs hardening
 9. first-run empty states now point new users toward adding a person or group instead of assuming they already have a rhythm
 10. mobile validation now uses an iPhone 15-sized viewport in browser coverage
+11. hosted dashboard/auth can stall when middleware refreshes the session on PWA asset requests; those assets are now excluded
 
 ## Suggested Next Steps
 

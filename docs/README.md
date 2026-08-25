@@ -44,6 +44,7 @@ As of August 25, 2026, hosted production is live at https://mycrewconnections.ap
 - cadence rules and relationship health
 - reminder queue and dashboard surfacing
 - first-run empty states that ask new users to add a person or group instead of assuming an existing rhythm
+- PWA assets (`/sw.js`, `/manifest.webmanifest`, `/icon`, `/apple-icon`) are excluded from session-refresh middleware so those requests no longer saturate hosted auth
 - touchpoint logging and history
 - saved hangout planning plus ICS export
 - mobile bottom navigation and section tabs
@@ -64,6 +65,7 @@ As of August 25, 2026, hosted production is live at https://mycrewconnections.ap
 If we stop and resume later, start from this understanding:
 - production is live at https://mycrewconnections.app, and the core relationship loop is usable there and locally
 - first-run empty-state / onboarding polish is shipped: new users are asked to add a person or group, local recovery tools stay local-only, and empty notifications/directories have real next steps
+- hosted dashboard/auth can stall when middleware refreshes the session on PWA asset requests; those assets are now excluded
 - local Supabase resets will wipe local auth users and test data
 - groups can still include local-only placeholders, but two-way-linked people become real accepted members
 - invite claiming now links both users by creating or reusing a reciprocal connection
