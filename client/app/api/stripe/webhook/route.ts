@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
+import { findAuthUserByEmail } from "@/lib/auth-users";
+import { checkoutSessionGrantsPremium, resolveCheckoutUserId } from "@/lib/billing";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getStripeClient } from "@/lib/stripe";
 
@@ -67,9 +69,20 @@ export async function POST(request: Request) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
-    if (typeof session.subscription === "string") {
+    if (checkoutSessionGrantsPremium(session) && typeof session.subscription === "string") {
       const subscription = await stripe.subscriptions.retrieve(session.subscription);
-      await syncSubscription(subscription, session.metadata?.supabase_user_id ?? null);
+      const userId = await resolveCheckoutUserId(
+        {
+          clientReferenceId: session.client_reference_id,
+          metadataUserId: session.metadata?.supabase_user_id,
+          customerEmail: session.customer_details?.email ?? session.customer_email,
+        },
+        async (email) => {
+          const user = await findAuthUserByEmail(createServerAdminSupabaseClient(), email);
+          return user?.id ?? null;
+        },
+      );
+      await syncSubscription(subscription, userId ?? (subscription.metadata?.supabase_user_id?.trim() || null));
     }
   }
 
@@ -78,7 +91,8 @@ export async function POST(request: Request) {
     || event.type === "customer.subscription.updated"
     || event.type === "customer.subscription.deleted"
   ) {
-    await syncSubscription(event.data.object as Stripe.Subscription);
+    const subscription = event.data.object as Stripe.Subscription;
+    await syncSubscription(subscription, subscription.metadata?.supabase_user_id?.trim() || null);
   }
 
   return NextResponse.json({ received: true });

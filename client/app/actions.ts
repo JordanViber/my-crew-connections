@@ -5,7 +5,14 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getAppUrl, getPaymentLinkForInterval, getPriceIdForInterval, type BillingInterval } from "@/lib/billing";
+import {
+  buildBillingCheckoutUrls,
+  buildBillingPortalReturnUrl,
+  getPriceIdForInterval,
+  readRequestOrigin,
+  resolveCheckoutBaseUrl,
+  type BillingInterval,
+} from "@/lib/billing";
 import { getStripeClient } from "@/lib/stripe";
 import {
   accountEmailSchema,
@@ -1573,23 +1580,18 @@ async function getOrCreateStripeCustomer(
   return customer.id;
 }
 
+async function getCheckoutBaseUrl() {
+  const requestHeaders = await headers();
+  return resolveCheckoutBaseUrl(process.env.NEXT_PUBLIC_APP_URL, readRequestOrigin(requestHeaders));
+}
+
 export async function createBillingCheckoutAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
   const interval = billingIntervalSchema.parse(getString(formData, "interval")) as BillingInterval;
   const priceId = getPriceIdForInterval(interval);
   const stripe = getStripeClient();
 
-  if (!priceId) {
-    redirect(withFeedback("/settings#billing", "billing-unavailable"));
-  }
-
-  if (!stripe) {
-    const paymentLink = getPaymentLinkForInterval(interval, user.email, user.id);
-
-    if (paymentLink) {
-      redirect(paymentLink);
-    }
-
+  if (!priceId || !stripe) {
     redirect(withFeedback("/settings#billing", "billing-unavailable"));
   }
 
@@ -1599,15 +1601,15 @@ export async function createBillingCheckoutAction(formData: FormData) {
     redirect(withFeedback("/settings#billing", "billing-unavailable"));
   }
 
-  const appUrl = getAppUrl();
+  const { successUrl, cancelUrl } = buildBillingCheckoutUrls(await getCheckoutBaseUrl());
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
     client_reference_id: user.id,
     line_items: [{ price: priceId, quantity: 1 }],
     allow_promotion_codes: true,
-    success_url: `${appUrl}/settings?feedback=billing-started&session_id={CHECKOUT_SESSION_ID}#billing`,
-    cancel_url: `${appUrl}/settings?feedback=billing-canceled#billing`,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     metadata: {
       supabase_user_id: user.id,
       billing_interval: interval,
@@ -1652,7 +1654,7 @@ export async function createBillingPortalAction() {
   try {
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
-      return_url: `${getAppUrl()}/settings#billing`,
+      return_url: buildBillingPortalReturnUrl(await getCheckoutBaseUrl()),
     });
     portalUrl = portalSession.url;
   } catch {

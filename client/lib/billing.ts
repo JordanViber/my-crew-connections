@@ -9,12 +9,12 @@ export type BillingProfile = {
   stripe_cancel_at_period_end: boolean | null;
 };
 
+const localAppOrigin = "http://127.0.0.1:3100";
+
 const defaultBillingConfig = {
   productId: "prod_UNYDgrpXLyEEWO",
   monthlyPriceId: "price_1TRXutKjuEm9woaeA2HsHmkn",
   yearlyPriceId: "price_1TReLpKjuEm9woae6nWqASQP",
-  monthlyPaymentLinkUrl: "https://buy.stripe.com/4gM3cw6Lp4C66lD2DjbjW00",
-  yearlyPaymentLinkUrl: "https://buy.stripe.com/8x27sM7Ptd8CdO54LrbjW02",
 };
 
 export const billingPlan = {
@@ -35,8 +35,6 @@ export function getBillingConfig() {
     productId: process.env.STRIPE_PREMIUM_PRODUCT_ID || defaultBillingConfig.productId,
     monthlyPriceId: process.env.STRIPE_PREMIUM_MONTHLY_PRICE_ID || defaultBillingConfig.monthlyPriceId,
     yearlyPriceId: process.env.STRIPE_PREMIUM_YEARLY_PRICE_ID || defaultBillingConfig.yearlyPriceId,
-    monthlyPaymentLinkUrl: process.env.STRIPE_PREMIUM_MONTHLY_PAYMENT_LINK_URL || defaultBillingConfig.monthlyPaymentLinkUrl,
-    yearlyPaymentLinkUrl: process.env.STRIPE_PREMIUM_YEARLY_PAYMENT_LINK_URL || defaultBillingConfig.yearlyPaymentLinkUrl,
   };
 }
 
@@ -45,29 +43,128 @@ export function getPriceIdForInterval(interval: BillingInterval) {
   return interval === "monthly" ? config.monthlyPriceId : config.yearlyPriceId;
 }
 
-export function getPaymentLinkForInterval(interval: BillingInterval, email?: string | null, userId?: string) {
-  const config = getBillingConfig();
-  const link = interval === "monthly" ? config.monthlyPaymentLinkUrl : config.yearlyPaymentLinkUrl;
+export function getAppUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL || localAppOrigin;
+}
 
-  if (!link) {
+type HeaderReader = {
+  get(name: string): string | null;
+};
+
+type CheckoutUserSource = {
+  clientReferenceId?: string | null;
+  metadataUserId?: string | null;
+  customerEmail?: string | null;
+};
+
+type CheckoutUserLookup = {
+  userId: string | null;
+  email: string | null;
+};
+
+function blankToNull(value?: string | null) {
+  const trimmed = value?.trim();
+  return trimmed || null;
+}
+
+function normalizeHttpOrigin(value?: string | null) {
+  const trimmed = blankToNull(value);
+
+  if (!trimmed) {
     return null;
   }
 
-  const url = new URL(link);
+  try {
+    const url = new URL(trimmed);
 
-  if (email) {
-    url.searchParams.set("prefilled_email", email);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+
+    if (url.username || url.password) {
+      return null;
+    }
+
+    return url.origin;
+  } catch {
+    return null;
   }
-
-  if (userId) {
-    url.searchParams.set("client_reference_id", userId);
-  }
-
-  return url.toString();
 }
 
-export function getAppUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL || "http://127.0.0.1:3100";
+export function readRequestOrigin(headerStore: HeaderReader) {
+  const origin = normalizeHttpOrigin(headerStore.get("origin"));
+
+  if (origin) {
+    return origin;
+  }
+
+  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
+  const hostname = host?.split(",")[0]?.trim();
+
+  if (!hostname) {
+    return null;
+  }
+
+  const proto = headerStore.get("x-forwarded-proto")?.split(",")[0]?.trim() || "https";
+  return normalizeHttpOrigin(`${proto}://${hostname}`);
+}
+
+export function resolveCheckoutBaseUrl(configuredUrl?: string | null, requestOrigin?: string | null) {
+  return normalizeHttpOrigin(configuredUrl) ?? normalizeHttpOrigin(requestOrigin) ?? localAppOrigin;
+}
+
+export function buildBillingCheckoutUrls(baseUrl: string) {
+  return {
+    successUrl: `${baseUrl}/settings?feedback=billing-started&session_id={CHECKOUT_SESSION_ID}#billing`,
+    cancelUrl: `${baseUrl}/settings?feedback=billing-canceled#billing`,
+  };
+}
+
+export function buildBillingPortalReturnUrl(baseUrl: string) {
+  return `${baseUrl}/settings#billing`;
+}
+
+function resolveCheckoutUserLookup(source: CheckoutUserSource): CheckoutUserLookup {
+  const clientReferenceId = blankToNull(source.clientReferenceId);
+
+  if (clientReferenceId) {
+    return { userId: clientReferenceId, email: null };
+  }
+
+  const metadataUserId = blankToNull(source.metadataUserId);
+
+  if (metadataUserId) {
+    return { userId: metadataUserId, email: null };
+  }
+
+  return {
+    userId: null,
+    email: blankToNull(source.customerEmail)?.toLowerCase() ?? null,
+  };
+}
+
+export async function resolveCheckoutUserId(
+  source: CheckoutUserSource,
+  findUserIdByEmail: (email: string) => Promise<string | null>,
+) {
+  const lookup = resolveCheckoutUserLookup(source);
+
+  if (lookup.userId) {
+    return lookup.userId;
+  }
+
+  if (!lookup.email) {
+    return null;
+  }
+
+  return findUserIdByEmail(lookup.email);
+}
+
+export function checkoutSessionGrantsPremium(session: {
+  mode?: string | null;
+  status?: string | null;
+}) {
+  return session.mode === "subscription" && session.status === "complete";
 }
 
 export function isPremiumStatus(status?: string | null) {
