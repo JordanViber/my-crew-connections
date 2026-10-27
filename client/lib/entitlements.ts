@@ -1,4 +1,4 @@
-import { billingPlan, isPremiumStatus, type BillingProfile } from "@/lib/billing";
+import { billingPlan, isClosedSubscriptionStatus, isPremiumStatus, type BillingProfile } from "@/lib/billing";
 
 export const freeTierLimits = {
   connections: 1,
@@ -11,8 +11,6 @@ const superUserEmails = new Set([
   "jordankdog44@yahoo.com",
   "jaynaykeller@yahoo.com",
 ]);
-
-const closedSubscriptionStatuses = new Set(["canceled", "incomplete_expired"]);
 
 export const freeTierFeatures = [
   "1 person",
@@ -49,7 +47,7 @@ export function checkoutBlockedByExistingPremium(
     return false;
   }
 
-  return !closedSubscriptionStatuses.has(profile?.stripe_subscription_status ?? "");
+  return !isClosedSubscriptionStatus(profile?.stripe_subscription_status);
 }
 
 export function canCreateConnection(profile: SubscriptionStatusProfile, connectionCount: number, email?: string | null) {
