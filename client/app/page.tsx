@@ -2,6 +2,7 @@ import { PrefetchLink } from "@/components/prefetch-link";
 import { PricingPlans } from "@/components/pricing-plans";
 import { redirect } from "next/navigation";
 import { createBillingCheckoutAction } from "@/app/actions";
+import { loadCurrentPlan } from "@/lib/load-current-plan";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const featureCards = [
@@ -40,6 +41,7 @@ export default async function Home({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const currentPlan = user ? await loadCurrentPlan(supabase, user.id, user.email) : null;
 
   return (
     <main className="shell px-3 py-3 md:px-6 md:py-6">
@@ -194,6 +196,7 @@ export default async function Home({
         <PricingPlans
           signedIn={Boolean(user)}
           checkoutAction={createBillingCheckoutAction}
+          currentPlan={currentPlan}
         />
       </div>
     </main>

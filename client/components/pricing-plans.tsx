@@ -1,5 +1,6 @@
 import { PrefetchLink } from "@/components/prefetch-link";
 import { billingPlan, type BillingInterval } from "@/lib/billing";
+import type { CurrentPlanState } from "@/lib/current-plan";
 import {
   freeTierFeatures,
   freeTierLimits,
@@ -39,6 +40,53 @@ function PlanFeatures({ features }: Readonly<{ features: readonly string[] }>) {
   );
 }
 
+function PremiumActions({
+  signedIn,
+  currentPlan,
+  checkoutAction,
+}: Readonly<{
+  signedIn: boolean;
+  currentPlan: CurrentPlanState | null;
+  checkoutAction: CheckoutAction;
+}>) {
+  if (currentPlan) {
+    return <CurrentPlanPanel plan={currentPlan} />;
+  }
+
+  return premiumChoices.map((choice) =>
+    signedIn ? (
+      <CheckoutForm
+        key={choice.interval}
+        action={checkoutAction}
+        interval={choice.interval}
+        label={choice.label}
+      />
+    ) : (
+      <PrefetchLink
+        key={choice.interval}
+        className="button-primary w-full"
+        href={premiumSignUpHref}
+      >
+        {choice.guestLabel}
+      </PrefetchLink>
+    ),
+  );
+}
+
+function CurrentPlanPanel({ plan }: Readonly<{ plan: CurrentPlanState }>) {
+  return (
+    <div className="grid gap-2">
+      <div className="rounded-lg border border-border bg-surface-muted p-3.5">
+        <p className="font-semibold text-foreground">{plan.title}</p>
+        <p className="mt-1 text-sm leading-6 text-foreground/62">{plan.detail}</p>
+      </div>
+      <PrefetchLink className="button-secondary w-full" href="/settings#billing">
+        Manage billing
+      </PrefetchLink>
+    </div>
+  );
+}
+
 function CheckoutForm({
   action,
   interval,
@@ -61,10 +109,12 @@ function CheckoutForm({
 export function PricingPlans({
   signedIn,
   checkoutAction,
+  currentPlan = null,
   titleAs = "h2",
 }: Readonly<{
   signedIn: boolean;
   checkoutAction: CheckoutAction;
+  currentPlan?: CurrentPlanState | null;
   titleAs?: "h1" | "h2";
 }>) {
   const TitleTag = titleAs === "h1" ? "h1" : "h2";
@@ -117,24 +167,11 @@ export function PricingPlans({
           </div>
           <PlanFeatures features={premiumTierFeatures} />
           <div className="grid gap-2">
-            {premiumChoices.map((choice) =>
-              signedIn ? (
-                <CheckoutForm
-                  key={choice.interval}
-                  action={checkoutAction}
-                  interval={choice.interval}
-                  label={choice.label}
-                />
-              ) : (
-                <PrefetchLink
-                  key={choice.interval}
-                  className="button-primary w-full"
-                  href={premiumSignUpHref}
-                >
-                  {choice.guestLabel}
-                </PrefetchLink>
-              ),
-            )}
+            <PremiumActions
+              signedIn={signedIn}
+              currentPlan={currentPlan}
+              checkoutAction={checkoutAction}
+            />
           </div>
         </article>
       </div>

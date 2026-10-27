@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { PricingPlans } from "@/components/pricing-plans";
 import { billingPlan } from "@/lib/billing";
+import { getCurrentPlanState } from "@/lib/current-plan";
 import { freeTierLimits } from "@/lib/entitlements";
 
 const checkoutAction = vi.fn();
@@ -35,5 +36,29 @@ describe("PricingPlans", () => {
     );
     expect(container.querySelector('a[href*="buy.stripe.com"]')).toBeNull();
     expect(container.innerHTML).not.toContain("buy.stripe.com");
+  });
+
+  it("shows the current plan instead of checkout when the account is already Premium", () => {
+    const currentPlan = getCurrentPlanState({
+      stripe_subscription_id: "sub_active",
+      stripe_subscription_status: "active",
+      stripe_current_period_end: "2026-11-01T12:00:00.000Z",
+      stripe_cancel_at_period_end: false,
+    }, "person@example.com");
+
+    if (!currentPlan) {
+      throw new Error("Expected an active Premium plan.");
+    }
+
+    const { container } = render(<PricingPlans signedIn checkoutAction={checkoutAction} currentPlan={currentPlan} />);
+
+    expect(screen.getByText(currentPlan.title)).toBeVisible();
+    expect(screen.getByText(currentPlan.detail)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Manage billing" })).toHaveAttribute("href", "/settings#billing");
+    expect(screen.getByRole("link", { name: "Go to the app" })).toHaveAttribute("href", "/dashboard");
+    expect(screen.queryByRole("button", { name: "Checkout monthly" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Checkout yearly" })).not.toBeInTheDocument();
+    expect(container.querySelector('input[name="interval"]')).toBeNull();
+    expect(container.querySelector('a[href*="buy.stripe.com"]')).toBeNull();
   });
 });

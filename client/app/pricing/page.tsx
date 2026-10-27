@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PricingPlans } from "@/components/pricing-plans";
 import { createBillingCheckoutAction } from "@/app/actions";
+import { loadCurrentPlan } from "@/lib/load-current-plan";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -12,6 +13,7 @@ export default async function PricingPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const currentPlan = user ? await loadCurrentPlan(supabase, user.id, user.email) : null;
 
   return (
     <main className="shell px-3 py-3 md:px-6 md:py-6">
@@ -19,6 +21,7 @@ export default async function PricingPage() {
         <PricingPlans
           signedIn={Boolean(user)}
           checkoutAction={createBillingCheckoutAction}
+          currentPlan={currentPlan}
           titleAs="h1"
         />
       </div>
