@@ -241,6 +241,14 @@ export function CreateAccountForm({
         <AddressFields disabled={isPending} initialCountry={getDefaultCountry(undefined)} />
       </div>
 
+      <p className="text-sm leading-6 text-foreground/62">
+        Phone and mailing address are optional. Read the{" "}
+        <PrefetchLink className="font-semibold text-accent-strong" href="/privacy">Privacy</PrefetchLink>
+        {" "}and{" "}
+        <PrefetchLink className="font-semibold text-accent-strong" href="/terms">Terms</PrefetchLink>
+        {" "}pages for what is collected, who processes it, and how billing and cancellation work.
+      </p>
+
       {errorMessage ? (
         <p className="rounded-lg bg-[#f8d2ca] px-3 py-2.5 text-sm font-medium text-[#7c291d]">{errorMessage}</p>
       ) : null}

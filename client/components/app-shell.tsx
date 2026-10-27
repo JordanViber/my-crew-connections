@@ -1,8 +1,6 @@
 import { PrefetchLink } from "@/components/prefetch-link";
-import { AccountMenu } from "@/components/account-menu";
 import { DesktopNav } from "@/components/desktop-nav";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
-import { NotificationsBellLink } from "@/components/notifications-bell-link";
 import { PwaInstallBanner } from "@/components/pwa-install-banner";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -34,19 +32,8 @@ export async function AppShell({
 }>) {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  let unreadNotifications = 0;
 
-  if (user) {
-    const { count } = await supabase
-      .from("in_app_notifications")
-      .select("id", { head: true, count: "exact" })
-      .eq("user_id", user.id)
-      .is("read_at", null);
-
-    unreadNotifications = count ?? 0;
-  }
-
-  const greetingName = firstName || displayName || "there";
+  const greetingName = firstName || displayName || email || "there";
   const greeting = `Good ${new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, ${greetingName} 👋`;
 
   return (
@@ -55,37 +42,22 @@ export async function AppShell({
       <PwaInstallBanner />
       <div className="glass-panel mx-auto max-w-7xl px-3 py-3 md:px-5 md:py-5">
         <header className="border-b border-border/70 pb-3 md:pb-4">
-          <div className="flex flex-col gap-3 md:gap-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-accent-strong md:text-xs md:tracking-[0.22em]">
-                  <span>My Crew Connections</span>
-                </div>
-                <p className="mt-0.5 text-sm font-medium text-foreground/80">{greeting}</p>
-              </div>
-
-              <div className="flex items-center gap-1.5 md:gap-2">
-                <NotificationsBellLink unreadCount={unreadNotifications} />
-                <AccountMenu displayName={displayName} email={email} firstName={firstName} />
-              </div>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              {backHref ? (
+                <PrefetchLink
+                  className="mb-2 inline-flex text-sm font-semibold text-foreground/64 transition hover:text-foreground"
+                  href={backHref}
+                >
+                  {backLabel ?? "Back"}
+                </PrefetchLink>
+              ) : null}
+              <p className="text-sm font-medium text-foreground/80">{greeting}</p>
+              <h1 className="mt-1 text-[1.9rem] leading-[1.04] font-semibold tracking-tight text-foreground md:text-[2.35rem]">{title}</h1>
+              <p className="mt-1.5 max-w-2xl text-[0.92rem] leading-6 text-foreground/68 md:text-[0.95rem]">{subtitle}</p>
             </div>
 
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                {backHref ? (
-                  <PrefetchLink
-                    className="mb-2 inline-flex text-sm font-semibold text-foreground/64 transition hover:text-foreground"
-                    href={backHref}
-                  >
-                    {backLabel ?? "Back"}
-                  </PrefetchLink>
-                ) : null}
-                <h1 className="text-[1.9rem] leading-[1.04] font-semibold tracking-tight text-foreground md:text-[2.35rem]">{title}</h1>
-                <p className="mt-1.5 max-w-2xl text-[0.92rem] leading-6 text-foreground/68 md:text-[0.95rem]">{subtitle}</p>
-              </div>
-
-              <DesktopNav items={navigation} />
-            </div>
+            <DesktopNav items={navigation} />
           </div>
         </header>
 
