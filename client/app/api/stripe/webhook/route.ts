@@ -13,8 +13,8 @@ function getCustomerId(customer: string | Stripe.Customer | Stripe.DeletedCustom
 }
 
 function getSubscriptionPeriodEnd(subscription: Stripe.Subscription) {
-  const value = (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end;
-  return value ? new Date(value * 1000).toISOString() : null;
+  const value = subscription.items.data[0]?.current_period_end;
+  return typeof value === "number" ? new Date(value * 1000).toISOString() : null;
 }
 
 async function syncSubscription(subscription: Stripe.Subscription, fallbackUserId?: string | null) {
