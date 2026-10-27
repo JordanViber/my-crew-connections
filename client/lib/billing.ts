@@ -51,16 +51,32 @@ type HeaderReader = {
   get(name: string): string | null;
 };
 
-type CheckoutUserSource = {
+export type CheckoutGrantSource = {
   clientReferenceId?: string | null;
   metadataUserId?: string | null;
   customerEmail?: string | null;
 };
 
-type CheckoutUserLookup = {
-  userId: string | null;
-  email: string | null;
+export type CheckoutGrantDecision =
+  | { grant: true; userId: string }
+  | { grant: false; reason: "missing-metadata" | "metadata-mismatch" | "email-only" };
+
+export type StoredBillingIdentity = {
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  stripe_subscription_status?: string | null;
 };
+
+export type IncomingBillingIdentity = {
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+};
+
+export type BillingIdentityDecision =
+  | { ok: true }
+  | { ok: false; reason: "different-customer" | "different-subscription" };
+
+const closedSubscriptionStatuses = new Set(["canceled", "incomplete_expired"]);
 
 function blankToNull(value?: string | null) {
   const trimmed = value?.trim();
@@ -124,40 +140,56 @@ export function buildBillingPortalReturnUrl(baseUrl: string) {
   return `${baseUrl}/settings#billing`;
 }
 
-function resolveCheckoutUserLookup(source: CheckoutUserSource): CheckoutUserLookup {
-  const clientReferenceId = blankToNull(source.clientReferenceId);
-
-  if (clientReferenceId) {
-    return { userId: clientReferenceId, email: null };
-  }
-
-  const metadataUserId = blankToNull(source.metadataUserId);
-
-  if (metadataUserId) {
-    return { userId: metadataUserId, email: null };
-  }
-
-  return {
-    userId: null,
-    email: blankToNull(source.customerEmail)?.toLowerCase() ?? null,
-  };
+export function isClosedSubscriptionStatus(status?: string | null) {
+  return closedSubscriptionStatuses.has(status ?? "");
 }
 
-export async function resolveCheckoutUserId(
-  source: CheckoutUserSource,
-  findUserIdByEmail: (email: string) => Promise<string | null>,
-) {
-  const lookup = resolveCheckoutUserLookup(source);
+export function decideCheckoutPremiumGrant(source: CheckoutGrantSource): CheckoutGrantDecision {
+  const metadataUserId = blankToNull(source.metadataUserId);
+  const clientReferenceId = blankToNull(source.clientReferenceId);
 
-  if (lookup.userId) {
-    return lookup.userId;
+  if (!metadataUserId) {
+    const reason = !clientReferenceId && blankToNull(source.customerEmail) ? "email-only" : "missing-metadata";
+    console.error(`Rejected checkout Premium grant: ${reason}`);
+    return { grant: false, reason };
   }
 
-  if (!lookup.email) {
-    return null;
+  if (metadataUserId !== clientReferenceId) {
+    console.error("Rejected checkout Premium grant: metadata-mismatch");
+    return { grant: false, reason: "metadata-mismatch" };
   }
 
-  return findUserIdByEmail(lookup.email);
+  return { grant: true, userId: metadataUserId };
+}
+
+export function billingIdentityUpdateAllowed(
+  current: StoredBillingIdentity | null | undefined,
+  incoming: IncomingBillingIdentity,
+): BillingIdentityDecision {
+  const currentCustomerId = blankToNull(current?.stripe_customer_id);
+  const incomingCustomerId = blankToNull(incoming.stripeCustomerId);
+
+  if (currentCustomerId && incomingCustomerId && currentCustomerId !== incomingCustomerId) {
+    console.error("Rejected Stripe billing identity overwrite: different-customer", {
+      currentCustomerId,
+      incomingCustomerId,
+    });
+    return { ok: false, reason: "different-customer" };
+  }
+
+  const currentSubscriptionId = blankToNull(current?.stripe_subscription_id);
+  const incomingSubscriptionId = blankToNull(incoming.stripeSubscriptionId);
+  const liveSubscription = Boolean(currentSubscriptionId) && !isClosedSubscriptionStatus(current?.stripe_subscription_status);
+
+  if (liveSubscription && incomingSubscriptionId && currentSubscriptionId !== incomingSubscriptionId) {
+    console.error("Rejected Stripe billing identity overwrite: different-subscription", {
+      currentSubscriptionId,
+      incomingSubscriptionId,
+    });
+    return { ok: false, reason: "different-subscription" };
+  }
+
+  return { ok: true };
 }
 
 export function checkoutSessionGrantsPremium(session: {

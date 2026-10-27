@@ -1,11 +1,12 @@
 import {
+  billingIdentityUpdateAllowed,
   buildBillingCheckoutUrls,
   checkoutSessionGrantsPremium,
+  decideCheckoutPremiumGrant,
   getBillingStatusLabel,
   isPremiumStatus,
   readRequestOrigin,
   resolveCheckoutBaseUrl,
-  resolveCheckoutUserId,
   type BillingProfile,
 } from "@/lib/billing";
 import { checkoutBlockedByExistingPremium } from "@/lib/entitlements";
@@ -20,35 +21,80 @@ const freeProfile: BillingProfile = {
 };
 
 describe("checkout webhook user matching", () => {
-  it("matches the user from client_reference_id before metadata or email", async () => {
-    const findUserIdByEmail = vi.fn(async () => "user-from-email");
+  let errorLog: ReturnType<typeof vi.spyOn>;
 
-    await expect(resolveCheckoutUserId({
-      clientReferenceId: "user-from-reference",
-      metadataUserId: "user-from-metadata",
-      customerEmail: "other@example.com",
-    }, findUserIdByEmail)).resolves.toBe("user-from-reference");
-
-    expect(findUserIdByEmail).not.toHaveBeenCalled();
+  beforeEach(() => {
+    errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
 
-  it("uses metadata when client_reference_id is blank, then customer email", async () => {
-    const findUserIdByEmail = vi.fn(async () => "user-from-email");
+  afterEach(() => {
+    errorLog.mockRestore();
+  });
 
-    await expect(resolveCheckoutUserId({
-      clientReferenceId: "  ",
+  it("grants Premium when metadata.supabase_user_id equals client_reference_id", () => {
+    expect(decideCheckoutPremiumGrant({
+      clientReferenceId: "user-1",
+      metadataUserId: "user-1",
+      customerEmail: "other@example.com",
+    })).toEqual({ grant: true, userId: "user-1" });
+    expect(errorLog).not.toHaveBeenCalled();
+  });
+
+  it("rejects a session with missing metadata", () => {
+    expect(decideCheckoutPremiumGrant({
+      clientReferenceId: "user-from-reference",
+      metadataUserId: " ",
+      customerEmail: null,
+    })).toEqual({ grant: false, reason: "missing-metadata" });
+    expect(errorLog).toHaveBeenCalledWith("Rejected checkout Premium grant: missing-metadata");
+  });
+
+  it("rejects a metadata and client_reference_id mismatch", () => {
+    expect(decideCheckoutPremiumGrant({
+      clientReferenceId: "user-from-reference",
       metadataUserId: "user-from-metadata",
       customerEmail: "person@example.com",
-    }, findUserIdByEmail)).resolves.toBe("user-from-metadata");
+    })).toEqual({ grant: false, reason: "metadata-mismatch" });
+    expect(errorLog).toHaveBeenCalledWith("Rejected checkout Premium grant: metadata-mismatch");
+  });
 
-    await expect(resolveCheckoutUserId({
+  it("rejects an email-only session", () => {
+    expect(decideCheckoutPremiumGrant({
       clientReferenceId: null,
-      metadataUserId: "",
-      customerEmail: "Person@Example.com",
-    }, findUserIdByEmail)).resolves.toBe("user-from-email");
+      metadataUserId: null,
+      customerEmail: "person@example.com",
+    })).toEqual({ grant: false, reason: "email-only" });
+    expect(errorLog).toHaveBeenCalledWith("Rejected checkout Premium grant: email-only");
+  });
 
-    expect(findUserIdByEmail).toHaveBeenCalledTimes(1);
-    expect(findUserIdByEmail).toHaveBeenCalledWith("person@example.com");
+  it("rejects a different live subscription id", () => {
+    expect(billingIdentityUpdateAllowed({
+      stripe_customer_id: "cus_same",
+      stripe_subscription_id: "sub_live",
+      stripe_subscription_status: "active",
+    }, {
+      stripeCustomerId: "cus_same",
+      stripeSubscriptionId: "sub_other",
+    })).toEqual({ ok: false, reason: "different-subscription" });
+    expect(errorLog).toHaveBeenCalledWith(
+      "Rejected Stripe billing identity overwrite: different-subscription",
+      { currentSubscriptionId: "sub_live", incomingSubscriptionId: "sub_other" },
+    );
+  });
+
+  it("rejects a different customer id", () => {
+    expect(billingIdentityUpdateAllowed({
+      stripe_customer_id: "cus_existing",
+      stripe_subscription_id: null,
+      stripe_subscription_status: null,
+    }, {
+      stripeCustomerId: "cus_other",
+      stripeSubscriptionId: "sub_new",
+    })).toEqual({ ok: false, reason: "different-customer" });
+    expect(errorLog).toHaveBeenCalledWith(
+      "Rejected Stripe billing identity overwrite: different-customer",
+      { currentCustomerId: "cus_existing", incomingCustomerId: "cus_other" },
+    );
   });
 });
 

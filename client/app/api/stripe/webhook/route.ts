@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { findAuthUserByEmail } from "@/lib/auth-users";
-import { checkoutSessionGrantsPremium, resolveCheckoutUserId } from "@/lib/billing";
+import { billingIdentityUpdateAllowed, checkoutSessionGrantsPremium, decideCheckoutPremiumGrant } from "@/lib/billing";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getStripeClient } from "@/lib/stripe";
 
@@ -20,28 +19,52 @@ function getSubscriptionPeriodEnd(subscription: Stripe.Subscription) {
 
 async function syncSubscription(subscription: Stripe.Subscription, fallbackUserId?: string | null) {
   const customerId = getCustomerId(subscription.customer);
+  const userId = fallbackUserId?.trim() || null;
 
-  if (!customerId && !fallbackUserId) {
+  if (!customerId && !userId) {
     return;
   }
 
   const supabase = createServerAdminSupabaseClient();
+  const profileQuery = supabase
+    .from("profiles")
+    .select("id, stripe_customer_id, stripe_subscription_id, stripe_subscription_status");
+  const profileResult = userId
+    ? await profileQuery.eq("id", userId).maybeSingle()
+    : await profileQuery.eq("stripe_customer_id", customerId).maybeSingle();
+
+  if (profileResult.error) {
+    throw new Error(`Failed to load billing profile: ${profileResult.error.message}`);
+  }
+
+  const profile = profileResult.data;
+
+  if (!profile) {
+    return;
+  }
+
+  const identity = billingIdentityUpdateAllowed(profile, {
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: subscription.id,
+  });
+
+  if (!identity.ok) {
+    return;
+  }
+
   const firstItem = subscription.items.data[0];
-  const update = {
-    stripe_customer_id: customerId,
+  const { error } = await supabase.from("profiles").update({
+    stripe_customer_id: customerId ?? profile.stripe_customer_id,
     stripe_subscription_id: subscription.id,
     stripe_subscription_status: subscription.status,
     stripe_price_id: firstItem?.price.id ?? null,
     stripe_current_period_end: getSubscriptionPeriodEnd(subscription),
     stripe_cancel_at_period_end: subscription.cancel_at_period_end,
-  };
+  }).eq("id", profile.id);
 
-  if (fallbackUserId) {
-    await supabase.from("profiles").update(update).eq("id", fallbackUserId);
-    return;
+  if (error) {
+    throw new Error(`Failed to sync subscription: ${error.message}`);
   }
-
-  await supabase.from("profiles").update(update).eq("stripe_customer_id", customerId);
 }
 
 export async function POST(request: Request) {
@@ -70,19 +93,16 @@ export async function POST(request: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
 
     if (checkoutSessionGrantsPremium(session) && typeof session.subscription === "string") {
-      const subscription = await stripe.subscriptions.retrieve(session.subscription);
-      const userId = await resolveCheckoutUserId(
-        {
-          clientReferenceId: session.client_reference_id,
-          metadataUserId: session.metadata?.supabase_user_id,
-          customerEmail: session.customer_details?.email ?? session.customer_email,
-        },
-        async (email) => {
-          const user = await findAuthUserByEmail(createServerAdminSupabaseClient(), email);
-          return user?.id ?? null;
-        },
-      );
-      await syncSubscription(subscription, userId ?? (subscription.metadata?.supabase_user_id?.trim() || null));
+      const grant = decideCheckoutPremiumGrant({
+        clientReferenceId: session.client_reference_id,
+        metadataUserId: session.metadata?.supabase_user_id,
+        customerEmail: session.customer_details?.email ?? session.customer_email,
+      });
+
+      if (grant.grant) {
+        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+        await syncSubscription(subscription, grant.userId);
+      }
     }
   }
 
