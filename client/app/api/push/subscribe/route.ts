@@ -12,6 +12,7 @@ type PushSubscriptionPayload = {
 
 type PushStatusRow = {
   id: string;
+  endpoint: string | null;
   enabled: boolean;
   device_family: string | null;
   browser_name: string | null;
@@ -37,7 +38,7 @@ export async function GET() {
   const supabase = createServerAdminSupabaseClient();
   const { data, error } = await supabase
     .from("push_subscriptions")
-    .select("id, enabled, device_family, browser_name, install_state, permission_state, last_seen_at, last_subscribed_at, last_delivery_at, last_delivery_status, last_delivery_error")
+    .select("id, endpoint, enabled, device_family, browser_name, install_state, permission_state, last_seen_at, last_subscribed_at, last_delivery_at, last_delivery_status, last_delivery_error")
     .eq("user_id", user.id)
     .order("updated_at", { ascending: false })
     .limit(1);

@@ -674,3 +674,39 @@ test("free-tier recipient cannot claim a connection invite after using their onl
 
   await inviteeContext.close();
 });
+
+test("claiming a connection invite shows success without a reload", async ({ page, browser }) => {
+  await page.setViewportSize(iphone15Viewport);
+  const ownerEmail = `owner-claim-ui-${Date.now()}@example.com`;
+  const inviteeEmail = `invitee-claim-ui-${Date.now()}@example.com`;
+
+  await page.goto("/auth");
+  await prepareLocalAccount(page, ownerEmail, password);
+  await signInWithPassword(page, ownerEmail, password);
+  await page.waitForURL("**/dashboard");
+
+  await page.goto("/connections?tab=create");
+  await page.locator('input[name="displayName"]:visible').fill("Claim Ui Friend");
+  await page.locator('input[name="contactEmail"]:visible').fill(inviteeEmail);
+  await page.locator('input[name="sendInviteNow"]:visible').check();
+  await page.locator('input[name="cadenceValue"]:visible').fill("2");
+  await page.locator('input[name="reminderLeadDays"]:visible').fill("3");
+  await page.getByRole("button", { name: "Create connection" }).click();
+  await expect(page).toHaveURL(/\/connections\/.+feedback=connection-created/);
+  const inviteUrl = await page.locator('input[readonly]:visible').inputValue();
+
+  const inviteeContext = await browser.newContext({ viewport: iphone15Viewport });
+  const inviteePage = await inviteeContext.newPage();
+  await inviteePage.goto("/auth");
+  await prepareLocalAccount(inviteePage, inviteeEmail, password);
+  await inviteePage.goto("/auth");
+  await signInWithPassword(inviteePage, inviteeEmail, password);
+  await inviteePage.waitForURL("**/dashboard");
+
+  await inviteePage.goto(inviteUrl);
+  await expect(inviteePage.getByRole("heading", { name: /claim your connection|accept your connection invite from/i })).toBeVisible();
+  await inviteePage.getByRole("button", { name: "Claim connection" }).click();
+  await expect(inviteePage.getByRole("heading", { name: "Invite claimed" })).toBeVisible();
+  await expect(inviteePage.getByRole("button", { name: "Claim connection" })).toHaveCount(0);
+  await inviteeContext.close();
+});

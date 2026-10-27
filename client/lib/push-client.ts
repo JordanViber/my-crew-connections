@@ -1,5 +1,7 @@
-export const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-  || "BIdjxl_ZpPEGEfe3itNQoyIYGoYRNHAe_Uf82R-uNK5I136XHEVK_3qPaI6-ODvB7KBhuZdST9abYF13oMMb78g";
+export function getVapidPublicKey() {
+  const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+  return key || null;
+}
 
 export function urlBase64ToUint8Array(value: string) {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);

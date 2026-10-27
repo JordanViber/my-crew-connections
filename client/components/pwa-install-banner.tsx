@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getPushEnvironment, getPwaBannerVisibility } from "@/lib/pwa-client";
+import { getPushEnvironment, getPwaBannerVisibility, isStandaloneDisplay } from "@/lib/pwa-client";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -11,11 +11,6 @@ type BeforeInstallPromptEvent = Event & {
 const dismissedStorageKey = "mcc-pwa-banner-dismissed-at";
 const installedStorageKey = "mcc-pwa-installed";
 const dismissWindowMs = 1000 * 60 * 60 * 24 * 14;
-
-function isStandaloneDisplay() {
-  return globalThis.matchMedia("(display-mode: standalone)").matches
-    || ("standalone" in globalThis.navigator && Boolean(globalThis.navigator.standalone));
-}
 
 function wasRecentlyDismissed() {
   const dismissedAt = Number(globalThis.localStorage.getItem(dismissedStorageKey) ?? "0");
