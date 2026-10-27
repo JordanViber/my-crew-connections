@@ -1,7 +1,7 @@
 import { billingPlan } from "@/lib/billing";
 import { freeTierLimits } from "@/lib/entitlements";
 
-export const accountDeletionContactEmail = "support@mycrewconnections.app";
+export const accountDeletionContactEmail = "jordankeller@mail.grokbot.com";
 
 export type LegalSection = {
   heading: string;
