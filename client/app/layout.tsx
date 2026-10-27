@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Manrope } from "next/font/google";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import { ThemeBootstrap } from "@/components/theme-bootstrap";
 import "./globals.css";
 
@@ -44,7 +46,11 @@ export default function RootLayout({
     <html lang="en" data-scroll-behavior="smooth" data-theme="light" suppressHydrationWarning>
       <body className={`${fraunces.variable} ${manrope.variable} antialiased`}>
         <ThemeBootstrap />
-        {children}
+        <div className="flex min-h-screen flex-col">
+          <SiteHeader />
+          <div className="flex-1">{children}</div>
+          <SiteFooter />
+        </div>
       </body>
     </html>
   );

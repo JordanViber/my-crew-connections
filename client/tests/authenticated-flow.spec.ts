@@ -63,7 +63,7 @@ test("mobile create-account and create-person flow works end to end", async ({ p
   await expect(page.getByRole("heading", { name: "Not linked yet" })).toBeVisible();
 });
 
-test("signed-in users visiting root are redirected to the dashboard", async ({ page }) => {
+test("signed-in users see home pricing checkout and the shared chrome", async ({ page }) => {
   const redirectEmail = `root-redirect-${Date.now()}@example.com`;
 
   await page.goto("/auth");
@@ -72,7 +72,22 @@ test("signed-in users visiting root are redirected to the dashboard", async ({ p
   await page.waitForURL("**/dashboard");
 
   await page.goto("/");
-  await page.waitForURL("**/dashboard");
+  await expect(page).not.toHaveURL(/\/dashboard/);
+  await expect(page.getByRole("heading", { name: /keep the people you care about close/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Checkout monthly" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Checkout yearly" })).toBeVisible();
+  await expect(page.locator('a[href*="buy.stripe.com"]')).toHaveCount(0);
+  await expect(page.locator('input[name="interval"][value="monthly"]')).toHaveCount(1);
+  await expect(page.locator('input[name="interval"][value="yearly"]')).toHaveCount(1);
+
+  for (const path of ["/", "/pricing", "/privacy", "/terms", "/no-such-page", "/dashboard"]) {
+    await page.goto(path);
+    await expect(page.getByRole("navigation", { name: "Site" }).getByRole("link", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: "Privacy" })).toBeVisible();
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: "Terms" })).toBeVisible();
+    await expect(page.locator('a[href*="buy.stripe.com"]')).toHaveCount(0);
+  }
+
   await expect(page.getByRole("heading", { name: /your relationship dashboard/i })).toBeVisible();
 });
 
