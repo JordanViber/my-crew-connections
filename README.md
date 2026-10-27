@@ -96,6 +96,10 @@ For cross-machine local development:
 
 That keeps [client/.env.local](client/.env.local) machine-specific and reproducible without committing secrets or hard-coding one machine's values into the repo.
 
+## Environment
+
+See [.env.example](.env.example) for the local variable list. `NEXT_PUBLIC_PASSKEY_SIGNIN_ENABLED` controls passkey sign-in: leave it unset or empty to keep passkeys on, and set it to `false` (case-insensitive, surrounding spaces ignored) to hide them. `NEXT_PUBLIC_` values are inlined when the app is built, including on Vercel, so changing this variable takes effect on the next deploy.
+
 Important local-dev note:
 - `supabase db reset --local` wipes local auth users and application data
 - after a reset, any previously created local account must be recreated with the `Create or reset local account` flow before signing in again

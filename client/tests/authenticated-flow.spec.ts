@@ -33,7 +33,7 @@ async function prepareLocalAccount(page: Parameters<typeof test>[0]["page"], ema
 async function signInWithPassword(page: Parameters<typeof test>[0]["page"], emailAddress: string, passwordValue: string) {
   await page.getByPlaceholder("Email or phone").fill(emailAddress);
   await page.getByPlaceholder("Enter your password").fill(passwordValue);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
 test("mobile create-account and create-person flow works end to end", async ({ page }) => {
