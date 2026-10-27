@@ -7,7 +7,8 @@ import { PasswordInput } from "@/components/password-input";
 import { PhoneNumberInput } from "@/components/phone-number-input";
 import { updateAccountEmailAction, updateAccountPasswordAction, updateProfileAction } from "@/app/actions";
 import { formatPhoneNumberForDisplay, getDefaultCountry, normalizePhoneNumberForAuth } from "@/lib/account-fields";
-import { phoneAuthEnabled } from "@/lib/auth-features";
+import { passkeySignInEnabled, phoneAuthEnabled } from "@/lib/auth-features";
+import { formatPasskeySetupError } from "@/lib/passkey-errors";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export type EditableProfile = {
@@ -203,7 +204,7 @@ export function SecuritySettingsEditor({
         ) : null}
       </div>
 
-      <PasskeySignInSettingsRow />
+      {passkeySignInEnabled ? <PasskeySignInSettingsRow /> : null}
 
       {phoneAuthEnabled ? (
         <PhoneSignInSettingsRow
@@ -244,29 +245,28 @@ function PasskeySignInSettingsRow() {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, setIsPending] = useState(false);
-  const [factorCount, setFactorCount] = useState(0);
+  const [passkeys, setPasskeys] = useState<Array<{ id: string; friendly_name?: string }>>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const supportsPasskeys = globalThis.window !== undefined && "PublicKeyCredential" in globalThis.window;
 
-  async function refreshFactors() {
+  async function refreshPasskeys() {
     const supabase = createBrowserSupabaseClient();
-    const { data, error } = await supabase.auth.mfa.listFactors();
+    const { data, error } = await supabase.auth.passkey.list();
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(formatPasskeySetupError(error));
       setIsLoading(false);
       return;
     }
 
-    const verifiedPasskeys = (data?.all ?? []).filter((factor) => factor.factor_type === "webauthn" && factor.status === "verified");
-    setFactorCount(verifiedPasskeys.length);
+    setPasskeys(data ?? []);
     setIsLoading(false);
   }
 
   useEffect(() => {
-    void refreshFactors();
+    void refreshPasskeys();
   }, []);
 
   async function enablePasskey() {
@@ -282,18 +282,15 @@ function PasskeySignInSettingsRow() {
 
     try {
       const supabase = createBrowserSupabaseClient();
-      const friendlyName = `Passkey ${new Date().toLocaleDateString()}`;
-      const { error } = await supabase.auth.mfa.webauthn.register({
-        friendlyName,
-      });
+      const { error } = await supabase.auth.registerPasskey();
 
       if (error) {
-        setErrorMessage(error.message);
+        setErrorMessage(formatPasskeySetupError(error));
         return;
       }
 
-      setStatusMessage("Passkey enabled. You can now use Face ID or Touch ID prompts on supported devices.");
-      await refreshFactors();
+      setStatusMessage("Passkey enabled. You can sign in with Face ID, Touch ID, or this device.");
+      await refreshPasskeys();
       router.refresh();
     } finally {
       setIsPending(false);
@@ -307,26 +304,18 @@ function PasskeySignInSettingsRow() {
 
     try {
       const supabase = createBrowserSupabaseClient();
-      const { data, error } = await supabase.auth.mfa.listFactors();
 
-      if (error) {
-        setErrorMessage(error.message);
-        return;
-      }
-
-      const webauthnFactors = (data?.all ?? []).filter((factor) => factor.factor_type === "webauthn");
-
-      for (const factor of webauthnFactors) {
-        const { error: removeError } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+      for (const passkey of passkeys) {
+        const { error: removeError } = await supabase.auth.passkey.delete({ passkeyId: passkey.id });
 
         if (removeError) {
-          setErrorMessage(removeError.message);
+          setErrorMessage(formatPasskeySetupError(removeError));
           return;
         }
       }
 
       setStatusMessage("Passkey sign-in was removed for this account.");
-      await refreshFactors();
+      await refreshPasskeys();
       router.refresh();
     } finally {
       setIsPending(false);
@@ -337,8 +326,8 @@ function PasskeySignInSettingsRow() {
 
   if (isLoading) {
     passkeyLabel = "Checking passkey status...";
-  } else if (factorCount > 0) {
-    passkeyLabel = `${factorCount} passkey${factorCount === 1 ? "" : "s"} enabled`;
+  } else if (passkeys.length > 0) {
+    passkeyLabel = `${passkeys.length} passkey${passkeys.length === 1 ? "" : "s"} enabled`;
   }
 
   return (
@@ -351,7 +340,7 @@ function PasskeySignInSettingsRow() {
       {isEditing ? (
         <div className="grid gap-3 sm:max-w-xl">
           <p className="text-sm leading-6 text-foreground/62">
-            Enable passkeys to use Face ID, Touch ID, or your device biometrics after password sign-in on supported browsers.
+            Add a passkey to sign in with Face ID, Touch ID, or this device. Passkeys replace the password on supported browsers.
           </p>
 
           {statusMessage ? (
@@ -363,7 +352,7 @@ function PasskeySignInSettingsRow() {
           ) : null}
 
           <div className="flex flex-wrap gap-2">
-            {factorCount > 0 ? (
+            {passkeys.length > 0 ? (
               <button className="button-primary" disabled={isPending || isLoading} onClick={() => void enablePasskey()} type="button">
                 Add another passkey
               </button>
@@ -373,7 +362,7 @@ function PasskeySignInSettingsRow() {
               </button>
             )}
 
-            {factorCount > 0 ? (
+            {passkeys.length > 0 ? (
               <button className="button-secondary" disabled={isPending || isLoading} onClick={() => void removePasskeys()} type="button">
                 Remove passkeys
               </button>

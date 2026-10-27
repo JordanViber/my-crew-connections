@@ -1,13 +1,14 @@
 import { PrefetchLink } from "@/components/prefetch-link";
 import { redirect } from "next/navigation";
 import { AppleAuthButton } from "@/components/apple-auth-button";
+import { PasskeySignInButton } from "@/components/passkey-sign-in-button";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { LocalAccountForm } from "@/components/local-account-form";
 import { MagicLinkForm } from "@/components/magic-link-form";
 import { PasswordAuthForm } from "@/components/password-auth-form";
 import { PhoneOtpForm } from "@/components/phone-otp-form";
 import { getAccountCreatedBannerBody } from "@/lib/auth-copy";
-import { appleAuthEnabled, phoneAuthEnabled } from "@/lib/auth-features";
+import { appleAuthEnabled, passkeySignInEnabled, phoneAuthEnabled } from "@/lib/auth-features";
 import { env } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getLocalSupabaseStatus, isLocalSupabaseUrl } from "@/lib/supabase/local-stack-status";
@@ -41,7 +42,7 @@ function AuthOptionCards() {
   const options = [
     ...(appleAuthEnabled ? [{ title: "Apple", body: "Fast on supported devices." }] : []),
     { title: "Password", body: phoneAuthEnabled ? "Use email or phone with your password." : "Use your email with your password." },
-    { title: "Passkey", body: "After setup in Settings, Face ID/Touch ID prompts appear after password sign-in." },
+    ...(passkeySignInEnabled ? [{ title: "Passkey", body: "Sign in with Face ID, Touch ID, or a device passkey." }] : []),
     { title: "Email code", body: "Enter the code from your inbox, or use the sign-in link as a fallback." },
     ...(phoneAuthEnabled ? [{ title: "Phone code", body: "Use a verified phone number to sign in by text." }] : []),
   ];
@@ -149,6 +150,19 @@ export default async function AuthPage({
 
               <div className="mt-4">
                 <AppleAuthButton nextPath={nextPath} />
+              </div>
+            </div>
+          ) : null}
+
+          {passkeySignInEnabled ? (
+            <div className="section-card p-3.5 md:p-4">
+              <h2 className="text-[1.35rem] font-semibold tracking-tight text-foreground">Passkey</h2>
+              <p className="mt-1.5 text-sm leading-6 text-foreground/68">
+                Use a passkey saved in Settings. This signs you in without a password.
+              </p>
+
+              <div className="mt-4">
+                <PasskeySignInButton nextPath={nextPath} stackAvailable={stackStatus.available} />
               </div>
             </div>
           ) : null}
