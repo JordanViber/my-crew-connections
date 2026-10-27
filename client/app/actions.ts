@@ -53,6 +53,7 @@ import {
 } from "@/lib/connection-display";
 import { notifyConnectionInvite } from "@/lib/connection-invites";
 import { notifyGroupInvite } from "@/lib/group-invites";
+import { claimInviteResultFromRedirect, readActionRedirect } from "@/lib/claim-invite-result";
 import { buildConnectionInvitePath, buildGroupInvitePath, normalizeInviteEmail } from "@/lib/invites";
 import { createInAppNotification } from "@/lib/in-app-notifications";
 import {
@@ -2913,6 +2914,24 @@ export async function claimConnectionInviteAction(formData: FormData) {
   }
 
   redirect(`${fallbackPath}?claimed=1`);
+}
+
+export async function submitClaimConnectionInvite(formData: FormData) {
+  try {
+    await claimConnectionInviteAction(formData);
+  } catch (error) {
+    const destination = readActionRedirect(error);
+
+    if (destination) {
+      return claimInviteResultFromRedirect(destination);
+    }
+
+    const message = error instanceof Error ? error.message : "Could not claim this invite.";
+    return { ok: false as const, message };
+  }
+
+  const token = getString(formData, "token");
+  return { ok: true as const, href: `${buildConnectionInvitePath(token)}?claimed=1` };
 }
 
 export async function acceptGroupInviteAction(formData: FormData) {

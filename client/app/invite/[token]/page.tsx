@@ -1,6 +1,7 @@
 import { PrefetchLink } from "@/components/prefetch-link";
 import { notFound, redirect } from "next/navigation";
-import { claimConnectionInviteAction, signOutToPathAction } from "@/app/actions";
+import { signOutToPathAction } from "@/app/actions";
+import { ClaimConnectionForm } from "@/components/claim-connection-form";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { SectionCard } from "@/components/section-card";
 import { getFallbackDisplayNameFromEmail } from "@/lib/connection-display";
@@ -155,19 +156,12 @@ export default async function InviteClaimPage({
     );
   } else if (emailMatchesInvite) {
     inviteResponseContent = (
-      <SectionCard
-        title="Claim this connection"
+      <ClaimConnectionForm
         description={invite.invited_email
           ? "Once claimed, the owner can treat this relationship as linked to your real account."
           : "This invite link can be claimed by the account you are signed in with right now."}
-      >
-        <form action={claimConnectionInviteAction} className="grid gap-3">
-          <input type="hidden" name="token" value={token} />
-          <button className="button-primary w-full sm:w-auto" type="submit">
-            Claim connection
-          </button>
-        </form>
-      </SectionCard>
+        token={token}
+      />
     );
   } else {
     inviteResponseContent = (
