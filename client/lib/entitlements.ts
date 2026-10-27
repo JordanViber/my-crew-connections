@@ -1,4 +1,4 @@
-import { billingPlan, isPremiumStatus, type BillingProfile } from "@/lib/billing";
+import { billingPlan, isClosedSubscriptionStatus, isPremiumStatus, type BillingProfile } from "@/lib/billing";
 
 export const freeTierLimits = {
   connections: 1,
@@ -31,6 +31,23 @@ export function isSuperUserEmail(email?: string | null) {
 
 export function hasPremiumAccess(profile?: SubscriptionStatusProfile, email?: string | null) {
   return isPremiumStatus(profile?.stripe_subscription_status) || isSuperUserEmail(email);
+}
+
+export function checkoutBlockedByExistingPremium(
+  profile?: Pick<BillingProfile, "stripe_subscription_status" | "stripe_subscription_id"> | null,
+  email?: string | null,
+) {
+  if (hasPremiumAccess(profile, email)) {
+    return true;
+  }
+
+  const subscriptionId = profile?.stripe_subscription_id?.trim();
+
+  if (!subscriptionId) {
+    return false;
+  }
+
+  return !isClosedSubscriptionStatus(profile?.stripe_subscription_status);
 }
 
 export function canCreateConnection(profile: SubscriptionStatusProfile, connectionCount: number, email?: string | null) {
