@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { sendPushNotification } from "@/lib/push";
+import {
+  describePushServiceFailure,
+  noAccountSubscriptionMessage,
+  pushSignInAgainMessage,
+  pushSubscriptionsUnavailableMessage,
+} from "@/lib/push-messages";
 import { createServerAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -17,7 +23,7 @@ export async function POST() {
   } = await authSupabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ ok: false, message: pushSignInAgainMessage, statusCode: 401 }, { status: 401 });
   }
 
   const supabase = createServerAdminSupabaseClient();
@@ -30,13 +36,21 @@ export async function POST() {
     .limit(1);
 
   if (error) {
-    return NextResponse.json({ error: "Push subscriptions are not ready yet" }, { status: 503 });
+    return NextResponse.json({
+      ok: false,
+      message: pushSubscriptionsUnavailableMessage,
+      statusCode: 503,
+    }, { status: 503 });
   }
 
   const row = (data?.[0] ?? null) as PushSubscriptionRow | null;
 
   if (!row) {
-    return NextResponse.json({ error: "No active push subscription found yet." }, { status: 404 });
+    return NextResponse.json({
+      ok: false,
+      message: noAccountSubscriptionMessage,
+      statusCode: 404,
+    }, { status: 404 });
   }
 
   const result = await sendPushNotification(
@@ -65,16 +79,22 @@ export async function POST() {
 
   await supabase.from("push_subscriptions").update(update).eq("id", row.id);
 
-  if (!result.ok && (result.statusCode === 404 || result.statusCode === 410)) {
+  const subscriptionExpired = !result.ok && (result.statusCode === 404 || result.statusCode === 410);
+
+  if (subscriptionExpired) {
     await supabase.from("push_subscriptions").update({ enabled: false }).eq("id", row.id);
   }
+
+  const message = result.ok
+    ? "Test notification sent."
+    : describePushServiceFailure(result.statusCode, result.errorMessage);
 
   return NextResponse.json(
     {
       ok: result.ok,
-      message: result.ok ? "Test notification sent." : (result.errorMessage ?? "Push delivery failed."),
+      message,
       statusCode: result.statusCode,
     },
-    { status: result.ok ? 200 : 500 },
+    { status: result.ok ? 200 : subscriptionExpired ? 410 : 502 },
   );
 }

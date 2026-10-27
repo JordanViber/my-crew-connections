@@ -52,16 +52,24 @@ export function detectBrowserFamily(userAgent: string): BrowserFamily {
 }
 
 export function isStandaloneDisplay() {
-  return globalThis.matchMedia("(display-mode: standalone)").matches
-    || ("standalone" in globalThis.navigator && Boolean(globalThis.navigator.standalone));
+  const iosStandalone = typeof navigator !== "undefined"
+    && "standalone" in navigator
+    && Boolean(navigator.standalone);
+
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return iosStandalone;
+  }
+
+  return window.matchMedia("(display-mode: standalone)").matches || iosStandalone;
 }
 
 export function getPushEnvironment(options: PushEnvironmentOptions = {}) {
-  const userAgent = options.userAgent ?? globalThis.navigator.userAgent;
-  const standalone = options.standalone ?? isStandaloneDisplay();
-  const notificationSupported = options.notificationSupported ?? ("Notification" in globalThis.window);
-  const serviceWorkerSupported = options.serviceWorkerSupported ?? ("serviceWorker" in globalThis.navigator);
-  const pushManagerSupported = options.pushManagerSupported ?? ("PushManager" in globalThis.window);
+  const onClient = typeof window !== "undefined";
+  const userAgent = options.userAgent ?? (typeof navigator === "undefined" ? "" : navigator.userAgent);
+  const standalone = options.standalone ?? (onClient ? isStandaloneDisplay() : false);
+  const notificationSupported = options.notificationSupported ?? (onClient && "Notification" in window);
+  const serviceWorkerSupported = options.serviceWorkerSupported ?? (typeof navigator !== "undefined" && "serviceWorker" in navigator);
+  const pushManagerSupported = options.pushManagerSupported ?? (onClient && "PushManager" in window);
   const installPromptAvailable = options.installPromptAvailable ?? false;
   const deviceFamily = detectDeviceFamily(userAgent);
   const browserFamily = detectBrowserFamily(userAgent);

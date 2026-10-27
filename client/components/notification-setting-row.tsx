@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { getPushEnvironment } from "@/lib/pwa-client";
-import { urlBase64ToUint8Array, vapidPublicKey } from "@/lib/push-client";
+import { getVapidPublicKey, urlBase64ToUint8Array } from "@/lib/push-client";
+import {
+  pushNotConfiguredMessage,
+  relinkedDeviceMessage,
+  shouldResaveBrowserSubscription,
+} from "@/lib/push-messages";
 
 type NotificationState = "unsupported" | "install-required" | "default" | "denied" | "enabled" | "saving" | "testing" | "error";
 
 type ServerSubscriptionStatus = {
+  endpoint?: string | null;
   enabled: boolean;
   device_family: string | null;
   browser_name: string | null;
@@ -22,7 +28,12 @@ type ServerSubscriptionStatus = {
 type TestPushResult = {
   ok?: boolean;
   message?: string;
+  error?: string;
 };
+
+async function readJson(response: Response) {
+  return response.json() as Promise<TestPushResult & { subscription?: ServerSubscriptionStatus | null }>;
+}
 
 function getPrimaryButtonLabel(state: NotificationState) {
   if (state === "saving") {
@@ -90,16 +101,16 @@ async function fetchSubscriptionStatus() {
     return null;
   }
 
-  const payload = await response.json() as { subscription?: ServerSubscriptionStatus | null };
+  const payload = await readJson(response);
   return payload.subscription ?? null;
 }
 
 async function requestTestPush() {
   const response = await fetch("/api/push/test", { method: "POST" });
-  const payload = await response.json() as TestPushResult;
+  const payload = await readJson(response);
 
   if (!response.ok || !payload.ok) {
-    throw new Error(payload.message ?? "Push delivery failed.");
+    throw new Error(payload.message || payload.error || "Push delivery failed.");
   }
 
   return payload.message ?? "Test notification sent.";
@@ -136,12 +147,85 @@ export function NotificationSettingRow() {
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [feedbackTone, setFeedbackTone] = useState<"neutral" | "success" | "error">("neutral");
   const [serverSubscription, setServerSubscription] = useState<ServerSubscriptionStatus | null>(null);
-  const environment = getPushEnvironment();
+  const [environment, setEnvironment] = useState<ReturnType<typeof getPushEnvironment> | null>(null);
   const buttonLabel = getPrimaryButtonLabel(state);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nextEnvironment = getPushEnvironment();
+    setEnvironment(nextEnvironment);
     setState(getNotificationState());
-    void refreshSubscriptionStatus();
+
+    let cancelled = false;
+
+    async function loadPushStatus() {
+      try {
+        const saved = await fetchSubscriptionStatus();
+
+        if (cancelled) {
+          return;
+        }
+
+        setServerSubscription(saved);
+
+        if (!("serviceWorker" in navigator) || typeof navigator.serviceWorker.getRegistration !== "function") {
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.getRegistration();
+        const browserSubscription = await registration?.pushManager.getSubscription();
+
+        if (cancelled || !browserSubscription) {
+          return;
+        }
+
+        if (!shouldResaveBrowserSubscription({
+          browserEndpoint: browserSubscription.endpoint,
+          savedEndpoint: saved?.endpoint,
+          savedEnabled: saved?.enabled,
+        })) {
+          return;
+        }
+
+        const response = await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            subscription: browserSubscription,
+            platform: navigator.userAgent,
+            permissionState: "Notification" in window ? Notification.permission : null,
+            deviceFamily: nextEnvironment.deviceFamily,
+            browserName: nextEnvironment.browserFamily,
+            installState: nextEnvironment.installState,
+          }),
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.ok) {
+          setFeedbackTone("error");
+          setFeedbackMessage("This device is linked to another account — relink failed. Enable push again on this device.");
+          return;
+        }
+
+        setFeedbackTone("success");
+        setFeedbackMessage(relinkedDeviceMessage);
+        setServerSubscription(await fetchSubscriptionStatus());
+      } catch {
+        // Subscription refresh is best-effort. Local browser state is still enough to render the control.
+      }
+    }
+
+    void loadPushStatus();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function refreshSubscriptionStatus() {
@@ -178,6 +262,15 @@ export function NotificationSettingRow() {
     setState("saving");
     setFeedbackMessage(null);
 
+    const applicationServerKey = getVapidPublicKey();
+
+    if (!applicationServerKey) {
+      setState("error");
+      setFeedbackTone("error");
+      setFeedbackMessage(pushNotConfiguredMessage);
+      return;
+    }
+
     try {
       const registration = await navigator.serviceWorker.register("/sw.js");
       const permission = await Notification.requestPermission();
@@ -190,7 +283,7 @@ export function NotificationSettingRow() {
       const existingSubscription = await registration.pushManager.getSubscription();
       const subscription = existingSubscription ?? await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey: urlBase64ToUint8Array(applicationServerKey),
       });
 
       const response = await fetch("/api/push/subscribe", {
@@ -200,9 +293,9 @@ export function NotificationSettingRow() {
           subscription,
           platform: navigator.userAgent,
           permissionState: permission,
-          deviceFamily: environment.deviceFamily,
-          browserName: environment.browserFamily,
-          installState: environment.installState,
+          deviceFamily: environment?.deviceFamily,
+          browserName: environment?.browserFamily,
+          installState: environment?.installState,
         }),
       });
 
@@ -233,7 +326,7 @@ export function NotificationSettingRow() {
           Delivery is per device. Turn this on from the device where you want alerts.
         </p>
 
-        {state === "install-required" ? (
+        {state === "install-required" && environment ? (
           <p className="mt-2 rounded-lg border border-border/80 bg-white/70 px-3 py-2.5 text-sm leading-6 text-foreground/72">{getInstallInstruction(environment)}</p>
         ) : null}
 
