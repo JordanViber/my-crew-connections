@@ -8,6 +8,7 @@ import {
   resolveCheckoutUserId,
   type BillingProfile,
 } from "@/lib/billing";
+import { checkoutBlockedByExistingPremium } from "@/lib/entitlements";
 
 const freeProfile: BillingProfile = {
   stripe_customer_id: null,
@@ -48,6 +49,29 @@ describe("checkout webhook user matching", () => {
 
     expect(findUserIdByEmail).toHaveBeenCalledTimes(1);
     expect(findUserIdByEmail).toHaveBeenCalledWith("person@example.com");
+  });
+});
+
+describe("already premium checkout guard", () => {
+  it("blocks a second checkout when Premium access or a live subscription id is present", () => {
+    expect(checkoutBlockedByExistingPremium({
+      ...freeProfile,
+      stripe_subscription_status: "active",
+      stripe_subscription_id: "sub_active",
+    }, "person@example.com")).toBe(true);
+    expect(checkoutBlockedByExistingPremium(freeProfile, "jordankdog44@yahoo.com")).toBe(true);
+    expect(checkoutBlockedByExistingPremium({
+      ...freeProfile,
+      stripe_subscription_status: "past_due",
+      stripe_subscription_id: "sub_past_due",
+    }, "person@example.com")).toBe(true);
+    expect(checkoutBlockedByExistingPremium({
+      ...freeProfile,
+      stripe_subscription_status: "canceled",
+      stripe_subscription_id: "sub_canceled",
+    }, "person@example.com")).toBe(false);
+    expect(checkoutBlockedByExistingPremium(freeProfile, "person@example.com")).toBe(false);
+    expect(checkoutBlockedByExistingPremium(null, "person@example.com")).toBe(false);
   });
 });
 

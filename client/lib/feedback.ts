@@ -259,6 +259,11 @@ const feedbackMessages = {
     title: "Billing unavailable",
     body: "Stripe billing is not configured for this environment yet.",
   },
+  "billing-already-premium": {
+    tone: "success",
+    title: "Premium is already active",
+    body: "No new checkout was started.",
+  },
   "billing-portal-unavailable": {
     tone: "error",
     title: "Billing portal unavailable",

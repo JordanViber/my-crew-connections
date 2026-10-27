@@ -61,7 +61,7 @@ import {
   buildLinkedMemberJoinedOwnerNotification,
   shouldPromoteLinkedConnectionToGroupMember,
 } from "@/lib/linked-group-membership";
-import { canCreateConnection, canCreateGroup } from "@/lib/entitlements";
+import { canCreateConnection, canCreateGroup, checkoutBlockedByExistingPremium } from "@/lib/entitlements";
 import { sendPushToUser } from "@/lib/push";
 import {
   buildSharedMemoryNotification,
@@ -1588,6 +1588,18 @@ async function getCheckoutBaseUrl() {
 export async function createBillingCheckoutAction(formData: FormData) {
   const { supabase, user } = await getAuthenticatedClient();
   const interval = billingIntervalSchema.parse(getString(formData, "interval")) as BillingInterval;
+  const { data: billingProfile, error: billingProfileError } = await supabase
+    .from("profiles")
+    .select("stripe_subscription_id, stripe_subscription_status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  assertMutation(billingProfileError, "Failed to load billing profile");
+
+  if (checkoutBlockedByExistingPremium(billingProfile, user.email)) {
+    redirect(withFeedback("/settings#billing", "billing-already-premium"));
+  }
+
   const priceId = getPriceIdForInterval(interval);
   const stripe = getStripeClient();
 

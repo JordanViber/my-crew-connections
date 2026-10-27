@@ -12,6 +12,8 @@ const superUserEmails = new Set([
   "jaynaykeller@yahoo.com",
 ]);
 
+const closedSubscriptionStatuses = new Set(["canceled", "incomplete_expired"]);
+
 export const freeTierFeatures = [
   "1 person",
   "1 group",
@@ -31,6 +33,23 @@ export function isSuperUserEmail(email?: string | null) {
 
 export function hasPremiumAccess(profile?: SubscriptionStatusProfile, email?: string | null) {
   return isPremiumStatus(profile?.stripe_subscription_status) || isSuperUserEmail(email);
+}
+
+export function checkoutBlockedByExistingPremium(
+  profile?: Pick<BillingProfile, "stripe_subscription_status" | "stripe_subscription_id"> | null,
+  email?: string | null,
+) {
+  if (hasPremiumAccess(profile, email)) {
+    return true;
+  }
+
+  const subscriptionId = profile?.stripe_subscription_id?.trim();
+
+  if (!subscriptionId) {
+    return false;
+  }
+
+  return !closedSubscriptionStatuses.has(profile?.stripe_subscription_status ?? "");
 }
 
 export function canCreateConnection(profile: SubscriptionStatusProfile, connectionCount: number, email?: string | null) {
