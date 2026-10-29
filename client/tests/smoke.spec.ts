@@ -74,7 +74,7 @@ test("home calls to action open sign-up, sign-in, pricing, and legal pages", asy
   await expect(page.getByText(/Supabase stores the account/)).toBeVisible();
   await expect(page.getByText(/Stripe processes Premium payments/)).toBeVisible();
   await expect(page.getByText(/Vercel hosts the app/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "jordankeller@mail.grokbot.com" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "support@mycrewconnections.app" })).toBeVisible();
   await expect(page.getByText("$5 per month or $55 per year")).toBeVisible();
   await expect(page.getByText(/Cancel from Settings, in Billing/)).toBeVisible();
 
@@ -85,7 +85,7 @@ test("home calls to action open sign-up, sign-in, pricing, and legal pages", asy
   await expect(page.getByText(/Supabase stores the account/)).toBeVisible();
   await expect(page.getByText("$5 per month or $55 per year")).toBeVisible();
   await expect(page.getByText(/does not add a cancellation fee/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "jordankeller@mail.grokbot.com" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "support@mycrewconnections.app" })).toBeVisible();
 });
 
 test("sign-up form links to privacy and terms", async ({ page }) => {
