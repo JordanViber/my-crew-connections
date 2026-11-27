@@ -11,6 +11,17 @@ test("landing page highlights the core relationship loop", async ({ page }) => {
   await expect(page.getByText("$5/mo or $55/yr")).toBeVisible();
 });
 
+test("notification deep links cold-load a page that accepts input", async ({ page }) => {
+  for (const path of ["/dashboard", "/notifications", "/connections/example", "/groups/example"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/auth/);
+    const email = page.getByPlaceholder("Email or phone");
+    await email.click();
+    await email.fill("jordan@example.com");
+    await expect(email).toHaveValue("jordan@example.com");
+  }
+});
+
 test("protected dashboard redirects unauthenticated visitors to the auth page", async ({ page }) => {
   await page.goto("/dashboard");
 
