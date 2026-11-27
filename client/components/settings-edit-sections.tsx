@@ -9,6 +9,7 @@ import { updateAccountEmailAction, updateAccountPasswordAction, updateProfileAct
 import { formatPhoneNumberForDisplay, getDefaultCountry, normalizePhoneNumberForAuth } from "@/lib/account-fields";
 import { passkeySignInEnabled, phoneAuthEnabled } from "@/lib/auth-features";
 import { formatPasskeySetupError } from "@/lib/passkey-errors";
+import { isSignInCode, normalizeSignInCode } from "@/lib/sign-in-code";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export type EditableProfile = {
@@ -449,9 +450,9 @@ function PhoneSignInSettingsRow({
       return;
     }
 
-    const trimmedCode = verificationCode.trim();
+    const code = normalizeSignInCode(verificationCode);
 
-    if (!trimmedCode) {
+    if (!isSignInCode(code)) {
       setErrorMessage("Enter the verification code you received by text.");
       return;
     }
@@ -459,7 +460,7 @@ function PhoneSignInSettingsRow({
     const supabase = createBrowserSupabaseClient();
     const { error } = await supabase.auth.verifyOtp({
       phone: pendingPhoneNumber,
-      token: trimmedCode,
+      token: code,
       type: "phone_change",
     });
 
@@ -502,10 +503,9 @@ function PhoneSignInSettingsRow({
                 autoComplete="one-time-code"
                 className="field-input"
                 inputMode="numeric"
-                maxLength={6}
                 name="phoneAuthCode"
-                onChange={(event) => setVerificationCode(event.target.value)}
-                placeholder="6-digit code"
+                onChange={(event) => setVerificationCode(normalizeSignInCode(event.target.value))}
+                placeholder="Sign-in code"
                 type="text"
                 value={verificationCode}
               />
