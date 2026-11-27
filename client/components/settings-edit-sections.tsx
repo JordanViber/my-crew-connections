@@ -9,7 +9,7 @@ import { updateAccountEmailAction, updateAccountPasswordAction, updateProfileAct
 import { formatPhoneNumberForDisplay, getDefaultCountry, normalizePhoneNumberForAuth } from "@/lib/account-fields";
 import { passkeySignInEnabled, phoneAuthEnabled } from "@/lib/auth-features";
 import { formatPasskeySetupError } from "@/lib/passkey-errors";
-import { isSignInCode, normalizeSignInCode, SIGN_IN_CODE_MAX_LENGTH } from "@/lib/sign-in-code";
+import { isSignInCode, normalizeSignInCode } from "@/lib/sign-in-code";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export type EditableProfile = {
@@ -503,7 +503,6 @@ function PhoneSignInSettingsRow({
                 autoComplete="one-time-code"
                 className="field-input"
                 inputMode="numeric"
-                maxLength={SIGN_IN_CODE_MAX_LENGTH}
                 name="phoneAuthCode"
                 onChange={(event) => setVerificationCode(normalizeSignInCode(event.target.value))}
                 placeholder="Sign-in code"

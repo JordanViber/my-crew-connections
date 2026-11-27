@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { PhoneNumberInput } from "@/components/phone-number-input";
 import { normalizePhoneNumberForAuth } from "@/lib/account-fields";
-import { isSignInCode, normalizeSignInCode, SIGN_IN_CODE_MAX_LENGTH } from "@/lib/sign-in-code";
+import { isSignInCode, normalizeSignInCode } from "@/lib/sign-in-code";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export function PhoneOtpForm({
@@ -120,7 +120,6 @@ export function PhoneOtpForm({
             autoComplete="one-time-code"
             className="field-input"
             inputMode="numeric"
-            maxLength={SIGN_IN_CODE_MAX_LENGTH}
             name="verificationCode"
             onChange={(event) => setVerificationCode(normalizeSignInCode(event.target.value))}
             placeholder="Sign-in code"

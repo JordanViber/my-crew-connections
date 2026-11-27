@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MagicLinkForm } from "@/components/magic-link-form";
-import { SIGN_IN_CODE_MAX_LENGTH } from "@/lib/sign-in-code";
 
 const {
   refreshMock,
@@ -103,11 +102,10 @@ describe("MagicLinkForm", () => {
     await user.click(screen.getByRole("button", { name: "Email me a code" }));
 
     const codeInput = await screen.findByLabelText("Verification code");
-    expect(codeInput).toHaveAttribute("maxlength", String(SIGN_IN_CODE_MAX_LENGTH));
     expect(codeInput).toHaveAttribute("placeholder", "Sign-in code");
 
     await user.click(codeInput);
-    await user.paste("12345678");
+    await user.paste("12 34 56 78");
     expect(codeInput).toHaveValue("12345678");
 
     await user.click(screen.getByRole("button", { name: "Verify code" }));
