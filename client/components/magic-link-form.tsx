@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { isSignInCode, normalizeSignInCode, SIGN_IN_CODE_MAX_LENGTH } from "@/lib/sign-in-code";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 const emailOtpTypes = ["email", "magiclink"] as const;
@@ -74,9 +75,9 @@ export function MagicLinkForm({
         return;
       }
 
-      const trimmedCode = verificationCode.trim();
+      const code = normalizeSignInCode(verificationCode);
 
-      if (!trimmedCode) {
+      if (!isSignInCode(code)) {
         setErrorMessage("Enter the code from your email.");
         return;
       }
@@ -88,7 +89,7 @@ export function MagicLinkForm({
         for (const type of emailOtpTypes) {
           const { error } = await supabase.auth.verifyOtp({
             email: submittedEmail,
-            token: trimmedCode,
+            token: code,
             type,
           });
 
@@ -132,10 +133,10 @@ export function MagicLinkForm({
             autoComplete="one-time-code"
             className="field-input"
             inputMode="numeric"
-            maxLength={6}
+            maxLength={SIGN_IN_CODE_MAX_LENGTH}
             name="verificationCode"
-            onChange={(event) => setVerificationCode(event.target.value)}
-            placeholder="6-digit code"
+            onChange={(event) => setVerificationCode(normalizeSignInCode(event.target.value))}
+            placeholder="Sign-in code"
             type="text"
             value={verificationCode}
           />

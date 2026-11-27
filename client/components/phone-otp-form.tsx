@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { PhoneNumberInput } from "@/components/phone-number-input";
 import { normalizePhoneNumberForAuth } from "@/lib/account-fields";
+import { isSignInCode, normalizeSignInCode, SIGN_IN_CODE_MAX_LENGTH } from "@/lib/sign-in-code";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export function PhoneOtpForm({
@@ -71,9 +72,9 @@ export function PhoneOtpForm({
         return;
       }
 
-      const trimmedCode = verificationCode.trim();
+      const code = normalizeSignInCode(verificationCode);
 
-      if (!trimmedCode) {
+      if (!isSignInCode(code)) {
         setErrorMessage("Enter the code you received by text.");
         return;
       }
@@ -82,7 +83,7 @@ export function PhoneOtpForm({
         const supabase = createBrowserSupabaseClient();
         const { error } = await supabase.auth.verifyOtp({
           phone: submittedPhoneNumber,
-          token: trimmedCode,
+          token: code,
           type: "sms",
         });
 
@@ -119,10 +120,10 @@ export function PhoneOtpForm({
             autoComplete="one-time-code"
             className="field-input"
             inputMode="numeric"
-            maxLength={6}
+            maxLength={SIGN_IN_CODE_MAX_LENGTH}
             name="verificationCode"
-            onChange={(event) => setVerificationCode(event.target.value)}
-            placeholder="6-digit code"
+            onChange={(event) => setVerificationCode(normalizeSignInCode(event.target.value))}
+            placeholder="Sign-in code"
             type="text"
             value={verificationCode}
           />

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MagicLinkForm } from "@/components/magic-link-form";
+import { SIGN_IN_CODE_MAX_LENGTH } from "@/lib/sign-in-code";
 
 const {
   refreshMock,
@@ -88,6 +89,36 @@ describe("MagicLinkForm", () => {
       });
       expect(replaceMock).toHaveBeenCalledWith("/dashboard");
       expect(refreshMock).toHaveBeenCalled();
+    });
+  });
+
+  it("passes an 8-digit sign-in code to verifyOtp unchanged", async () => {
+    const user = userEvent.setup();
+    signInWithOtpMock.mockResolvedValue({ error: null });
+    verifyOtpMock.mockResolvedValue({ error: null });
+
+    render(<MagicLinkForm nextPath="/dashboard" stackAvailable />);
+
+    await user.type(screen.getByLabelText("Email"), "you@example.com");
+    await user.click(screen.getByRole("button", { name: "Email me a code" }));
+
+    const codeInput = await screen.findByLabelText("Verification code");
+    expect(codeInput).toHaveAttribute("maxlength", String(SIGN_IN_CODE_MAX_LENGTH));
+    expect(codeInput).toHaveAttribute("placeholder", "Sign-in code");
+
+    await user.click(codeInput);
+    await user.paste("12345678");
+    expect(codeInput).toHaveValue("12345678");
+
+    await user.click(screen.getByRole("button", { name: "Verify code" }));
+
+    await waitFor(() => {
+      expect(verifyOtpMock).toHaveBeenCalledTimes(1);
+      expect(verifyOtpMock).toHaveBeenCalledWith({
+        email: "you@example.com",
+        token: "12345678",
+        type: "email",
+      });
     });
   });
 });
