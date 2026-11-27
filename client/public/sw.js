@@ -164,11 +164,14 @@ async function openNotification(rawUrl) {
 
     if (!isAlreadyOpen(client.url, targetUrl)) {
       const navigated = await navigateClient(client, targetUrl);
-      if (!navigated) {
-        postNavigate(client, targetUrl);
+      if (navigated) {
+        return;
       }
     }
 
+    // client.url stays on the last full load after a Next.js client navigation.
+    // The page compares location.href and does nothing when it already matches.
+    postNavigate(client, targetUrl);
     return;
   }
 

@@ -194,7 +194,7 @@ describe("service worker notificationclick", () => {
     });
   });
 
-  it("only focuses a client that is already on the target", async () => {
+  it("asks the page to navigate when the client url already matches", async () => {
     const client = fakeClient(`${origin}/notifications`);
     const openWindow = vi.fn();
     const listeners = loadServiceWorker({
@@ -206,7 +206,10 @@ describe("service worker notificationclick", () => {
 
     expect(client.focus).toHaveBeenCalledOnce();
     expect(client.navigate).not.toHaveBeenCalled();
-    expect(client.postMessage).not.toHaveBeenCalled();
+    expect(client.postMessage).toHaveBeenCalledExactlyOnceWith({
+      type: notificationNavigateMessageType,
+      url: `${origin}/notifications`,
+    });
     expect(openWindow).not.toHaveBeenCalled();
   });
 
